@@ -1,0 +1,135 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.parcelize'
+apply plugin: 'com.google.protobuf'
+//apply from: 'deploy.gradle'   // FIXME
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.20.1'
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option "lite"
+                }
+                kotlin {
+                    option "lite"
+                }
+            }
+        }
+    }
+}
+
+android {
+    buildToolsVersion '33.0.1'
+    compileSdk 33
+
+    ndkVersion '23.1.7779620'
+
+    defaultConfig {
+        minSdk 26
+        targetSdk 33
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+
+        consumerProguardFiles 'consumer-rules.pro'
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DVENDOR_DIR=${rootDir}/vendor"
+                arguments "-DDOWNLOAD_CACHE=${buildDir}/downloads"
+                cppFlags ''
+            }
+        }
+
+        ndk {
+//            abiFilters /*'armeabi-v7a', 'arm64-v8a',*/ 'x86_64' // FIXME
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86_64'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+
+//    testOptions {
+//        managedDevices {
+//            devices {
+//                // run with ../gradlew  nexusOneApi30DebugAndroidTest
+//                nexusOneApi30(ManagedVirtualDevice) {
+//                    // A lower resolution device is used here for better emulator performance
+//                    device = "Nexus One"
+//                    apiLevel = 30
+//                    // Also use the AOSP ATD image for better emulator performance
+//                    systemImageSource = "aosp-atd"
+//                }
+//            }
+//        }
+//    }
+}
+
+dependencies {
+    api 'com.squareup.okhttp3:okhttp:3.12.13'
+
+    implementation 'androidx.core:core-ktx:1.9.0'
+//    implementation 'androidx.appcompat:appcompat:1.3.0'
+//    implementation 'com.google.android.material:material:1.4.0'
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
+    implementation 'com.google.protobuf:protobuf-kotlin-lite:3.20.1'
+    implementation 'androidx.datastore:datastore-core:1.0.0'
+    implementation 'androidx.lifecycle:lifecycle-service:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "com.google.truth:truth:1.1.3"
+    testImplementation "io.mockk:mockk:1.12.5"
+
+//    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    // To use the androidx.test.core APIs
+    androidTestImplementation "androidx.test:core:1.4.0"
+    // Kotlin extensions for androidx.test.core
+    androidTestImplementation "androidx.test:core-ktx:1.4.0"
+
+    // To use the androidx.test.espresso
+//    androidTestImplementation "androidx.test:espresso:espresso-core:3.4.0"
+
+    // To use the JUnit Extension APIs
+    androidTestImplementation "androidx.test.ext:junit:1.1.3"
+    // Kotlin extensions for androidx.test.ext.junit
+    androidTestImplementation "androidx.test.ext:junit-ktx:1.1.3"
+
+    // To use the Truth Extension APIs
+    androidTestImplementation "androidx.test.ext:truth:1.4.0"
+
+    // To use the androidx.test.runner APIs
+    androidTestImplementation "androidx.test:runner:1.4.0"
+
+    // To use android test orchestrator
+//    androidTestUtil "androidx.test:orchestrator:1.4.1"
+
+    androidTestImplementation "androidx.test:rules:1.4.0"
+
+    androidTestImplementation "io.mockk:mockk-android:1.12.5"
+}

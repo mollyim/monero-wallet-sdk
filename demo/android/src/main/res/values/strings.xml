@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">Monero SDK Demo</string>
+    <string name="home">Home</string>
+    <string name="history">History</string>
+    <string name="monero_wallets">Monero wallets</string>
+    <string name="create_a_new_wallet">Create a new wallet</string>
+    <string name="i_already_have_a_wallet">I already have a wallet</string>
+    <string name="back">Back</string>
+    <string name="finish">Finish</string>
+    <string name="new_wallet">New wallet</string>
+    <string name="restore_wallet">Restore wallet</string>
+    <string name="settings">Settings</string>
+    <string name="add_remote_node">Add remote node</string>
+    <string name="edit">Edit</string>
+    <string name="open_menu">Open menu</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="description">Description</string>
+    <string name="url">URL</string>
+    <string name="password">Password</string>
+    <string name="username">Username</string>
+    <string name="monero_node">Monero node</string>
+    <string name="enter_your_monero_node_information_below">Enter your Monero node information below.</string>
+    <string name="protocol_is_required_http_or_https">Protocol is required (http:// or https://)</string>
+    <string name="network">Network</string>
+    <string name="remote_nodes">Remote nodes</string>
+    <string name="add_wallet">Add wallet</string>
+    <string name="wallet_name">Wallet name</string>
+    <string name="remote_node_selection">Remote node selection</string>
+</resources>

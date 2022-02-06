@@ -1,0 +1,179 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "8e728fa24771d06bb2988df1356e07ec",
+    "entities": [
+      {
+        "tableName": "wallets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `public_address` TEXT NOT NULL, `name` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publicAddress",
+            "columnName": "public_address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_wallets_public_address",
+            "unique": true,
+            "columnNames": [
+              "public_address"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_wallets_public_address` ON `${TABLE_NAME}` (`public_address`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "remote_nodes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `net_type` INTEGER NOT NULL, `uri` TEXT NOT NULL, `user` TEXT NOT NULL, `pwd` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkId",
+            "columnName": "net_type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uri",
+            "columnName": "uri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "username",
+            "columnName": "user",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "password",
+            "columnName": "pwd",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_remote_nodes_net_type",
+            "unique": false,
+            "columnNames": [
+              "net_type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_remote_nodes_net_type` ON `${TABLE_NAME}` (`net_type`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "wallet_remote_nodes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`wallet_id` INTEGER NOT NULL, `remote_node_id` INTEGER NOT NULL, PRIMARY KEY(`wallet_id`, `remote_node_id`), FOREIGN KEY(`wallet_id`) REFERENCES `wallets`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`remote_node_id`) REFERENCES `remote_nodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "walletId",
+            "columnName": "wallet_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteNodeId",
+            "columnName": "remote_node_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "wallet_id",
+            "remote_node_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_wallet_remote_nodes_wallet_id",
+            "unique": false,
+            "columnNames": [
+              "wallet_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_wallet_remote_nodes_wallet_id` ON `${TABLE_NAME}` (`wallet_id`)"
+          },
+          {
+            "name": "index_wallet_remote_nodes_remote_node_id",
+            "unique": false,
+            "columnNames": [
+              "remote_node_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_wallet_remote_nodes_remote_node_id` ON `${TABLE_NAME}` (`remote_node_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "wallets",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "wallet_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "remote_nodes",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "remote_node_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8e728fa24771d06bb2988df1356e07ec')"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package monero.proto;
+option java_package = "im.molly.monero.proto";
+option java_multiple_files = true;
+
+option optimize_for = LITE_RUNTIME;
+
+message LedgerProto {
+  string public_address = 1;
+  uint64 block_height = 2;
+
+  repeated OwnedTxOutProto owned_tx_outs = 3;
+}
+
+message OwnedTxOutProto {
+  bytes tx_id = 1;
+  uint64 amount = 2;
+  uint64 block_height = 3;
+  uint64 spent_height = 4;
+}
