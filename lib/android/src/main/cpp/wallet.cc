@@ -1,6 +1,7 @@
 #include "wallet.h"
 
 #include <cstring>
+#include <chrono>
 
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/stream.hpp>
@@ -13,6 +14,8 @@
 namespace io = boost::iostreams;
 
 namespace monero {
+
+using namespace std::chrono_literals;
 
 static_assert(COIN == 1e12, "Monero atomic unit must be 1e-12 XMR");
 static_assert(CRYPTONOTE_MAX_BLOCK_NUMBER == 500000000,
@@ -133,8 +136,13 @@ void Wallet::handleBalanceChanged(uint64_t at_block_height) {
 
 void Wallet::handleNewBlock(uint64_t height) {
   m_blockchain_height = height;
-  JNIEnv* env = getJniEnv();
-  m_callback.callVoidMethod(env, Wallet_onRefresh, height, false);
+  // Notify blockchain height every one second.
+  static std::chrono::steady_clock::time_point last_time;
+  auto now = std::chrono::steady_clock::now();
+  if (now - last_time >= 1.s) {
+    last_time = now;
+    m_callback.callVoidMethod(getJniEnv(), Wallet_onRefresh, height, false);
+  }
 }
 
 Wallet::Status Wallet::refreshLoopUntilSynced(bool skip_coinbase) {
@@ -162,6 +170,8 @@ Wallet::Status Wallet::refreshLoopUntilSynced(bool skip_coinbase) {
     m_refresh_cond.wait(lock);
   }
   lock.unlock();
+  // Always notify the last block height.
+  m_callback.callVoidMethod(getJniEnv(), Wallet_onRefresh, m_blockchain_height, false);
   return ret;
 }
 
