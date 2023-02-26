@@ -132,7 +132,6 @@ void Wallet::handleBalanceChanged(uint64_t at_block_height) {
   m_blockchain_height = at_block_height;
   JNIEnv* env = getJniEnv();
   m_callback.callVoidMethod(env, Wallet_onRefresh, at_block_height, true);
-  LOG_FATAL_IF(checkException(env));
 }
 
 void Wallet::handleNewBlock(uint64_t height) {

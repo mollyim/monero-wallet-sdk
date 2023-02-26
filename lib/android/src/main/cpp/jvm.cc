@@ -104,34 +104,43 @@ void JvmRef<jobject>::callVoidMethod(JNIEnv* env,
   va_list args;
   va_start(args, method_id);
   env->CallVoidMethodV(obj(), method_id, args);
+  throwRuntimeErrorOnException(env);
 }
 
 jint JvmRef<jobject>::callIntMethod(JNIEnv* env,
                                     jmethodID method_id, ...) const {
   va_list args;
   va_start(args, method_id);
-  return env->CallIntMethodV(obj(), method_id, args);
+  jint ret = env->CallIntMethodV(obj(), method_id, args);
+  throwRuntimeErrorOnException(env);
+  return ret;
 }
 
 jboolean JvmRef<jobject>::callBooleanMethod(JNIEnv* env,
                                             jmethodID method_id, ...) const {
   va_list args;
   va_start(args, method_id);
-  return env->CallBooleanMethodV(obj(), method_id, args);
+  jboolean ret = env->CallBooleanMethodV(obj(), method_id, args);
+  throwRuntimeErrorOnException(env);
+  return ret;
 }
 
 jobject JvmRef<jobject>::callObjectMethod(JNIEnv* env,
                                           jmethodID method_id, ...) const {
   va_list args;
   va_start(args, method_id);
-  return env->CallObjectMethodV(obj(), method_id, args);
+  jobject ret = env->CallObjectMethodV(obj(), method_id, args);
+  throwRuntimeErrorOnException(env);
+  return ret;
 }
 
 jstring JvmRef<jobject>::callStringMethod(JNIEnv* env,
                                           jmethodID method_id, ...) const {
   va_list args;
   va_start(args, method_id);
-  return (jstring) env->CallObjectMethodV(obj(), method_id, args);
+  auto ret = (jstring) env->CallObjectMethodV(obj(), method_id, args);
+  throwRuntimeErrorOnException(env);
+  return ret;
 }
 
 jmethodID JvmRef<jobject>::getMethodId(JNIEnv* env,

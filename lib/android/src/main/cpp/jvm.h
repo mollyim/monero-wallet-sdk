@@ -3,6 +3,7 @@
 
 #include <jni.h>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -18,12 +19,19 @@ JNIEnv* getJniEnv();
 JNIEnv* initializeJvm(JavaVM* jvm, int version);
 
 // Checks for any Java exception and clears currently thrown exception.
-static bool inline checkException(JNIEnv* env) {
+static bool inline checkException(JNIEnv* env, bool log_exception = true) {
   if (env->ExceptionCheck()) {
+    if (log_exception) env->ExceptionDescribe();
     env->ExceptionClear();
     return true;
   }
   return false;
+}
+
+static void inline throwRuntimeErrorOnException(JNIEnv* env) {
+  if (checkException(env, false)) {
+    throw std::runtime_error("Uncaught exception returned from Java call");
+  }
 }
 
 // --------------------------------------------------------------------------

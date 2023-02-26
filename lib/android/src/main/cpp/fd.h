@@ -29,7 +29,6 @@ class ScopedFd {
     if (!parcel_file_descriptor.is_null()) {
       m_fd = parcel_file_descriptor.callIntMethod(env,
                                                   ParcelFileDescriptor_detachFd);
-      LOG_FATAL_IF(checkException(env));
     }
   }
 

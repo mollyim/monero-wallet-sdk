@@ -74,7 +74,6 @@ void JvmLogSink::write(const std::string& tag,
   ScopedJvmLocalRef<jstring> j_msg = nativeToJvmString(env, msg);
   m_logger.callVoidMethod(env, Logger_logFromNative,
                           pri_idx, j_tag.obj(), j_msg.obj());
-  LOG_FATAL_IF(checkException(env));
 }
 
 void JvmLogSink::set_logger(JNIEnv* env, const JvmRef<jobject>& logger) {
