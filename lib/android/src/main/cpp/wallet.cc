@@ -35,7 +35,8 @@ Wallet::Wallet(
       m_account_ready(false),
       m_blockchain_height(1),
       m_restore_height(0),
-      m_refresh_continue(false) {
+      m_refresh_running(false),
+      m_refresh_stopped(false) {
   // Use a bogus ipv6 address as a placeholder for the daemon address.
   LOG_FATAL_IF(!m_wallet.init("[100::/64]", {}, {}, 0, false),
                "Init failed");
@@ -146,30 +147,39 @@ void Wallet::handleNewBlock(uint64_t height) {
 }
 
 Wallet::Status Wallet::refreshLoopUntilSynced(bool skip_coinbase) {
-  std::unique_lock<std::mutex> lock(m_wallet_mutex);
-  m_refresh_continue = true;
-  Status ret = Status::INTERRUPTED;
-  while (m_refresh_continue) {
+  Status ret;
+  std::unique_lock<std::mutex> refresh_lock(m_refresh_mutex);
+  m_refresh_stopped = false;
+  for (;;) {
+    std::lock_guard<std::mutex> wallet_lock(m_wallet_mutex);
+    if (m_refresh_stopped) {
+      ret = Status::INTERRUPTED;
+      break;
+    }
+    m_refresh_running = true;
+    m_wallet.set_refresh_type(skip_coinbase ? tools::wallet2::RefreshType::RefreshNoCoinbase
+                                            : tools::wallet2::RefreshType::RefreshDefault);
+    m_wallet.set_refresh_from_block_height(m_restore_height);
     try {
-      m_wallet.set_refresh_type(skip_coinbase ? tools::wallet2::RefreshType::RefreshNoCoinbase
-                                              : tools::wallet2::RefreshType::RefreshDefault);
-      m_wallet.set_refresh_from_block_height(m_restore_height);
-      // It will block until we call stop() or it sync successfully.
+      // Calling refresh() will block until stop() is called or it sync successfully.
       m_wallet.refresh(false);
-      if (!m_wallet.stopped()) {
-        ret = Status::OK;
-        break;
-      }
     } catch (const tools::error::no_connection_to_daemon&) {
+      m_refresh_running = false;
       ret = Status::NO_NETWORK_CONNECTIVITY;
       break;
     } catch (const tools::error::refresh_error) {
+      m_refresh_running = false;
       ret = Status::REFRESH_ERROR;
       break;
     }
-    m_refresh_cond.wait(lock);
+    m_refresh_running = false;
+    if (!m_wallet.stopped()) {
+      ret = Status::OK;
+      break;
+    }
+    m_refresh_cond.wait(refresh_lock);
   }
-  lock.unlock();
+  refresh_lock.unlock();
   // Always notify the last block height.
   m_callback.callVoidMethod(getJniEnv(), Wallet_onRefresh, m_blockchain_height, false);
   return ret;
@@ -177,31 +187,37 @@ Wallet::Status Wallet::refreshLoopUntilSynced(bool skip_coinbase) {
 
 template<typename T>
 auto Wallet::pauseRefreshAndRunLocked(T block) -> decltype(block()) {
-  std::unique_lock<std::mutex> lock(m_wallet_mutex, std::defer_lock);
-  while (!lock.try_lock()) {
-    m_wallet.stop();
-    std::this_thread::yield();
+  std::unique_lock<std::mutex> refresh_lock(m_refresh_mutex, std::try_to_lock);
+  if (!refresh_lock.owns_lock()) {
+    JNIEnv* env = getJniEnv();
+    do {
+      if (refresh_is_running()) {
+        m_wallet.stop();
+        m_remote_node_client.callVoidMethod(env, IRemoteNodeClient_cancelAll);
+      }
+      std::this_thread::yield();
+    } while (!refresh_lock.try_lock());
   }
-  auto res = block();
+  LOG_FATAL_IF(refresh_is_running());
+  std::lock_guard<std::mutex> wallet_lock(m_wallet_mutex);
+  m_refresh_mutex.unlock();
   m_refresh_cond.notify_one();
-  return res;
+  return block();
 }
 
 void Wallet::stopRefresh() {
-  pauseRefreshAndRunLocked([&]() -> int {
-    m_refresh_continue = false;
-    return 0;
+  pauseRefreshAndRunLocked([&]() {
+    m_refresh_stopped = true;
   });
 }
 
 void Wallet::setRefreshSince(long height_or_timestamp) {
-  pauseRefreshAndRunLocked([&]() -> int {
+  pauseRefreshAndRunLocked([&]() {
     if (height_or_timestamp < CRYPTONOTE_MAX_BLOCK_NUMBER) {
       m_restore_height = height_or_timestamp;
     } else {
       LOG_FATAL("TODO");
     }
-    return 0;
   });
 }
 

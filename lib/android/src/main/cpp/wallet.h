@@ -44,7 +44,7 @@ class Wallet : tools::i_wallet2_callback {
 
   uint64_t current_blockchain_height() const { return m_blockchain_height; }
 
-  bool refresh_is_running() const { return m_refresh_continue; }
+  bool refresh_is_running() const { return m_refresh_running; }
 
   // Extra object's state that need to be persistent.
   BEGIN_SERIALIZE_OBJECT()
@@ -65,13 +65,15 @@ class Wallet : tools::i_wallet2_callback {
   // Protects access to m_wallet instance and state fields.
   std::mutex m_wallet_mutex;
   std::mutex m_tx_outs_mutex;
+  std::mutex m_refresh_mutex;
 
-  // Reference to the Wallet kotlin instance.
+  // Reference to Kotlin instances.
+  const ScopedJvmGlobalRef<jobject> m_remote_node_client;
   const ScopedJvmGlobalRef<jobject> m_callback;
 
   std::condition_variable m_refresh_cond;
-  bool m_refresh_started;
-  bool m_refresh_continue;
+  bool m_refresh_running;
+  bool m_refresh_stopped;
 
   template<typename T>
   auto pauseRefreshAndRunLocked(T block) -> decltype(block());
