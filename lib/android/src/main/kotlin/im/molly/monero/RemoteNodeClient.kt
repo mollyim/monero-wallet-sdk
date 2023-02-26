@@ -2,23 +2,23 @@ package im.molly.monero
 
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import okhttp3.*
 import java.io.FileOutputStream
 import java.io.IOException
+import kotlin.coroutines.resumeWithException
 
 internal class RemoteNodeClient(
     private val nodeSelector: RemoteNodeSelector,
     private val httpClient: OkHttpClient,
-    private val scope: CoroutineScope,
-    private val ioDispatcher: CoroutineDispatcher,
+    ioDispatcher: CoroutineDispatcher,
 ) : IRemoteNodeClient.Stub() {
 
     private val logger = loggerFor<RemoteNodeClient>()
 
-    /** Disable connecting to the Monero network */
+    private val requestsScope = CoroutineScope(ioDispatcher + SupervisorJob())
+
+//    /** Disable connecting to the Monero network */
 //    var offline = false
 
     private fun selectedNode() = nodeSelector.select()
@@ -47,6 +47,11 @@ internal class RemoteNodeClient(
         }
     }
 
+    @CalledByNative("http_client.cc")
+    override fun cancelAll() {
+        requestsScope.coroutineContext.cancelChildren()
+    }
+
     private fun execute(
         method: String?,
         uri: Uri,
@@ -56,10 +61,12 @@ internal class RemoteNodeClient(
         password: String?,
     ): HttpResponse {
         logger.d("HTTP: $method $uri, header_len=${header?.length}, body_size=${body?.size}")
+
         val headers = header?.parseHttpHeader()
         val contentType = headers?.get("Content-Type")?.let { value ->
             MediaType.get(value)
         }
+
         val request = with(Request.Builder()) {
             when (method) {
                 "GET" -> {}
@@ -71,16 +78,28 @@ internal class RemoteNodeClient(
             url(uri.toString())
             build()
         }
-        val response = httpClient.newCall(request).execute()
-        return if (response.isSuccessful) {
+
+        val response = runBlocking(requestsScope.coroutineContext) {
+            val call = httpClient.newCall(request)
+            try {
+                call.await()
+            } catch (ioe: IOException) {
+                if (!call.isCanceled) {
+                    throw ioe
+                }
+                null
+            }
+        }
+
+        return if (response == null) {
+            HttpResponse(code = 499)
+        } else if (response.isSuccessful) {
             val responseBody = requireNotNull(response.body())
             val pipe = ParcelFileDescriptor.createPipe()
-            scope.launch(ioDispatcher) {
-                pipe[1].use { readFd ->
-                    FileOutputStream(readFd.fileDescriptor).use { outputStream ->
-                        responseBody.use {
-                            it.byteStream().copyTo(outputStream)
-                        }
+            requestsScope.launch {
+                pipe[1].use { writeSide ->
+                    FileOutputStream(writeSide.fileDescriptor).use { outputStream ->
+                        responseBody.byteStream().copyTo(outputStream)
                     }
                 }
             }
@@ -90,13 +109,28 @@ internal class RemoteNodeClient(
                 body = pipe[0],
             )
         } else {
-            HttpResponse(code = response.code()).also {
-                response.close()
-            }
+            HttpResponse(code = response.code())
         }
     }
 
-    private fun String.parseHttpHeader(): Headers =
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun Call.await() = suspendCancellableCoroutine { continuation ->
+        enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response) {
+                    response.close()
+                }
+            }
+
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resumeWithException(e)
+            }
+        })
+
+        continuation.invokeOnCancellation { cancel() }
+    }
+
+    fun String.parseHttpHeader(): Headers =
         with(Headers.Builder()) {
             splitToSequence("\r\n")
                 .filter { line -> line.isNotEmpty() }

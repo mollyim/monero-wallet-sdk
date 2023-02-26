@@ -39,13 +39,11 @@ class WalletClient private constructor(
             network: MoneroNetwork,
             nodeSelector: RemoteNodeSelector? = null,
             httpClient: OkHttpClient? = null,
-            coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         ): WalletClient {
-            val scope = CoroutineScope(coroutineContext)
             val remoteNodeClient = nodeSelector?.let {
                 requireNotNull(httpClient)
-                RemoteNodeClient(it, httpClient, scope, ioDispatcher)
+                RemoteNodeClient(it, httpClient, ioDispatcher)
             }
             val (serviceConnection, service) = bindService(context)
             return WalletClient(context, service, serviceConnection, network, remoteNodeClient)

@@ -7,6 +7,7 @@ ScopedJvmGlobalRef<jclass> OwnedTxOut;
 jmethodID HttpResponse_getBody;
 jmethodID HttpResponse_getCode;
 jmethodID HttpResponse_getContentType;
+jmethodID IRemoteNodeClient_cancelAll;
 jmethodID IRemoteNodeClient_makeRequest;
 jmethodID Logger_logFromNative;
 jmethodID OwnedTxOut_ctor;
@@ -29,6 +30,8 @@ void initializeJniCache(JNIEnv* env) {
       .getMethodId(env, "getCode", "()I");
   HttpResponse_getContentType = httpResponse
       .getMethodId(env, "getContentType", "()Ljava/lang/String;");
+  IRemoteNodeClient_cancelAll = iRemoteNodeClient
+      .getMethodId(env, "cancelAll", "()V");
   IRemoteNodeClient_makeRequest = iRemoteNodeClient
       .getMethodId(env,
                    "makeRequest",

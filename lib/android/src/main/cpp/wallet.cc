@@ -24,12 +24,13 @@ static_assert(CRYPTONOTE_MAX_BLOCK_NUMBER == 500000000,
 Wallet::Wallet(
     JNIEnv* env,
     int network_id,
-    std::unique_ptr<HttpClientFactory> http_client_factory,
+    const JvmRef<jobject>& remote_node_client,
     const JvmRef<jobject>& callback)
     : m_wallet(static_cast<cryptonote::network_type>(network_id),
                0,    /* kdf_rounds */
                true, /* unattended */
-               std::move(http_client_factory)),
+               std::make_unique<RemoteNodeClientFactory>(env, remote_node_client)),
+      m_remote_node_client(env, remote_node_client),
       m_callback(env, callback),
       m_account_ready(false),
       m_blockchain_height(1),
@@ -212,11 +213,9 @@ Java_im_molly_monero_WalletNative_nativeCreate(
     jobject thiz,
     jint network_id,
     jobject p_remote_node_client) {
-  auto wallet = new Wallet(
-      env, network_id,
-      std::make_unique<RemoteNodeClientFactory>(
-          env, JvmParamRef<jobject>(p_remote_node_client)),
-      JvmParamRef<jobject>(thiz));
+  auto wallet = new Wallet(env, network_id,
+                           JvmParamRef<jobject>(p_remote_node_client),
+                           JvmParamRef<jobject>(thiz));
   return nativeToJvmPointer(wallet);
 }
 

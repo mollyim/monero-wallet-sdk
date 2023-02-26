@@ -24,7 +24,7 @@ class Wallet : tools::i_wallet2_callback {
 
   Wallet(JNIEnv* env,
          int network_id,
-         std::unique_ptr<HttpClientFactory> http_client_factory,
+         const JvmRef<jobject>& remote_node_client,
          const JvmRef<jobject>& callback);
 
   void restoreAccount(const std::vector<char>& secret_scalar, uint64_t account_timestamp);

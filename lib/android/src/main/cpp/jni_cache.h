@@ -13,6 +13,7 @@ extern ScopedJvmGlobalRef<jclass> OwnedTxOut;
 extern jmethodID HttpResponse_getBody;
 extern jmethodID HttpResponse_getCode;
 extern jmethodID HttpResponse_getContentType;
+extern jmethodID IRemoteNodeClient_cancelAll;
 extern jmethodID IRemoteNodeClient_makeRequest;
 extern jmethodID Logger_logFromNative;
 extern jmethodID OwnedTxOut_ctor;
