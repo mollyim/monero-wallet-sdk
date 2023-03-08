@@ -2,9 +2,9 @@ package im.molly.monero.demo.data
 
 import android.content.Context
 import im.molly.monero.*
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import im.molly.monero.loadbalancer.RoundRobinRule
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import okhttp3.OkHttpClient
 
 class MoneroSdkClient(
@@ -13,32 +13,37 @@ class MoneroSdkClient(
     private val httpClient: OkHttpClient,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    suspend fun createWallet(moneroNetwork: MoneroNetwork): MoneroWallet =
-        withContext(ioDispatcher) {
-            val walletClient = WalletClient.forNetwork(
-                context = context,
-                network = moneroNetwork,
-            )
-            val wallet = walletClient.createNewWallet()
+    private val providerDeferred = CoroutineScope(ioDispatcher).async {
+        WalletProvider.connect(context)
+    }
+
+    suspend fun createWallet(moneroNetwork: MoneroNetwork): MoneroWallet {
+        val provider = providerDeferred.await()
+        return withContext(ioDispatcher) {
+            val wallet = provider.createNewWallet(moneroNetwork)
             walletDataFileStorage.tryWriteData(wallet.publicAddress, false) { output ->
-                walletClient.saveWallet(wallet, output)
+                provider.saveWallet(wallet, output)
             }
             wallet
         }
+    }
 
     suspend fun openWallet(
         publicAddress: String,
-        remoteNodeSelector: RemoteNodeSelector?,
-    ): MoneroWallet =
-        withContext(ioDispatcher) {
-            val walletClient = WalletClient.forNetwork(
-                context = context,
-                network = MoneroNetwork.of(publicAddress),
-                nodeSelector = remoteNodeSelector,
+        remoteNodes: Flow<List<RemoteNode>>,
+    ): MoneroWallet {
+        val provider = providerDeferred.await()
+        return withContext(ioDispatcher) {
+            val network = MoneroNetwork.of(publicAddress)
+            val client = RemoteNodeClient.forNetwork(
+                network = network,
+                remoteNodes = remoteNodes,
+                loadBalancerRule = RoundRobinRule(),
                 httpClient = httpClient,
             )
             walletDataFileStorage.readData(publicAddress).use { input ->
-                walletClient.openWallet(input)
+                provider.openWallet(network, client, input)
             }
         }
+    }
 }

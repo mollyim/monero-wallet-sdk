@@ -40,7 +40,7 @@ class SyncService(
                     val wallet = walletRepository.getWallet(walletId)
                     lifecycleScope.launch {
                         while (isActive) {
-                            val result = wallet.awaitRefresh();
+                            val result = wallet.awaitRefresh()
                             if (result.isError()) {
                                 break;
                             }

@@ -24,8 +24,7 @@ class Wallet : tools::i_wallet2_callback {
 
   Wallet(JNIEnv* env,
          int network_id,
-         const JvmRef<jobject>& remote_node_client,
-         const JvmRef<jobject>& callback);
+         const JvmRef<jobject>& wallet_native);
 
   void restoreAccount(const std::vector<char>& secret_scalar, uint64_t account_timestamp);
   uint64_t estimateRestoreHeight(uint64_t timestamp);
@@ -33,8 +32,8 @@ class Wallet : tools::i_wallet2_callback {
   bool parseFrom(std::istream& input);
   bool writeTo(std::ostream& output);
 
-  Wallet::Status refreshLoopUntilSynced(bool skip_coinbase);
-  void stopRefresh();
+  Wallet::Status nonReentrantRefresh(bool skip_coinbase);
+  void cancelRefresh();
   void setRefreshSince(long height_or_timestamp);
 
   template<typename Callback>
@@ -44,9 +43,7 @@ class Wallet : tools::i_wallet2_callback {
 
   uint64_t current_blockchain_height() const { return m_blockchain_height; }
 
-  bool refresh_is_running() const { return m_refresh_running; }
-
-  // Extra object's state that need to be persistent.
+  // Extra state that must be persistent and isn't restored by wallet2's serializer.
   BEGIN_SERIALIZE_OBJECT()
     VERSION_FIELD(0)
     FIELD(m_restore_height)
@@ -67,19 +64,18 @@ class Wallet : tools::i_wallet2_callback {
   std::mutex m_tx_outs_mutex;
   std::mutex m_refresh_mutex;
 
-  // Reference to Kotlin instances.
-  const ScopedJvmGlobalRef<jobject> m_remote_node_client;
+  // Reference to Kotlin wallet instance.
   const ScopedJvmGlobalRef<jobject> m_callback;
 
   std::condition_variable m_refresh_cond;
-  bool m_refresh_running;
-  bool m_refresh_stopped;
+  std::atomic<bool> m_refresh_running;
+  bool m_refresh_canceled;
 
   template<typename T>
-  auto pauseRefreshAndRunLocked(T block) -> decltype(block());
+  auto suspendRefreshAndRunLocked(T block) -> decltype(block());
 
   void handleBalanceChanged(uint64_t at_block_height);
-  void handleNewBlock(uint64_t height);
+  void handleNewBlock(uint64_t height, bool debounce = true);
 
   // Implementation of i_wallet2_callback follows.
  private:

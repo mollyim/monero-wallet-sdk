@@ -13,11 +13,11 @@ extern ScopedJvmGlobalRef<jclass> OwnedTxOut;
 extern jmethodID HttpResponse_getBody;
 extern jmethodID HttpResponse_getCode;
 extern jmethodID HttpResponse_getContentType;
-extern jmethodID IRemoteNodeClient_cancelAll;
-extern jmethodID IRemoteNodeClient_makeRequest;
 extern jmethodID Logger_logFromNative;
 extern jmethodID OwnedTxOut_ctor;
-extern jmethodID Wallet_onRefresh;
+extern jmethodID WalletNative_callRemoteNode;
+extern jmethodID WalletNative_onRefresh;
+extern jmethodID WalletNative_onSuspendRefresh;
 
 // android.os
 extern jmethodID ParcelFileDescriptor_detachFd;

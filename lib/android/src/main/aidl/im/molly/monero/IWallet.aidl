@@ -9,8 +9,8 @@ interface IWallet {
     void addBalanceListener(in IBalanceListener listener);
     void removeBalanceListener(in IBalanceListener listener);
     void save(in ParcelFileDescriptor destination);
-    oneway void restartRefresh(boolean skipCoinbaseOutputs, in IRefreshCallback callback);
-    oneway void stopRefresh();
+    oneway void resumeRefresh(boolean skipCoinbaseOutputs, in IRefreshCallback callback);
+    void cancelRefresh();
     void setRefreshSince(long heightOrTimestamp);
     void close();
 }

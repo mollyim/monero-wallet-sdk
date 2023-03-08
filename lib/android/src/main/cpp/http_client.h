@@ -14,8 +14,8 @@ class RemoteNodeClient : public AbstractHttpClient {
  public:
   RemoteNodeClient(
       JNIEnv* env,
-      const JvmRef<jobject>& remote_node_client)
-      : m_remote_node_client(env, remote_node_client) {}
+      const JvmRef<jobject>& wallet_native)
+      : m_wallet_native(env, wallet_native) {}
 
   bool set_proxy(const std::string& address) override;
   void set_server(std::string host,
@@ -53,7 +53,7 @@ class RemoteNodeClient : public AbstractHttpClient {
   };
 
  private:
-  const ScopedJvmGlobalRef<jobject> m_remote_node_client;
+  const ScopedJvmGlobalRef<jobject> m_wallet_native;
   epee::net_utils::http::http_response_info m_response_info;
 };
 
@@ -63,16 +63,16 @@ class RemoteNodeClientFactory : public HttpClientFactory {
  public:
   RemoteNodeClientFactory(
       JNIEnv* env,
-      const JvmRef<jobject>& remote_node_client)
-      : m_remote_node_client(env, remote_node_client) {}
+      const JvmRef<jobject>& wallet_native)
+      : m_wallet_native(env, wallet_native) {}
 
   std::unique_ptr<AbstractHttpClient> create() override {
     return std::unique_ptr<AbstractHttpClient>(new RemoteNodeClient(getJniEnv(),
-                                                                    m_remote_node_client));
+                                                                    m_wallet_native));
   }
 
  private:
-  const ScopedJvmGlobalRef<jobject> m_remote_node_client;
+  const ScopedJvmGlobalRef<jobject> m_wallet_native;
 };
 
 }  // namespace monero

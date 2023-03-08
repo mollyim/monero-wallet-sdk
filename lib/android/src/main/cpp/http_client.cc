@@ -57,8 +57,8 @@ bool RemoteNodeClient::invoke(const boost::string_ref uri,
   }
   try {
     ScopedJvmLocalRef<jobject> j_response = {
-        env, m_remote_node_client.callObjectMethod(
-            env, IRemoteNodeClient_makeRequest,
+        env, m_wallet_native.callObjectMethod(
+            env, WalletNative_callRemoteNode,
             nativeToJvmString(env, method.data()).obj(),
             nativeToJvmString(env, uri.data()).obj(),
             nativeToJvmString(env, header.str()).obj(),
@@ -80,7 +80,7 @@ bool RemoteNodeClient::invoke(const boost::string_ref uri,
       http_response.body.read(&m_response_info.m_body);
     }
   } catch (std::runtime_error& e) {
-    LOGE("Unhandled exception in RemoteNodeClient");
+    LOGE("Unhandled exception: %s", e.what());
     return false;
   }
   if (ppresponse_info) {

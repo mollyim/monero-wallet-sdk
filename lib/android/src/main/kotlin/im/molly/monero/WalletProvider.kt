@@ -7,46 +7,22 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.*
-import okhttp3.OkHttpClient
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.time.Instant
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
-// TODO: Rename to SandboxedWalletClient and extract interface, add InProcessWalletClient
-class WalletClient private constructor(
+// TODO: Rename to SandboxedWalletProvider and extract interface, add InProcessWalletProvider
+class WalletProvider private constructor(
     private val context: Context,
     private val service: IWalletService,
     private val serviceConnection: ServiceConnection,
-    private val network: MoneroNetwork,
-    private val remoteNodeClient: RemoteNodeClient?,
 // TODO: Remove DataStore dependencies if unused
 //    private val dataStore: DataStore<WalletProto.State>,
-) : AutoCloseable {
-
-    private val logger = loggerFor<WalletClient>()
-
+) {
     companion object {
-        /**
-         * Constructs a [WalletClient] to connect to the Monero network [network].
-         *
-         * @param context Calling application's [Context].
-         * @throws [ServiceNotBoundException] if the wallet service can not be bound.
-         */
-        suspend fun forNetwork(
-            context: Context,
-            network: MoneroNetwork,
-            nodeSelector: RemoteNodeSelector? = null,
-            httpClient: OkHttpClient? = null,
-            ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-        ): WalletClient {
-            val remoteNodeClient = nodeSelector?.let {
-                requireNotNull(httpClient)
-                RemoteNodeClient(it, httpClient, ioDispatcher)
-            }
+        suspend fun connect(context: Context): WalletProvider {
             val (serviceConnection, service) = bindService(context)
-            return WalletClient(context, service, serviceConnection, network, remoteNodeClient)
+            return WalletProvider(context, service, serviceConnection)
         }
 
         private suspend fun bindService(context: Context): Pair<ServiceConnection, IWalletService> {
@@ -71,25 +47,46 @@ class WalletClient private constructor(
         }
     }
 
-    /** Exception thrown by [WalletClient] if the remote service can't be bound. */
+    /** Exception thrown by [WalletProvider] if the remote service can't be bound. */
     class ServiceNotBoundException : Exception()
 
-    fun createNewWallet(): MoneroWallet =
-        MoneroWallet(service.createWallet(buildConfig(), remoteNodeClient))
+    private val logger = loggerFor<WalletProvider>()
 
-    fun restoreWallet(secretSpendKey: SecretKey, accountCreationTime: Instant): MoneroWallet =
-        MoneroWallet(
+    fun createNewWallet(
+        network: MoneroNetwork,
+        client: RemoteNodeClient? = null,
+    ): MoneroWallet {
+        require(client == null || client.network == network)
+        return MoneroWallet(
+            service.createWallet(buildConfig(network), client), client
+        )
+    }
+
+    fun restoreWallet(
+        network: MoneroNetwork,
+        client: RemoteNodeClient? = null,
+        secretSpendKey: SecretKey,
+        accountCreationTime: Instant,
+    ): MoneroWallet {
+        require(client == null || client.network == network)
+        return MoneroWallet(
             service.restoreWallet(
-                buildConfig(),
-                remoteNodeClient,
+                buildConfig(network),
+                client,
                 secretSpendKey,
                 accountCreationTime.epochSecond,
-            )
+            ),
+            client,
         )
+    }
 
-    fun openWallet(source: FileInputStream): MoneroWallet =
-        ParcelFileDescriptor.dup(source.fd).use {
-            MoneroWallet(service.openWallet(buildConfig(), remoteNodeClient, it))
+    fun openWallet(
+        network: MoneroNetwork,
+        client: RemoteNodeClient? = null,
+        source: FileInputStream,
+    ): MoneroWallet =
+        ParcelFileDescriptor.dup(source.fd).use { fd ->
+            MoneroWallet(service.openWallet(buildConfig(network), client, fd), client)
         }
 
     fun saveWallet(wallet: MoneroWallet, destination: FileOutputStream) {
@@ -98,11 +95,9 @@ class WalletClient private constructor(
         }
     }
 
-    private fun buildConfig() = WalletConfig(network.id)
+    private fun buildConfig(network: MoneroNetwork) = WalletConfig(network.id)
 
-//    private fun <R> callRemoteService(task: () -> R): R = task()
-
-    override fun close() {
+    fun disconnect() {
         context.unbindService(serviceConnection)
     }
 }

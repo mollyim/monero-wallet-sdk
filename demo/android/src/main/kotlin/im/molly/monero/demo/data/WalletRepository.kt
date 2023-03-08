@@ -2,11 +2,7 @@ package im.molly.monero.demo.data
 
 import im.molly.monero.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
-import java.io.IOException
+import kotlinx.coroutines.flow.*
 import java.util.concurrent.ConcurrentHashMap
 
 class WalletRepository(
@@ -19,22 +15,16 @@ class WalletRepository(
     suspend fun getWallet(walletId: Long): MoneroWallet {
         return walletIdMap.computeIfAbsent(walletId) {
             externalScope.async {
-                val config = getWalletConfig(walletId).first()
+                val config = getWalletConfig(walletId)
                 val wallet = moneroSdkClient.openWallet(
-                    publicAddress = config.publicAddress,
-                    remoteNodeSelector = object : RemoteNodeSelector {
-                        override fun select(): RemoteNode? {
-                            return config.remoteNodes.firstOrNull()?.let {
-                                RemoteNode(
-                                    uri = it.uri,
-                                    username = it.username,
-                                    password = it.password,
-                                )
-                            }
-                        }
-
-                        override fun connectFailed(remoteNode: RemoteNode, ioe: IOException) {
-                            TODO("Not yet implemented")
+                    publicAddress = config.first().publicAddress,
+                    remoteNodes = config.map {
+                        it.remoteNodes.map { node ->
+                            RemoteNode(
+                                uri = node.uri,
+                                username = node.username,
+                                password = node.password,
+                            )
                         }
                     }
                 )

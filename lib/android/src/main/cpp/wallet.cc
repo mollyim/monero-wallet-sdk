@@ -24,22 +24,21 @@ static_assert(CRYPTONOTE_MAX_BLOCK_NUMBER == 500000000,
 Wallet::Wallet(
     JNIEnv* env,
     int network_id,
-    const JvmRef<jobject>& remote_node_client,
-    const JvmRef<jobject>& callback)
+    const JvmRef<jobject>& wallet_native)
     : m_wallet(static_cast<cryptonote::network_type>(network_id),
                0,    /* kdf_rounds */
                true, /* unattended */
-               std::make_unique<RemoteNodeClientFactory>(env, remote_node_client)),
-      m_remote_node_client(env, remote_node_client),
-      m_callback(env, callback),
+               std::make_unique<RemoteNodeClientFactory>(env, wallet_native)),
+      m_callback(env, wallet_native),
       m_account_ready(false),
       m_blockchain_height(1),
       m_restore_height(0),
       m_refresh_running(false),
-      m_refresh_stopped(false) {
+      m_refresh_canceled(false) {
   // Use a bogus ipv6 address as a placeholder for the daemon address.
   LOG_FATAL_IF(!m_wallet.init("[100::/64]", {}, {}, 0, false),
                "Init failed");
+  m_wallet.stop();
   m_wallet.callback(this);
 }
 
@@ -95,7 +94,7 @@ bool Wallet::parseFrom(std::istream& input) {
 }
 
 bool Wallet::writeTo(std::ostream& output) {
-  return pauseRefreshAndRunLocked([&]() -> bool {
+  return suspendRefreshAndRunLocked([&]() -> bool {
     binary_archive<true> ar(output);
     if (!serialization::serialize_noeof(ar, *this))
       return false;
@@ -132,87 +131,85 @@ void Wallet::handleBalanceChanged(uint64_t at_block_height) {
   m_tx_outs_mutex.unlock();
   m_blockchain_height = at_block_height;
   JNIEnv* env = getJniEnv();
-  m_callback.callVoidMethod(env, Wallet_onRefresh, at_block_height, true);
+  m_callback.callVoidMethod(env, WalletNative_onRefresh, at_block_height, true);
 }
 
-void Wallet::handleNewBlock(uint64_t height) {
+void Wallet::handleNewBlock(uint64_t height, bool debounce) {
   m_blockchain_height = height;
-  // Notify blockchain height every one second.
   static std::chrono::steady_clock::time_point last_time;
   auto now = std::chrono::steady_clock::now();
-  if (now - last_time >= 1.s) {
+  // Notify blockchain height every one second.
+  if (!debounce || (now - last_time >= 1.s)) {
     last_time = now;
-    m_callback.callVoidMethod(getJniEnv(), Wallet_onRefresh, height, false);
+    m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh, height, false);
   }
 }
 
-Wallet::Status Wallet::refreshLoopUntilSynced(bool skip_coinbase) {
+Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
+  LOG_FATAL_IF(m_refresh_running.exchange(true),
+               "Refresh should not be called concurrently");
   Status ret;
-  std::unique_lock<std::mutex> refresh_lock(m_refresh_mutex);
-  m_refresh_stopped = false;
-  for (;;) {
-    std::lock_guard<std::mutex> wallet_lock(m_wallet_mutex);
-    if (m_refresh_stopped) {
-      ret = Status::INTERRUPTED;
-      break;
-    }
-    m_refresh_running = true;
-    m_wallet.set_refresh_type(skip_coinbase ? tools::wallet2::RefreshType::RefreshNoCoinbase
-                                            : tools::wallet2::RefreshType::RefreshDefault);
+  std::unique_lock<std::mutex> wallet_lock(m_wallet_mutex);
+  m_wallet.set_refresh_type(skip_coinbase ? tools::wallet2::RefreshType::RefreshNoCoinbase
+                                          : tools::wallet2::RefreshType::RefreshDefault);
+  while (!m_refresh_canceled) {
     m_wallet.set_refresh_from_block_height(m_restore_height);
     try {
-      // Calling refresh() will block until stop() is called or it sync successfully.
+      // refresh() will block until stop() is called or it syncs successfully.
       m_wallet.refresh(false);
+      if (!m_wallet.stopped()) {
+        m_wallet.stop();
+        ret = Status::OK;
+        break;
+      }
     } catch (const tools::error::no_connection_to_daemon&) {
-      m_refresh_running = false;
       ret = Status::NO_NETWORK_CONNECTIVITY;
       break;
-    } catch (const tools::error::refresh_error) {
-      m_refresh_running = false;
+    } catch (const tools::error::refresh_error&) {
       ret = Status::REFRESH_ERROR;
       break;
     }
-    m_refresh_running = false;
-    if (!m_wallet.stopped()) {
-      ret = Status::OK;
-      break;
-    }
-    m_refresh_cond.wait(refresh_lock);
+    m_refresh_cond.wait(wallet_lock);
   }
-  refresh_lock.unlock();
+  if (m_refresh_canceled) {
+    m_refresh_canceled = false;
+    ret = Status::INTERRUPTED;
+  }
+  m_refresh_running.store(false);
   // Always notify the last block height.
-  m_callback.callVoidMethod(getJniEnv(), Wallet_onRefresh, m_blockchain_height, false);
+  handleNewBlock(m_blockchain_height, false);
   return ret;
 }
 
 template<typename T>
-auto Wallet::pauseRefreshAndRunLocked(T block) -> decltype(block()) {
-  std::unique_lock<std::mutex> refresh_lock(m_refresh_mutex, std::try_to_lock);
-  if (!refresh_lock.owns_lock()) {
+auto Wallet::suspendRefreshAndRunLocked(T block) -> decltype(block()) {
+  std::unique_lock<std::mutex> wallet_lock(m_wallet_mutex, std::try_to_lock);
+  if (!wallet_lock.owns_lock()) {
     JNIEnv* env = getJniEnv();
-    do {
-      if (refresh_is_running()) {
+    for (;;) {
+      if (!m_wallet.stopped()) {
         m_wallet.stop();
-        m_remote_node_client.callVoidMethod(env, IRemoteNodeClient_cancelAll);
+        m_callback.callVoidMethod(env, WalletNative_onSuspendRefresh, true);
+      }
+      if (wallet_lock.try_lock()) {
+        break;
       }
       std::this_thread::yield();
-    } while (!refresh_lock.try_lock());
+    }
+    m_callback.callVoidMethod(env, WalletNative_onSuspendRefresh, false);
+    m_refresh_cond.notify_one();
   }
-  LOG_FATAL_IF(refresh_is_running());
-  std::lock_guard<std::mutex> wallet_lock(m_wallet_mutex);
-  m_refresh_mutex.unlock();
-  m_refresh_cond.notify_one();
   return block();
 }
 
-void Wallet::stopRefresh() {
-  pauseRefreshAndRunLocked([&]() {
-    m_refresh_stopped = true;
+void Wallet::cancelRefresh() {
+  suspendRefreshAndRunLocked([&]() {
+    m_refresh_canceled = true;
   });
 }
 
 void Wallet::setRefreshSince(long height_or_timestamp) {
-  pauseRefreshAndRunLocked([&]() {
+  suspendRefreshAndRunLocked([&]() {
     if (height_or_timestamp < CRYPTONOTE_MAX_BLOCK_NUMBER) {
       m_restore_height = height_or_timestamp;
     } else {
@@ -226,11 +223,8 @@ JNIEXPORT jlong JNICALL
 Java_im_molly_monero_WalletNative_nativeCreate(
     JNIEnv* env,
     jobject thiz,
-    jint network_id,
-    jobject p_remote_node_client) {
-  auto wallet = new Wallet(env, network_id,
-                           JvmParamRef<jobject>(p_remote_node_client),
-                           JvmParamRef<jobject>(thiz));
+    jint network_id) {
+  auto wallet = new Wallet(env, network_id, JvmParamRef<jobject>(thiz));
   return nativeToJvmPointer(wallet);
 }
 
@@ -284,33 +278,23 @@ Java_im_molly_monero_WalletNative_nativeSave(
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_im_molly_monero_WalletNative_nativeRefreshLoopUntilSynced
+Java_im_molly_monero_WalletNative_nativeNonReentrantRefresh
     (JNIEnv* env,
      jobject thiz,
      jlong handle,
      jboolean skip_coinbase) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  return wallet->refreshLoopUntilSynced(skip_coinbase);
+  return wallet->nonReentrantRefresh(skip_coinbase);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeStopRefresh(
+Java_im_molly_monero_WalletNative_nativeCancelRefresh(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  wallet->stopRefresh();
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_im_molly_monero_WalletNative_nativeRefreshIsRunning(
-    JNIEnv* env,
-    jobject thiz,
-    jlong handle) {
-  auto* wallet = reinterpret_cast<Wallet*>(handle);
-  return wallet->refresh_is_running();
+  wallet->cancelRefresh();
 }
 
 extern "C"

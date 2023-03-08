@@ -1,10 +1,8 @@
 package im.molly.monero;
 
-import im.molly.monero.HttpResponse;
-import im.molly.monero.RemoteNode;
+import im.molly.monero.IHttpRequestCallback;
 
 interface IRemoteNodeClient {
-//    RemoteNode getRemoteNode();
-    HttpResponse makeRequest(String method, String path, String header, in byte[] body);
-    oneway void cancelAll();
+    oneway void requestAsync(int requestId, String method, String path, String header, in byte[] bodyBytes, in IHttpRequestCallback callback);
+    oneway void cancelAsync(int requestId);
 }

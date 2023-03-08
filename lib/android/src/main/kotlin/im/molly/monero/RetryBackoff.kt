@@ -3,7 +3,6 @@ package im.molly.monero
 import kotlin.math.pow
 import kotlin.random.Random
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -22,10 +21,10 @@ interface BackoffPolicy {
  * @param maxBackoff Set a hard maximum [Duration] for exponential backoff.
  */
 class ExponentialBackoff(
-    private val minBackoff: Duration = 1.seconds,
-    private val maxBackoff: Duration = 20.seconds,
-    private val multiplier: Double = 1.6,
-    private val jitter: Double = 0.2,
+    private val minBackoff: Duration,
+    private val maxBackoff: Duration,
+    private val multiplier: Double,
+    private val jitter: Double,
 ) : BackoffPolicy {
     init {
         require(minBackoff.isPositive())
@@ -45,5 +44,14 @@ class ExponentialBackoff(
         val jitterAmount = waitTime.inWholeMilliseconds * jitter
         val jitter = Random.nextDouble(-jitterAmount, jitterAmount)
         return waitTime + jitter.toDuration(DurationUnit.MILLISECONDS)
+    }
+
+    companion object {
+        val Default = ExponentialBackoff(
+            minBackoff = 1.seconds,
+            maxBackoff = 20.seconds,
+            multiplier = 1.6,
+            jitter = 0.2,
+        )
     }
 }

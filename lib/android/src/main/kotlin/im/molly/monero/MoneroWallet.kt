@@ -7,7 +7,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-class MoneroWallet(private val wallet: IWallet) : IWallet by wallet, AutoCloseable {
+class MoneroWallet internal constructor(
+    private val wallet: IWallet,
+    client: RemoteNodeClient?,
+) : IWallet by wallet, AutoCloseable {
 
     val publicAddress: String = wallet.primaryAccountAddress
 
@@ -44,9 +47,9 @@ class MoneroWallet(private val wallet: IWallet) : IWallet by wallet, AutoCloseab
             }
         }
 
-        restartRefresh(skipCoinbaseOutputs, callback)
+        resumeRefresh(skipCoinbaseOutputs, callback)
 
-        continuation.invokeOnCancellation { stopRefresh() }
+        continuation.invokeOnCancellation { cancelRefresh() }
     }
 }
 

@@ -4,18 +4,20 @@ import android.os.ParcelFileDescriptor
 import androidx.annotation.GuardedBy
 import kotlinx.coroutines.*
 import java.io.Closeable
+import java.util.*
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.coroutines.CoroutineContext
 
 class WalletNative private constructor(
     networkId: Int,
-    remoteNodeClient: IRemoteNodeClient?,
+    private val remoteNodeClient: IRemoteNodeClient?,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher,
 ) : IWallet.Stub(), Closeable {
 
     companion object {
+        // TODO: Full node wallet != local synchronization wallet
         fun fullNode(
             networkId: Int,
             secretSpendKey: SecretKey? = null,
@@ -53,8 +55,7 @@ class WalletNative private constructor(
         MoneroJni.loadLibrary(logger = logger)
     }
 
-    private val handle: Long =
-        nativeCreate(networkId, remoteNodeClient ?: IRemoteNodeClient.Default())
+    private val handle: Long = nativeCreate(networkId)
 
     override fun getPrimaryAccountAddress() = nativeGetPrimaryAccountAddress(handle)
 
@@ -71,26 +72,28 @@ class WalletNative private constructor(
 
     private val balanceListenersLock = ReentrantLock()
 
-    private val refreshDispatcher = ioDispatcher.limitedParallelism(1)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val singleThreadedDispatcher = ioDispatcher.limitedParallelism(1)
 
-    override fun restartRefresh(
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun resumeRefresh(
         skipCoinbaseOutputs: Boolean,
         callback: IRefreshCallback?,
     ) {
-        if (nativeRefreshIsRunning(handle)) {
-            nativeStopRefresh(handle)
-        }
-        val refreshJob = scope.launch(refreshDispatcher) {
-            val status = nativeRefreshLoopUntilSynced(handle, skipCoinbaseOutputs)
+        scope.launch {
+            val status = suspendCancellableCoroutine { continuation ->
+                launch(singleThreadedDispatcher) {
+                    continuation.resume(nativeNonReentrantRefresh(handle, skipCoinbaseOutputs)) {}
+                }
+                continuation.invokeOnCancellation {
+                    nativeCancelRefresh(handle)
+                }
+            }
             callback?.onResult(currentBlockchainHeight, status)
-        }
-        // Spin until the refresh thread enters in a cancellable state
-        while (refreshJob.isActive && !nativeRefreshIsRunning(handle)) {
-            Thread.yield()
         }
     }
 
-    override fun stopRefresh() = nativeStopRefresh(handle)
+    override fun cancelRefresh() = nativeCancelRefresh(handle)
 
     override fun setRefreshSince(blockHeightOrTimestamp: Long) {
         nativeSetRefreshSince(handle, blockHeightOrTimestamp)
@@ -136,6 +139,48 @@ class WalletNative private constructor(
         }
     }
 
+    @CalledByNative("wallet.cc")
+    private fun onSuspendRefresh(suspending: Boolean) {
+        if (suspending) {
+            pendingRequestLock.withLock {
+                pendingRequest?.cancel()
+                requestsAllowed = false
+            }
+        } else {
+            requestsAllowed = true
+        }
+    }
+
+    private var requestsAllowed = true
+
+    @GuardedBy("pendingRequestLock")
+    private var pendingRequest: Deferred<HttpResponse?>? = null
+
+    private val pendingRequestLock = ReentrantLock()
+
+    @CalledByNative("wallet.cc")
+    private fun callRemoteNode(
+        method: String?,
+        path: String?,
+        header: String?,
+        body: ByteArray?,
+    ): HttpResponse? = runBlocking {
+        pendingRequestLock.withLock {
+            pendingRequest = if (requestsAllowed) {
+                async {
+                    remoteNodeClient?.request(HttpRequest(method, path, header, body))
+                }
+            } else null
+        }
+        runCatching {
+            pendingRequest?.await()
+        }.onFailure { throwable ->
+            if (throwable !is CancellationException) {
+                throw throwable
+            }
+        }.getOrNull()
+    }
+
     override fun close() {
         scope.cancel()
     }
@@ -152,21 +197,18 @@ class WalletNative private constructor(
         const val REFRESH_ERROR: Int = 3
     }
 
-    private external fun nativeCreate(networkId: Int, remoteNodeClient: IRemoteNodeClient): Long
+    private external fun nativeCancelRefresh(handle: Long)
+    private external fun nativeCreate(networkId: Int): Long
     private external fun nativeDispose(handle: Long)
     private external fun nativeGetCurrentBlockchainHeight(handle: Long): Long
     private external fun nativeGetOwnedTxOuts(handle: Long): Array<OwnedTxOut>
     private external fun nativeGetPrimaryAccountAddress(handle: Long): String
     private external fun nativeLoad(handle: Long, fd: Int): Boolean
-    private external fun nativeRefreshIsRunning(handle: Long): Boolean
-    private external fun nativeRefreshLoopUntilSynced(handle: Long, skipCoinbase: Boolean): Int
+    private external fun nativeNonReentrantRefresh(handle: Long, skipCoinbase: Boolean): Int
     private external fun nativeRestoreAccount(
-        handle: Long,
-        secretScalar: ByteArray,
-        accountTimestamp: Long
+        handle: Long, secretScalar: ByteArray, accountTimestamp: Long
     )
 
     private external fun nativeSave(handle: Long, fd: Int): Boolean
     private external fun nativeSetRefreshSince(handle: Long, heightOrTimestamp: Long)
-    private external fun nativeStopRefresh(handle: Long)
 }

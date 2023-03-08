@@ -2,141 +2,236 @@ package im.molly.monero
 
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import im.molly.monero.loadbalancer.LoadBalancer
+import im.molly.monero.loadbalancer.Rule
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import okhttp3.*
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
-internal class RemoteNodeClient(
-    private val nodeSelector: RemoteNodeSelector,
+// TODO: Hide IRemoteNodeClient methods
+class RemoteNodeClient private constructor(
+    val network: MoneroNetwork,
+    private val loadBalancer: LoadBalancer,
+    private val loadBalancerRule: Rule,
     private val httpClient: OkHttpClient,
-    ioDispatcher: CoroutineDispatcher,
-) : IRemoteNodeClient.Stub() {
+    private val retryBackoff: BackoffPolicy,
+    private val requestsScope: CoroutineScope,
+) : IRemoteNodeClient.Stub(), AutoCloseable {
+
+    companion object {
+        /**
+         * Constructs a [RemoteNodeClient] to connect to the Monero [network].
+         */
+        fun forNetwork(
+            network: MoneroNetwork,
+            remoteNodes: Flow<List<RemoteNode>>,
+            loadBalancerRule: Rule,
+            httpClient: OkHttpClient,
+            retryBackoff: BackoffPolicy = ExponentialBackoff.Default,
+            ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+        ): RemoteNodeClient {
+            val scope = CoroutineScope(ioDispatcher + SupervisorJob())
+            return RemoteNodeClient(
+                network,
+                LoadBalancer(remoteNodes, scope),
+                loadBalancerRule,
+                httpClient,
+                retryBackoff,
+                scope
+            )
+        }
+    }
 
     private val logger = loggerFor<RemoteNodeClient>()
 
-    private val requestsScope = CoroutineScope(ioDispatcher + SupervisorJob())
+    private val requestList = ConcurrentHashMap<Int, Job>()
 
-//    /** Disable connecting to the Monero network */
-//    var offline = false
-
-    private fun selectedNode() = nodeSelector.select()
-
-    @CalledByNative("http_client.cc")
-    override fun makeRequest(
+    override fun requestAsync(
+        requestId: Int,
         method: String?,
         path: String?,
         header: String?,
         body: ByteArray?,
-    ): HttpResponse? {
-        val selected = selectedNode()
-        if (selected == null) {
-            logger.w("No remote node selected")
-            return null
+        callback: IHttpRequestCallback?,
+    ) {
+        requireNotNull(path)
+        requireNotNull(method)
+
+        logger.d("HTTP: $method $path, header_len=${header?.length}, body_size=${body?.size}")
+
+        val requestJob = requestsScope.launch {
+            runCatching {
+                requestWithRetry(method, path, header, body)
+            }.onSuccess { response ->
+                val statusCode = response.code()
+                val responseBody = response.body()
+                if (responseBody == null) {
+                    callback?.onResponse(statusCode, null, null)
+                } else {
+                    val contentType = responseBody.contentType()?.toString()
+                    val pipe = ParcelFileDescriptor.createPipe()
+
+                    callback?.onResponse(statusCode, contentType, pipe[0])
+
+                    responseBody.use {
+                        pipe[1].use { writeSide ->
+                            FileOutputStream(writeSide.fileDescriptor).use { out ->
+                                runCatching { it.byteStream().copyTo(out) }
+                            }
+                        }
+                    }
+                }
+                // TODO: Log response times
+            }.onFailure { throwable ->
+                logger.e("HTTP: Request failed", throwable)
+                callback?.onFailure()
+            }
+        }.also {
+            requestList[requestId] = it
         }
-        val uri = selected.uriForPath(path ?: "")
-        return try {
-            execute(method, uri, header, body, selected.username, selected.password)
-        } catch (ioe: IOException) {
-            logger.e("HTTP: Request failed", ioe)
-            return null
-        } catch (e: IllegalArgumentException) {
-            logger.e("HTTP: Bad request", e)
-            return null
+
+        requestJob.invokeOnCompletion {
+            requestList.remove(requestId)
         }
     }
 
-    @CalledByNative("http_client.cc")
-    override fun cancelAll() {
-        requestsScope.coroutineContext.cancelChildren()
+    override fun cancelAsync(requestId: Int) {
+        requestList[requestId]?.cancel()
     }
 
-    private fun execute(
-        method: String?,
-        uri: Uri,
+    override fun close() {
+        requestsScope.cancel()
+    }
+
+    private suspend fun requestWithRetry(
+        method: String,
+        path: String,
         header: String?,
         body: ByteArray?,
+    ): Response {
+        val attempts = mutableMapOf<Uri, Int>()
+
+        while (true) {
+            val selected = loadBalancerRule.chooseNode(loadBalancer)
+            if (selected == null) {
+                logger.i("No remote node available")
+
+                return Response.Builder().code(499).build()
+            }
+
+            val uri = selected.uriForPath(path)
+            val retryCount = attempts[uri] ?: 0
+
+            delay(retryBackoff.waitTime(retryCount))
+
+            val response = try {
+                executeCall(
+                    method = method,
+                    uri = uri,
+                    username = selected.username,
+                    password = selected.password,
+                    header = header,
+                    body = body,
+                )
+            } catch (e: IOException) {
+                logger.e("HTTP: Request failed", e)
+                // TODO: Notify loadBalancer
+                continue
+            } finally {
+                attempts[uri] = retryCount + 1
+            }
+
+            if (response.isSuccessful) {
+                // TODO: Notify loadBalancer
+                return response
+            }
+        }
+    }
+
+    private suspend fun executeCall(
+        method: String?,
+        uri: Uri,
         username: String?,
         password: String?,
-    ): HttpResponse {
-        logger.d("HTTP: $method $uri, header_len=${header?.length}, body_size=${body?.size}")
-
-        val headers = header?.parseHttpHeader()
-        val contentType = headers?.get("Content-Type")?.let { value ->
+        header: String?,
+        body: ByteArray?,
+    ): Response {
+        val headers = parseHttpHeader(header)
+        val contentType = headers.get("Content-Type")?.let { value ->
             MediaType.get(value)
         }
-
+        // TODO: Log unsupported headers
         val request = with(Request.Builder()) {
-            when (method) {
-                "GET" -> {}
-                "POST" -> post(RequestBody.create(contentType, body ?: ByteArray(0)))
-                else -> {
-                    throw IllegalArgumentException("Unsupported method")
+            when {
+                method.equals("GET", ignoreCase = true) -> {}
+                method.equals("POST", ignoreCase = true) -> {
+                    val content = body ?: ByteArray(0)
+                    post(RequestBody.create(contentType, content))
                 }
+                else -> throw IllegalArgumentException("Unsupported method")
             }
+            // TODO: Add authentication
             url(uri.toString())
             build()
         }
-
-        val response = runBlocking(requestsScope.coroutineContext) {
-            val call = httpClient.newCall(request)
-            try {
-                call.await()
-            } catch (ioe: IOException) {
-                if (!call.isCanceled) {
-                    throw ioe
-                }
-                null
-            }
-        }
-
-        return if (response == null) {
-            HttpResponse(code = 499)
-        } else if (response.isSuccessful) {
-            val responseBody = requireNotNull(response.body())
-            val pipe = ParcelFileDescriptor.createPipe()
-            requestsScope.launch {
-                pipe[1].use { writeSide ->
-                    FileOutputStream(writeSide.fileDescriptor).use { outputStream ->
-                        responseBody.byteStream().copyTo(outputStream)
-                    }
-                }
-            }
-            HttpResponse(
-                code = response.code(),
-                contentType = responseBody.contentType()?.toString(),
-                body = pipe[0],
-            )
-        } else {
-            HttpResponse(code = response.code())
-        }
+        return httpClient.newCall(request).await()
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun Call.await() = suspendCancellableCoroutine { continuation ->
-        enqueue(object : Callback {
-            override fun onResponse(call: Call, response: Response) {
-                continuation.resume(response) {
-                    response.close()
-                }
-            }
-
-            override fun onFailure(call: Call, e: IOException) {
-                continuation.resumeWithException(e)
-            }
-        })
-
-        continuation.invokeOnCancellation { cancel() }
-    }
-
-    fun String.parseHttpHeader(): Headers =
+    private fun parseHttpHeader(header: String?): Headers =
         with(Headers.Builder()) {
-            splitToSequence("\r\n")
-                .filter { line -> line.isNotEmpty() }
-                .forEach { line ->
-                    add(line)
-                }
+            header?.splitToSequence("\r\n")
+                ?.filter { line -> line.isNotEmpty() }
+                ?.forEach { line -> add(line) }
             build()
         }
+
+    private suspend fun Call.await() =
+        suspendCoroutine { continuation ->
+            enqueue(object : Callback {
+                override fun onResponse(call: Call, response: Response) {
+                    continuation.resume(response)
+                }
+
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resumeWithException(e)
+                }
+            })
+        }
+
+//    private val Response.roundTripMillis: Long
+//        get() = sentRequestAtMillis() - receivedResponseAtMillis()
+
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+internal suspend fun IRemoteNodeClient.request(request: HttpRequest): HttpResponse? =
+    suspendCancellableCoroutine { continuation ->
+        val requestId = request.hashCode()
+        val callback = object : IHttpRequestCallback.Stub() {
+            override fun onResponse(
+                code: Int,
+                contentType: String?,
+                body: ParcelFileDescriptor?,
+            ) {
+                continuation.resume(HttpResponse(code, contentType, body)) {
+                    body?.close()
+                }
+            }
+
+            override fun onFailure() {
+                continuation.resume(null) {}
+            }
+        }
+        with(request) {
+            requestAsync(requestId, method, path, header, bodyBytes, callback)
+        }
+        continuation.invokeOnCancellation {
+            cancelAsync(requestId)
+        }
+    }
