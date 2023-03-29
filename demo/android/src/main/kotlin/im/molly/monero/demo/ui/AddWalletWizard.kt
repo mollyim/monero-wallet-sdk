@@ -48,7 +48,7 @@ private fun FirstStepScreen(
     Scaffold(
         topBar = {
             Toolbar(
-                titleRes = R.string.add_wallet,
+                title = stringResource(R.string.add_wallet),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -125,9 +125,9 @@ private fun SecondStepScreen(
 ) {
     Scaffold(
         topBar = {
-            val title = if (showRestoreOptions) R.string.restore_wallet else R.string.new_wallet
+            val titleRes = if (showRestoreOptions) R.string.restore_wallet else R.string.new_wallet
             Toolbar(
-                titleRes = title,
+                title = stringResource(titleRes),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(

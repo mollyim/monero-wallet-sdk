@@ -2,9 +2,7 @@ package im.molly.monero.demo.ui.theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.List
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.*
 
 object AppIcons {
     val ArrowBack = Icons.Filled.ArrowBack
@@ -16,4 +14,5 @@ object AppIcons {
     val Settings = Icons.Filled.Settings
     val SettingsOutlined = Icons.Outlined.Settings
     val AddWallet = Icons.Filled.Add
+    val AddRemoteWallet = Icons.Outlined.AddCircle
 }

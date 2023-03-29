@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -12,10 +13,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletCard(
     walletId: Long,
     modifier: Modifier = Modifier,
+    onClick: (Long) -> Unit,
     viewModel: WalletViewModel = viewModel(
         factory = WalletViewModel.factory(walletId),
         key = walletId.toString(),
@@ -24,6 +27,7 @@ fun WalletCard(
     val walletUiState: WalletUiState by viewModel.walletUiState.collectAsStateWithLifecycle()
 
     Card(
+        onClick = { onClick(walletId) },
         modifier = modifier
             .padding(8.dp)
     ) {

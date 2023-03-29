@@ -9,19 +9,16 @@ import im.molly.monero.demo.ui.SettingsRoute
 const val settingsNavRoute = "settings"
 const val settingsRemoteNodeNavRoute = "$settingsNavRoute/remote_node"
 
-private const val idArg = "id"
+private const val queryId = "id"
 
 fun NavController.navigateToSettings(navOptions: NavOptions? = null) {
     navigate(settingsNavRoute, navOptions)
 }
 
 fun NavController.navigateToEditRemoteNode(remoteNodeId: Long?) {
-    val route = if (remoteNodeId != null) {
-        "$settingsRemoteNodeNavRoute?$idArg=$remoteNodeId"
-    } else {
-        settingsRemoteNodeNavRoute
-    }
-    this.navigate(route)
+    val route = settingsRemoteNodeNavRoute +
+            if (remoteNodeId != null) "?$queryId=$remoteNodeId" else ""
+    navigate(route)
 }
 
 fun NavGraphBuilder.settingsScreen(
@@ -38,16 +35,16 @@ fun NavGraphBuilder.editRemoteNodeDialog(
     onBackClick: () -> Unit,
 ) {
     dialog(
-        route = "$settingsRemoteNodeNavRoute?$idArg={$idArg}",
+        route = "$settingsRemoteNodeNavRoute?$queryId={$queryId}",
         arguments = listOf(
-            navArgument(idArg) {
+            navArgument(queryId) {
                 type = NavType.StringType
                 nullable = true
             }
         )
     ) {
         val arguments = requireNotNull(it.arguments)
-        val remoteNodeId = arguments.getString(idArg)?.toLongOrNull()
+        val remoteNodeId = arguments.getString(queryId)?.toLongOrNull()
         EditRemoteNodeRoute(
             remoteNodeId = remoteNodeId,
             onBackClick = onBackClick,

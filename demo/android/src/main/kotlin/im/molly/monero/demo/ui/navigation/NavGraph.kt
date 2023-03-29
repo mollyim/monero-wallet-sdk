@@ -18,6 +18,9 @@ fun NavGraph(
         modifier,
     ) {
         homeScreen(
+            navigateToWallet = { walletId ->
+                navController.navigateToWallet(walletId)
+            },
             navigateToAddWalletWizard = {
                 navController.navigateToAddWalletWizardGraph()
             },
@@ -27,6 +30,9 @@ fun NavGraph(
             navigateToEditRemoteNode = { remoteNodeId ->
                 navController.navigateToEditRemoteNode(remoteNodeId)
             },
+        )
+        walletScreen(
+            onBackClick = onBackClick,
         )
         editRemoteNodeDialog(
             onBackClick = onBackClick,

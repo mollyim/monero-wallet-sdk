@@ -42,7 +42,7 @@ class SyncService(
                         while (isActive) {
                             val result = wallet.awaitRefresh()
                             if (result.isError()) {
-                                break;
+                                break
                             }
                             delay(10.seconds)
                         }

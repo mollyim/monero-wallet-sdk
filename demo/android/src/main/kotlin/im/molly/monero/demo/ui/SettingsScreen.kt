@@ -1,13 +1,14 @@
 package im.molly.monero.demo.ui
 
+import android.net.Uri
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -16,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.demo.R
 import im.molly.monero.demo.data.model.RemoteNode
+import im.molly.monero.demo.ui.theme.AppIcons
 import im.molly.monero.demo.ui.theme.AppTheme
 
 @Composable
@@ -46,19 +48,46 @@ private fun SettingsScreen(
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(all = 24.dp)
     ) {
-        Divider()
-        SettingsSectionTitle(R.string.remote_nodes)
-        TextButton(onClick = onAddRemoteNode) {
-            Text(stringResource(R.string.add_remote_node))
-        }
+        SettingsSection(
+            header = {
+                SettingsSectionTitle(R.string.remote_nodes)
+                IconButton(onClick = onAddRemoteNode) {
+                    Icon(
+                        imageVector = AppIcons.AddRemoteWallet,
+                        contentDescription = stringResource(R.string.add_remote_node),
+                    )
+                }
+            }
+        )
         RemoteNodeEditableList(
             remoteNodes = remoteNodes,
             onEditRemoteNode = onEditRemoteNode,
             onDeleteRemoteNode = onDeleteRemoteNode,
+            modifier = Modifier.padding(start = 24.dp),
         )
-//        Divider()
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    modifier: Modifier = Modifier,
+    header: @Composable() (RowScope.() -> Unit),
+    content: @Composable() (RowScope.() -> Unit) = {},
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 24.dp),
+    ) {
+        Divider(Modifier.padding(top = 24.dp))
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier.fillMaxWidth(),
+            content = header,
+        )
+        Row(
+            content = content,
+        )
     }
 }
 
@@ -67,7 +96,6 @@ private fun SettingsSectionTitle(@StringRes titleRes: Int) {
     Text(
         text = stringResource(titleRes),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
     )
 }
 
@@ -75,8 +103,9 @@ private fun SettingsSectionTitle(@StringRes titleRes: Int) {
 @Composable
 private fun SettingsScreenPreview() {
     AppTheme {
+        val aNode = RemoteNode.EMPTY.copy(uri = Uri.parse("http://node.monero"))
         SettingsScreen(
-            remoteNodes = emptyList(),
+            remoteNodes = listOf(aNode),
         )
     }
 }

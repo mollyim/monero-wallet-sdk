@@ -19,6 +19,7 @@ import im.molly.monero.demo.ui.component.Toolbar
 @Composable
 fun HomeRoute(
     navigateToAddWalletWizard: () -> Unit,
+    navigateToWallet: (Long) -> Unit,
     viewModel: HomeViewModel = viewModel(),
 ) {
     val walletListUiState: WalletListUiState by viewModel.walletListUiState.collectAsStateWithLifecycle()
@@ -26,6 +27,7 @@ fun HomeRoute(
     HomeScreen(
         walletListUiState = walletListUiState,
         onAddWalletClick = navigateToAddWalletWizard,
+        onWalletClick = navigateToWallet,
     )
 }
 
@@ -34,13 +36,14 @@ fun HomeRoute(
 private fun HomeScreen(
     walletListUiState: WalletListUiState,
     onAddWalletClick: () -> Unit,
+    onWalletClick: (Long) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Toolbar(
-                titleRes = R.string.monero_wallets,
+                title = stringResource(R.string.monero_wallets),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -57,20 +60,21 @@ private fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding))
         {
-            walletCards(walletListUiState)
+            walletCards(walletListUiState, onWalletClick)
         }
     }
 }
 
 private fun LazyListScope.walletCards(
     walletListUiState: WalletListUiState,
+    onWalletClick: (Long) -> Unit,
 ) {
     when (walletListUiState) {
         WalletListUiState.Loading -> item {
             Text(text = "Loading wallet list...") // TODO
         }
         is WalletListUiState.Success -> {
-            walletCardsItems(walletListUiState.ids)
+            walletCardsItems(walletListUiState.ids, onWalletClick)
         }
     }
 }

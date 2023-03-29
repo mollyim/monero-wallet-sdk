@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 
 fun LazyListScope.walletCardsItems(
     items: List<Long>,
+    onItemClick: (Long) -> Unit,
     itemModifier: Modifier = Modifier,
 ) = items(
     items = items,
@@ -13,6 +14,7 @@ fun LazyListScope.walletCardsItems(
     itemContent = {
         WalletCard(
             walletId = it,
+            onClick = onItemClick,
             modifier = itemModifier,
         )
     },

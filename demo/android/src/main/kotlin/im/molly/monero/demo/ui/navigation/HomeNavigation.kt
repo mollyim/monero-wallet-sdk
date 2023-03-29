@@ -14,10 +14,12 @@ fun NavController.navigateToHome(navOptions: NavOptions? = null) {
 
 fun NavGraphBuilder.homeScreen(
     navigateToAddWalletWizard: () -> Unit,
+    navigateToWallet: (Long) -> Unit,
 ) {
     composable(route = homeNavRoute) {
         HomeRoute(
             navigateToAddWalletWizard = navigateToAddWalletWizard,
+            navigateToWallet = navigateToWallet,
         )
     }
 }

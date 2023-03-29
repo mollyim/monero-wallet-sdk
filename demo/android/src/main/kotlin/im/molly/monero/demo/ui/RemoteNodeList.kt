@@ -1,8 +1,7 @@
 package im.molly.monero.demo.ui
 
 import android.net.Uri
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -41,9 +40,7 @@ fun RemoteNodeEditableList(
     onDeleteRemoteNode: (RemoteNode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-    ) {
+    Column(modifier = modifier) {
         remoteNodes.forEach { remoteNode ->
             RemoteNodeItem(
                 remoteNode,
@@ -70,26 +67,24 @@ private fun RemoteNodeItem(
         headlineText = { Text(remoteNode.uri.toString()) },
         overlineText = { Text(remoteNode.network.name.uppercase()) },
         trailingContent = {
-            Row {
-                if (showCheckbox) {
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = onCheckedChange,
-                    )
-                }
-                if (showMenu) {
-                    KebabMenu(
-                        onEditClick = { onEditClick(remoteNode) },
-                        onDeleteClick = { onDeleteClick(remoteNode) },
-                    )
-                }
+            if (showCheckbox) {
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                )
+            }
+            if (showMenu) {
+                WalletKebabMenu(
+                    onEditClick = { onEditClick(remoteNode) },
+                    onDeleteClick = { onDeleteClick(remoteNode) },
+                )
             }
         },
     )
 }
 
 @Composable
-private fun KebabMenu(
+private fun WalletKebabMenu(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {

@@ -12,6 +12,7 @@
     <string name="settings">Settings</string>
     <string name="add_remote_node">Add remote node</string>
     <string name="edit">Edit</string>
+    <string name="rename">Rename</string>
     <string name="open_menu">Open menu</string>
     <string name="delete">Delete</string>
     <string name="save">Save</string>
