@@ -14,13 +14,14 @@ data class OwnedTxOut
 @CalledByNative("wallet.cc")
 constructor(
     val txId: ByteArray,
-    val amount: Amount,
+    val amount: AtomicAmount,
     val blockHeight: Long,
     val spentInBlockHeight: Long,
 ) : Parcelable {
 
     init {
         require(blockHeight <= spentInBlockHeight)
+        require(amount >= 0) { "TX amount cannot be negative" }
     }
 
     @IgnoredOnParcel
@@ -55,7 +56,7 @@ constructor(
 
     fun proto(): OwnedTxOutProto = OwnedTxOutProto.newBuilder()
         .setTxId(ByteString.copyFrom(txId))
-        .setAmount(amount.atomic)
+        .setAmount(amount.value)
         .setBlockHeight(blockHeight)
         .setSpentHeight(spentInBlockHeight)
         .build()

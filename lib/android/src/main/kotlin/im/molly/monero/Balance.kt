@@ -1,14 +1,15 @@
 package im.molly.monero
 
 data class Balance(
-    private val uTxOuts: Set<OwnedTxOut>,
+    private val spendableTxOuts: Set<OwnedTxOut>,
 ) {
-    val totalAmount: Amount = uTxOuts.sumOf { it.amount }
+    val totalAmount: AtomicAmount = spendableTxOuts.sumOf { it.amount }
 
     fun totalAmountUnlockedAt(
         blockHeight: Long,
         timestampMillis: Long = System.currentTimeMillis()
-    ): Amount {
+        // TODO: Create Timelock class
+    ): AtomicAmount {
         require(blockHeight > 0)
         require(timestampMillis >= 0)
         TODO()
@@ -16,7 +17,7 @@ data class Balance(
 
     companion object {
         fun of(txOuts: List<OwnedTxOut>) = Balance(
-            uTxOuts = txOuts.filter { it.notSpent }.toSet(),
+            spendableTxOuts = txOuts.filter { it.notSpent }.toSet(),
         )
     }
 }

@@ -4,10 +4,10 @@ package im.molly.monero
 
 data class Ledger constructor(
     val publicAddress: String,
-    val txOuts: List<OwnedTxOut>,
+    val receivedOutputs: List<OwnedTxOut>,
     val checkedAtBlockHeight: Long,
 ) {
-    val balance = Balance.of(txOuts)
+    val balance = Balance.of(receivedOutputs)
 
 //    companion object {
 //        fun fromProto(proto: LedgerProto) = Ledger(

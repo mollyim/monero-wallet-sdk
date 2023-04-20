@@ -2,7 +2,6 @@ package im.molly.monero;
 
 import im.molly.monero.IBalanceListener;
 import im.molly.monero.IRefreshCallback;
-import im.molly.monero.PublicAddress;
 
 interface IWallet {
     String getPrimaryAccountAddress();
