@@ -3,6 +3,7 @@ package im.molly.monero.demo.data
 import im.molly.monero.demo.data.dao.WalletDao
 import im.molly.monero.demo.data.entity.WalletEntity
 import im.molly.monero.demo.data.entity.WalletRemoteNodeXRef
+import im.molly.monero.demo.data.entity.asEntity
 import im.molly.monero.demo.data.entity.asExternalModel
 import im.molly.monero.demo.data.model.WalletConfig
 import kotlinx.coroutines.flow.Flow
@@ -11,12 +12,12 @@ import kotlinx.coroutines.flow.map
 class WalletDataSource(
     private val walletDao: WalletDao,
 ) {
-    fun getWalletIdList(): Flow<List<Long>> = walletDao.findAllIds()
+    fun readWalletIdList(): Flow<List<Long>> = walletDao.findAllIds()
 
-    fun loadWalletConfig(walletId: Long): Flow<WalletConfig> =
+    fun readWalletConfig(walletId: Long): Flow<WalletConfig> =
         walletDao.findById(walletId).map { it.asExternalModel() }
 
-    suspend fun storeWalletConfig(
+    suspend fun createWalletConfig(
         publicAddress: String,
         name: String,
         remoteNodeIds: List<Long>,
@@ -35,5 +36,9 @@ class WalletDataSource(
         }
         walletDao.insertRemoteNodeXRefEntities(walletRemoteNodeXRef)
         return walletId
+    }
+
+    suspend fun updateWalletConfig(walletConfig: WalletConfig) {
+        walletDao.update(walletConfig.asEntity())
     }
 }

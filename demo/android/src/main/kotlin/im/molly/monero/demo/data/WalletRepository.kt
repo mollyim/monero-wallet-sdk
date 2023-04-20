@@ -1,6 +1,7 @@
 package im.molly.monero.demo.data
 
 import im.molly.monero.*
+import im.molly.monero.demo.data.model.WalletConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.ConcurrentHashMap
@@ -33,9 +34,9 @@ class WalletRepository(
         }.await()
     }
 
-    fun getWalletIdList() = walletDataSource.getWalletIdList()
+    fun getWalletIdList() = walletDataSource.readWalletIdList()
 
-    fun getWalletConfig(walletId: Long) = walletDataSource.loadWalletConfig(walletId)
+    fun getWalletConfig(walletId: Long) = walletDataSource.readWalletConfig(walletId)
 
     fun getLedger(walletId: Long): Flow<Ledger> = flow {
         emitAll(getWallet(walletId).ledger())
@@ -47,11 +48,14 @@ class WalletRepository(
         remoteNodeIds: List<Long>,
     ): Pair<Long, IWallet> {
         val wallet = moneroSdkClient.createWallet(moneroNetwork)
-        val walletId = walletDataSource.storeWalletConfig(
+        val walletId = walletDataSource.createWalletConfig(
             publicAddress = wallet.publicAddress,
             name = name,
             remoteNodeIds = remoteNodeIds,
         )
         return walletId to wallet
     }
+
+    suspend fun updateWalletConfig(walletConfig: WalletConfig) =
+        walletDataSource.updateWalletConfig(walletConfig)
 }

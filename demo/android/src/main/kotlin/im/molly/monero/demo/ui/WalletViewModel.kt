@@ -11,6 +11,7 @@ import im.molly.monero.demo.common.asResult
 import im.molly.monero.demo.data.WalletRepository
 import im.molly.monero.demo.data.model.WalletConfig
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 class WalletViewModel(
     private val walletId: Long,
@@ -31,6 +32,12 @@ class WalletViewModel(
             initializer {
                 WalletViewModel(walletId)
             }
+        }
+    }
+
+    fun updateConfig(config: WalletConfig) {
+        viewModelScope.launch {
+            walletRepository.updateWalletConfig(config)
         }
     }
 }

@@ -41,9 +41,11 @@ class MoneroSdkClient(
                 loadBalancerRule = RoundRobinRule(),
                 httpClient = httpClient,
             )
-            walletDataFileStorage.readData(publicAddress).use { input ->
+            val wallet = walletDataFileStorage.readData(publicAddress).use { input ->
                 provider.openWallet(network, client, input)
             }
+            check(publicAddress == wallet.primaryAccountAddress) { "primary address mismatch" }
+            wallet
         }
     }
 }

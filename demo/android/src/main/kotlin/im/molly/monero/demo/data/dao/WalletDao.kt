@@ -30,6 +30,9 @@ interface WalletDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRemoteNodeXRefEntities(walletRemoteNodeXRefs: List<WalletRemoteNodeXRef>)
 
+    @Update
+    suspend fun update(wallet: WalletEntity)
+
     @Delete
     suspend fun delete(wallet: WalletEntity)
 }

@@ -30,3 +30,9 @@ fun WalletEntity.asExternalModel() = WalletConfig(
     name = name,
     remoteNodes = setOf(),
 )
+
+fun WalletConfig.asEntity() = WalletEntity(
+    id = id,
+    publicAddress = publicAddress,
+    name = name
+)
