@@ -136,11 +136,21 @@ void Wallet::handleBalanceChanged(uint64_t at_block_height) {
 
 void Wallet::handleNewBlock(uint64_t height, bool debounce) {
   m_blockchain_height = height;
-  static std::chrono::steady_clock::time_point last_time;
-  auto now = std::chrono::steady_clock::now();
-  // Notify blockchain height every one second.
-  if (!debounce || (now - last_time >= 1.s)) {
-    last_time = now;
+  bool notify = false;
+  if (debounce) {
+    // Notify the blockchain height once every 200 ms if the height is a multiple of 100.
+    if (height % 100 == 0) {
+      static std::chrono::steady_clock::time_point last_time;
+      auto now = std::chrono::steady_clock::now();
+      if (now - last_time >= 200.ms) {
+        last_time = now;
+        notify = true;
+      }
+    }
+  } else {
+    notify = true;
+  }
+  if (notify) {
     m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh, height, false);
   }
 }
