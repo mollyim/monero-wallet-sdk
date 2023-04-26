@@ -9,7 +9,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
-    client: RemoteNodeClient?,
+    val remoteNodeClient: RemoteNodeClient?,
 ) : IWallet by wallet, AutoCloseable {
 
     val publicAddress: String = wallet.primaryAccountAddress

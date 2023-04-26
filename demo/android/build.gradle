@@ -69,6 +69,7 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion"
     implementation "androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion"
     implementation "androidx.activity:activity-compose:1.6.1"
+    implementation "androidx.datastore:datastore-preferences:1.0.0"
 
     implementation "androidx.room:room-runtime:$roomVersion"
     implementation "androidx.room:room-ktx:$roomVersion"

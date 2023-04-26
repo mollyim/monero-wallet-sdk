@@ -10,7 +10,6 @@ import okhttp3.OkHttpClient
 class MoneroSdkClient(
     private val context: Context,
     private val walletDataFileStorage: WalletDataFileStorage,
-    private val httpClient: OkHttpClient,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val providerDeferred = CoroutineScope(ioDispatcher).async {
@@ -31,6 +30,7 @@ class MoneroSdkClient(
     suspend fun openWallet(
         publicAddress: String,
         remoteNodes: Flow<List<RemoteNode>>,
+        httpClient: OkHttpClient,
     ): MoneroWallet {
         val provider = providerDeferred.await()
         return withContext(ioDispatcher) {

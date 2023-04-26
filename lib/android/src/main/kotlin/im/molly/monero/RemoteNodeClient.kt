@@ -19,7 +19,7 @@ class RemoteNodeClient private constructor(
     val network: MoneroNetwork,
     private val loadBalancer: LoadBalancer,
     private val loadBalancerRule: Rule,
-    private val httpClient: OkHttpClient,
+    var httpClient: OkHttpClient,
     private val retryBackoff: BackoffPolicy,
     private val requestsScope: CoroutineScope,
 ) : IRemoteNodeClient.Stub(), AutoCloseable {

@@ -3,7 +3,6 @@ package im.molly.monero.demo
 import android.app.Application
 import androidx.room.Room
 import im.molly.monero.demo.data.*
-import okhttp3.OkHttpClient
 
 /**
  * Naive container of global instances.
@@ -11,7 +10,7 @@ import okhttp3.OkHttpClient
  * A complex app should use Koin or Hilt for dependencies.
  */
 object AppModule {
-    lateinit var application: Application
+    private lateinit var application: Application
 
     private val applicationScope = kotlinx.coroutines.MainScope()
 
@@ -19,10 +18,6 @@ object AppModule {
         Room.databaseBuilder(
             application, AppDatabase::class.java, "monero-demo.db"
         ).build()
-    }
-
-    private val walletHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder().build()
     }
 
     private val walletDataSource: WalletDataSource by lazy {
@@ -34,7 +29,11 @@ object AppModule {
     }
 
     private val moneroSdkClient: MoneroSdkClient by lazy {
-        MoneroSdkClient(application, walletDataFileStorage, walletHttpClient)
+        MoneroSdkClient(application, walletDataFileStorage)
+    }
+
+    val settingsRepository: SettingsRepository by lazy {
+        SettingsRepository(application.preferencesDataStore)
     }
 
     val remoteNodeRepository: RemoteNodeRepository by lazy {
@@ -42,7 +41,7 @@ object AppModule {
     }
 
     val walletRepository: WalletRepository by lazy {
-        WalletRepository(moneroSdkClient, walletDataSource, applicationScope)
+        WalletRepository(moneroSdkClient, walletDataSource, settingsRepository, applicationScope)
     }
 
     fun provide(application: Application) {
