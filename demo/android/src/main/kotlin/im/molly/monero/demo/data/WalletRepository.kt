@@ -58,7 +58,7 @@ class WalletRepository(
         moneroNetwork: MoneroNetwork,
         name: String,
         remoteNodeIds: List<Long>,
-    ): Pair<Long, IWallet> {
+    ): Pair<Long, MoneroWallet> {
         val wallet = moneroSdkClient.createWallet(moneroNetwork)
         val walletId = walletDataSource.createWalletConfig(
             publicAddress = wallet.publicAddress,
@@ -67,6 +67,9 @@ class WalletRepository(
         )
         return walletId to wallet
     }
+
+    suspend fun saveWallet(wallet: MoneroWallet) =
+        moneroSdkClient.saveWallet(wallet)
 
     suspend fun updateWalletConfig(walletConfig: WalletConfig) =
         walletDataSource.updateWalletConfig(walletConfig)

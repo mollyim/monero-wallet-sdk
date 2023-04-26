@@ -75,7 +75,9 @@ class Wallet : tools::i_wallet2_callback {
   auto suspendRefreshAndRunLocked(T block) -> decltype(block());
 
   void handleBalanceChanged(uint64_t at_block_height);
-  void handleNewBlock(uint64_t height, bool debounce = true);
+  void handleNewBlock(uint64_t height);
+
+  void callOnRefresh(bool balance_changed);
 
   // Implementation of i_wallet2_callback follows.
  private:

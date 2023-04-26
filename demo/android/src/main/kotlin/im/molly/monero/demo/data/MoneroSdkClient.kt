@@ -20,10 +20,20 @@ class MoneroSdkClient(
         val provider = providerDeferred.await()
         return withContext(ioDispatcher) {
             val wallet = provider.createNewWallet(moneroNetwork)
-            walletDataFileStorage.tryWriteData(wallet.publicAddress, false) { output ->
-                provider.saveWallet(wallet, output)
-            }
+            saveToFile(wallet, provider, false)
             wallet
+        }
+    }
+
+    suspend fun saveWallet(wallet: MoneroWallet) {
+        withContext(ioDispatcher) {
+            saveToFile(wallet, providerDeferred.await(), true)
+        }
+    }
+
+    private fun saveToFile(wallet: MoneroWallet, provider: WalletProvider, canOverwrite: Boolean) {
+        walletDataFileStorage.tryWriteData(wallet.publicAddress, canOverwrite) { output ->
+            provider.saveWallet(wallet, output)
         }
     }
 

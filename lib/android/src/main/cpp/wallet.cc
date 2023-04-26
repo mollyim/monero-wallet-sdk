@@ -88,6 +88,7 @@ bool Wallet::parseFrom(std::istream& input) {
     return false;
   if (!serialization::serialize(ar, m_wallet))
     return false;
+  m_blockchain_height = m_wallet.get_blockchain_current_height();
   m_wallet.get_transfers(m_tx_outs);
   m_account_ready = true;
   return true;
@@ -130,29 +131,28 @@ void Wallet::handleBalanceChanged(uint64_t at_block_height) {
   m_wallet.get_transfers(m_tx_outs);
   m_tx_outs_mutex.unlock();
   m_blockchain_height = at_block_height;
-  JNIEnv* env = getJniEnv();
-  m_callback.callVoidMethod(env, WalletNative_onRefresh, at_block_height, true);
+  callOnRefresh(true);
 }
 
-void Wallet::handleNewBlock(uint64_t height, bool debounce) {
+void Wallet::handleNewBlock(uint64_t height) {
   m_blockchain_height = height;
-  bool notify = false;
-  if (debounce) {
-    // Notify the blockchain height once every 200 ms if the height is a multiple of 100.
-    if (height % 100 == 0) {
-      static std::chrono::steady_clock::time_point last_time;
-      auto now = std::chrono::steady_clock::now();
-      if (now - last_time >= 200.ms) {
-        last_time = now;
-        notify = true;
-      }
+  // Notify the blockchain height once every 200 ms if the height is a multiple of 100.
+  bool debounce = true;
+  if (height % 100 == 0) {
+    static std::chrono::steady_clock::time_point last_time;
+    auto now = std::chrono::steady_clock::now();
+    if (now - last_time >= 200.ms) {
+      last_time = now;
+      debounce = false;
     }
-  } else {
-    notify = true;
   }
-  if (notify) {
-    m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh, height, false);
+  if (!debounce) {
+    callOnRefresh(false);
   }
+}
+
+void Wallet::callOnRefresh(bool balance_changed) {
+  m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh, m_blockchain_height, balance_changed);
 }
 
 Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
@@ -187,7 +187,7 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
   }
   m_refresh_running.store(false);
   // Always notify the last block height.
-  handleNewBlock(m_blockchain_height, false);
+  callOnRefresh(false);
   return ret;
 }
 

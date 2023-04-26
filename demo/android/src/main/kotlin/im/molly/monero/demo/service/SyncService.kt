@@ -9,16 +9,39 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.data.WalletRepository
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlin.time.Duration.Companion.seconds
 
 const val TAG = "SyncService"
 
 class SyncService(
     private val walletRepository: WalletRepository = AppModule.walletRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : LifecycleService() {
+
+    private suspend fun doSync() = coroutineScope {
+        val syncedWalletIds = mutableSetOf<Long>()
+
+        walletRepository.getWalletIdList().collect {
+            val idSet = it.toSet()
+            val toSync = idSet subtract syncedWalletIds
+            toSync.forEach { walletId ->
+                val wallet = walletRepository.getWallet(walletId)
+                launch {
+                    while (isActive) {
+                        val result = wallet.awaitRefresh()
+                        if (result.isError()) {
+                            break
+                        }
+                        walletRepository.saveWallet(wallet)
+                        delay(10.seconds)
+                    }
+                }
+            }
+            syncedWalletIds.addAll(toSync)
+        }
+    }
+
     private val binder: IBinder = LocalBinder()
 
     inner class LocalBinder : Binder() {
@@ -41,25 +64,8 @@ class SyncService(
         Log.d(TAG, "onCreate")
         super.onCreate()
 
-        lifecycleScope.launch {
-            val syncedWalletIds = mutableSetOf<Long>()
-            walletRepository.getWalletIdList().collect {
-                val idSet = it.toSet()
-                val toSync = idSet subtract syncedWalletIds
-                toSync.forEach { walletId ->
-                    val wallet = walletRepository.getWallet(walletId)
-                    lifecycleScope.launch {
-                        while (isActive) {
-                            val result = wallet.awaitRefresh()
-                            if (result.isError()) {
-                                break
-                            }
-                            delay(10.seconds)
-                        }
-                    }
-                }
-                syncedWalletIds.addAll(toSync)
-            }
+        lifecycleScope.launch(ioDispatcher) {
+            doSync()
         }
     }
 

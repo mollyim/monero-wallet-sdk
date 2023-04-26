@@ -7,7 +7,7 @@ interface IWallet {
     String getPrimaryAccountAddress();
     void addBalanceListener(in IBalanceListener listener);
     void removeBalanceListener(in IBalanceListener listener);
-    void save(in ParcelFileDescriptor destination);
+    oneway void save(in ParcelFileDescriptor destination);
     oneway void resumeRefresh(boolean skipCoinbaseOutputs, in IRefreshCallback callback);
     void cancelRefresh();
     void setRefreshSince(long heightOrTimestamp);
