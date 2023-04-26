@@ -7,6 +7,8 @@ import im.molly.monero.loadbalancer.Rule
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -69,15 +71,15 @@ class RemoteNodeClient private constructor(
             runCatching {
                 requestWithRetry(method, path, header, body)
             }.onSuccess { response ->
-                val statusCode = response.code()
-                val responseBody = response.body()
+                val status = response.code
+                val responseBody = response.body
                 if (responseBody == null) {
-                    callback?.onResponse(statusCode, null, null)
+                    callback?.onResponse(status, null, null)
                 } else {
                     val contentType = responseBody.contentType()?.toString()
                     val pipe = ParcelFileDescriptor.createPipe()
 
-                    callback?.onResponse(statusCode, contentType, pipe[0])
+                    callback?.onResponse(status, contentType, pipe[0])
 
                     responseBody.use {
                         pipe[1].use { writeSide ->
@@ -163,16 +165,14 @@ class RemoteNodeClient private constructor(
         body: ByteArray?,
     ): Response {
         val headers = parseHttpHeader(header)
-        val contentType = headers.get("Content-Type")?.let { value ->
-            MediaType.get(value)
-        }
+        val contentType = headers["Content-Type"]?.toMediaType()
         // TODO: Log unsupported headers
         val request = with(Request.Builder()) {
             when {
                 method.equals("GET", ignoreCase = true) -> {}
                 method.equals("POST", ignoreCase = true) -> {
                     val content = body ?: ByteArray(0)
-                    post(RequestBody.create(contentType, content))
+                    post(content.toRequestBody(contentType))
                 }
                 else -> throw IllegalArgumentException("Unsupported method")
             }

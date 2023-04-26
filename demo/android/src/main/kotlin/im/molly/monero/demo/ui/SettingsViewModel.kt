@@ -82,11 +82,11 @@ class SettingsViewModel(
     }
 
     private suspend fun onProxyChanged(newProxy: Proxy) {
-        walletRepository.getRemoteClients().first().forEach {
-            val currentProxy = it.httpClient.proxy()
-            if (currentProxy != newProxy) {
-                val builder = it.httpClient.newBuilder()
-                it.httpClient = builder.proxy(newProxy).build()
+        walletRepository.getRemoteClients().first().forEach { client ->
+            val current = client.httpClient.proxy
+            if (current != newProxy) {
+                val builder = client.httpClient.newBuilder()
+                client.httpClient = builder.proxy(newProxy).build()
             }
         }
     }
