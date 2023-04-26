@@ -5,7 +5,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -15,7 +14,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.Balance
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroCurrency
-import im.molly.monero.demo.R
 import im.molly.monero.demo.data.model.WalletConfig
 import im.molly.monero.demo.ui.component.Toolbar
 import im.molly.monero.demo.ui.theme.AppIcons
@@ -91,7 +89,7 @@ private fun WalletScreenPopulated(
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = AppIcons.ArrowBack,
-                                contentDescription = stringResource(R.string.back),
+                                contentDescription = "Back",
                             )
                         }
                     },
@@ -157,7 +155,7 @@ private fun WalletKebabMenu(
     IconButton(onClick = { expanded = true }) {
         Icon(
             imageVector = AppIcons.MoreVert,
-            contentDescription = stringResource(R.string.open_menu),
+            contentDescription = "Open menu",
         )
     }
     DropdownMenu(
@@ -165,14 +163,14 @@ private fun WalletKebabMenu(
         onDismissRequest = { expanded = false },
     ) {
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.rename)) },
+            text = { Text("Rename") },
             onClick = {
                 onRenameClick()
                 expanded = false
             },
         )
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.delete)) },
+            text = { Text("Delete") },
             onClick = {
                 onDeleteClick()
                 expanded = false

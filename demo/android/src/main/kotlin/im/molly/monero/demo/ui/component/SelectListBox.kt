@@ -1,16 +1,14 @@
 package im.molly.monero.demo.ui.component
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectListBox(
-    @StringRes labelRes: Int,
+    label: String,
     options: List<String>,
     selectedOption: String,
     onOptionClick: (String) -> Unit,
@@ -32,7 +30,7 @@ fun SelectListBox(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
-            label = { Text(stringResource(labelRes)) },
+            label = { Text(label) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(
                     expanded = expanded

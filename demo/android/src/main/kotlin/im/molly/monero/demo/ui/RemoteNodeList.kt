@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import im.molly.monero.demo.R
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.ui.theme.AppIcons
 
@@ -93,7 +91,7 @@ private fun WalletKebabMenu(
     IconButton(onClick = { expanded = true }) {
         Icon(
             imageVector = AppIcons.MoreVert,
-            contentDescription = stringResource(R.string.open_menu),
+            contentDescription = "Open menu",
         )
     }
     DropdownMenu(
@@ -101,14 +99,14 @@ private fun WalletKebabMenu(
         onDismissRequest = { expanded = false },
     ) {
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.edit)) },
+            text = { Text("Edit") },
             onClick = {
                 onEditClick()
                 expanded = false
             },
         )
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.delete)) },
+            text = { Text("Delete") },
             onClick = {
                 onDeleteClick()
                 expanded = false

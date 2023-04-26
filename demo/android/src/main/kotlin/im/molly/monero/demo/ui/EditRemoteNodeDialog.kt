@@ -16,7 +16,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.MoneroNetwork
-import im.molly.monero.demo.R
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.ui.component.SelectListBox
 import im.molly.monero.demo.ui.theme.AppTheme
@@ -64,11 +63,11 @@ private fun EditRemoteNodeDialog(
                 Modifier.verticalScroll(rememberScrollState()),
             ) {
                 Text(
-                    text = stringResource(R.string.enter_your_monero_node_information_below),
+                    text = "Enter your Monero node information below.",
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
                 SelectListBox(
-                    labelRes = R.string.network,
+                    label = "Network",
                     options = MoneroNetwork.values().map { it.name },
                     selectedOption = remoteNode.network.name,
                     onOptionClick = {
@@ -81,15 +80,13 @@ private fun EditRemoteNodeDialog(
                         onValueChange = { input ->
                             onRemoteNodeChange(remoteNode.copy(uri = Uri.parse(input)))
                         },
-                        label = {
-                            Text(stringResource(R.string.url))
-                        },
+                        label = { Text("URL") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         isError = showError,
                     )
                     Text(
-                        text = stringResource(R.string.protocol_is_required_http_or_https),
+                        text = "Protocol is required (http:// or https://)",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(start = 16.dp, bottom = 16.dp),
                     )
@@ -99,9 +96,7 @@ private fun EditRemoteNodeDialog(
                     onValueChange = { input ->
                         onRemoteNodeChange(remoteNode.copy(username = input))
                     },
-                    label = {
-                        Text(stringResource(R.string.username))
-                    },
+                    label = { Text("Username") },
                     singleLine = true,
                 )
                 OutlinedTextField(
@@ -109,9 +104,7 @@ private fun EditRemoteNodeDialog(
                     onValueChange = { input ->
                         onRemoteNodeChange(remoteNode.copy(password = input))
                     },
-                    label = {
-                        Text(stringResource(R.string.password))
-                    },
+                    label = { Text("Password") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     visualTransformation = PasswordVisualTransformation(),
@@ -123,7 +116,7 @@ private fun EditRemoteNodeDialog(
                 onClick = onSaveRequest,
                 enabled = !showError,
             ) {
-                Text(stringResource(R.string.save))
+                Text("Save")
             }
         },
         dismissButton = {

@@ -8,13 +8,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.MoneroNetwork
-import im.molly.monero.demo.R
 import im.molly.monero.demo.data.model.DefaultMoneroNetwork
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.ui.component.SelectListBox
@@ -48,12 +46,12 @@ private fun FirstStepScreen(
     Scaffold(
         topBar = {
             Toolbar(
-                title = stringResource(R.string.add_wallet),
+                title = "Add wallet",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = AppIcons.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
+                            contentDescription = "Back",
                         )
                     }
                 }
@@ -70,13 +68,13 @@ private fun FirstStepScreen(
             Button(
                 onClick = onCreateClick,
             ) {
-                Text(stringResource(R.string.create_a_new_wallet))
+                Text("Create a new wallet")
             }
             OutlinedButton(
                 onClick = {}, // TODO: onRestoreClick,
                 modifier = Modifier.padding(top = 8.dp),
             ) {
-                Text(stringResource(R.string.i_already_have_a_wallet))
+                Text("I already have a wallet")
             }
         }
     }
@@ -125,14 +123,13 @@ private fun SecondStepScreen(
 ) {
     Scaffold(
         topBar = {
-            val titleRes = if (showRestoreOptions) R.string.restore_wallet else R.string.new_wallet
             Toolbar(
-                title = stringResource(titleRes),
+                title = if (showRestoreOptions) "Restore wallet" else "New wallet",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = AppIcons.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
+                            contentDescription = "Back",
                         )
                     }
                 }
@@ -146,7 +143,7 @@ private fun SecondStepScreen(
         ) {
             OutlinedTextField(
                 value = walletName,
-                label = { Text(stringResource(R.string.wallet_name)) },
+                label = { Text("Wallet name") },
                 onValueChange = onWalletNameChanged,
                 singleLine = true,
                 modifier = Modifier
@@ -154,7 +151,7 @@ private fun SecondStepScreen(
                     .padding(start = 16.dp, end = 16.dp),
             )
             SelectListBox(
-                labelRes = R.string.network,
+                label = "Network",
                 options = MoneroNetwork.values().map { it.name },
                 selectedOption = network.name,
                 onOptionClick = {
@@ -165,7 +162,7 @@ private fun SecondStepScreen(
                     .padding(16.dp),
             )
             Text(
-                text = stringResource(R.string.remote_node_selection),
+                text = "Remote node selection",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier
                     .padding(16.dp),
@@ -186,7 +183,7 @@ private fun SecondStepScreen(
                     modifier = Modifier
                         .padding(16.dp),
                 ) {
-                    Text(stringResource(R.string.finish))
+                    Text("Finish")
                 }
             }
         }

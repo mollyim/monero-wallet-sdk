@@ -10,10 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import im.molly.monero.demo.R
 import im.molly.monero.demo.ui.component.Toolbar
 
 @Composable
@@ -43,13 +41,13 @@ private fun HomeScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Toolbar(
-                title = stringResource(R.string.monero_wallets),
+                title = "Monero wallets",
                 scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = onAddWalletClick) {
-                Text(stringResource(R.string.add_wallet))
+                Text("Add wallets")
             }
         },
     ) { padding ->
