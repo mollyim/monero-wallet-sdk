@@ -93,10 +93,16 @@ class WalletNative private constructor(
         }
     }
 
-    override fun cancelRefresh() = nativeCancelRefresh(handle)
+    override fun cancelRefresh() {
+        scope.launch(ioDispatcher) {
+            nativeCancelRefresh(handle)
+        }
+    }
 
     override fun setRefreshSince(blockHeightOrTimestamp: Long) {
-        nativeSetRefreshSince(handle, blockHeightOrTimestamp)
+        scope.launch(ioDispatcher) {
+            nativeSetRefreshSince(handle, blockHeightOrTimestamp)
+        }
     }
 
     /**
@@ -158,7 +164,12 @@ class WalletNative private constructor(
 
     private val pendingRequestLock = ReentrantLock()
 
-    @CalledByNative("wallet.cc")
+    /**
+     * Invoked by native code to make a cancellable remote call to a remote node.
+     *
+     * Caller must close [HttpResponse.body] upon completion of processing the response.
+     */
+    @CalledByNative("http_client.cc")
     private fun callRemoteNode(
         method: String?,
         path: String?,
@@ -166,19 +177,26 @@ class WalletNative private constructor(
         body: ByteArray?,
     ): HttpResponse? = runBlocking {
         pendingRequestLock.withLock {
-            pendingRequest = if (requestsAllowed) {
-                async {
-                    remoteNodeClient?.request(HttpRequest(method, path, header, body))
-                }
-            } else null
-        }
-        runCatching {
-            pendingRequest?.await()
-        }.onFailure { throwable ->
-            if (throwable !is CancellationException) {
-                throw throwable
+            if (!requestsAllowed) {
+                return@runBlocking null
             }
-        }.getOrNull()
+            pendingRequest = async {
+                remoteNodeClient?.request(HttpRequest(method, path, header, body))
+            }
+        }
+        try {
+            runCatching {
+                pendingRequest?.await()
+            }.onFailure { throwable ->
+                if (throwable is CancellationException) {
+                    return@onFailure
+                }
+                logger.e("Error waiting for HTTP response", throwable)
+                throw throwable
+            }.getOrNull()
+        } finally {
+            pendingRequest = null
+        }
     }
 
     override fun close() {

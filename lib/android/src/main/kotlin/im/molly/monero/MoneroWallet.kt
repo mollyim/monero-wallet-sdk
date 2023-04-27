@@ -2,6 +2,7 @@ package im.molly.monero
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -11,6 +12,8 @@ class MoneroWallet internal constructor(
     private val wallet: IWallet,
     val remoteNodeClient: RemoteNodeClient?,
 ) : IWallet by wallet, AutoCloseable {
+
+    private val logger = loggerFor<MoneroWallet>()
 
     val publicAddress: String = wallet.primaryAccountAddress
 
@@ -23,11 +26,18 @@ class MoneroWallet internal constructor(
 
             override fun onBalanceChanged(txOuts: List<OwnedTxOut>?, checkedAtBlockHeight: Long) {
                 lastKnownLedger = Ledger(publicAddress, txOuts!!, checkedAtBlockHeight)
-                trySendBlocking(lastKnownLedger)
+                sendLedger(lastKnownLedger)
             }
 
             override fun onRefresh(blockchainHeight: Long) {
-                trySendBlocking(lastKnownLedger.copy(checkedAtBlockHeight = blockchainHeight))
+                sendLedger(lastKnownLedger.copy(checkedAtBlockHeight = blockchainHeight))
+            }
+
+            private fun sendLedger(ledger: Ledger) {
+                trySend(ledger)
+                    .onFailure {
+                        logger.e("Too many ledger updates, channel capacity exceeded")
+                    }
             }
         }
 
