@@ -12,7 +12,7 @@ class WalletNativeTest {
         assertThat(
             WalletNative.fullNode(
                 networkId = MoneroNetwork.Mainnet.id,
-                secretSpendKey = SecretKey("d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706".parseHex())
+                secretSpendKey = SecretKey("d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706".parseHex()),
             ).primaryAccountAddress
         ).isEqualTo("4AYjQM9HoAFNUeC3cvSfgeAN89oMMpMqiByvunzSzhn97cj726rJj3x8hCbH58UnMqQJShczCxbpWRiCJQ3HCUDHLiKuo4T")
 

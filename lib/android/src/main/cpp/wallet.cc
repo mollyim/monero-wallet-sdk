@@ -186,6 +186,7 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
     ret = Status::INTERRUPTED;
   }
   m_refresh_running.store(false);
+  m_blockchain_height = m_wallet.get_blockchain_current_height();
   // Always notify the last block height.
   callOnRefresh(false);
   return ret;

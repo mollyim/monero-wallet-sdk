@@ -2,7 +2,6 @@ package im.molly.monero
 
 import android.content.Intent
 import android.os.IBinder
-import android.os.ParcelFileDescriptor
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.*
@@ -43,27 +42,49 @@ internal class WalletServiceImpl(
 
     override fun createWallet(
         config: WalletConfig?,
-        client: IRemoteNodeClient?,
-    ): IWallet {
-        randomSecretKey().use { secretKey ->
-            return createOrRestoreWallet(config, client, secretKey)
+        callback: IWalletServiceCallbacks?,
+    ) {
+        serviceScope.launch {
+            val secretSpendKey = randomSecretKey()
+            val wallet = secretSpendKey.use { secret ->
+                createOrRestoreWallet(config, secret)
+            }
+            callback?.onWalletResult(wallet)
         }
     }
 
     override fun restoreWallet(
         config: WalletConfig?,
-        client: IRemoteNodeClient?,
+        callback: IWalletServiceCallbacks?,
         secretSpendKey: SecretKey?,
         accountCreationTimestamp: Long,
-    ): IWallet {
-        secretSpendKey.use { secretKey ->
-            return createOrRestoreWallet(config, client, secretKey, accountCreationTimestamp)
+    ) {
+        serviceScope.launch {
+            val wallet = secretSpendKey.use { secret ->
+                createOrRestoreWallet(config, secret, accountCreationTimestamp)
+            }
+            callback?.onWalletResult(wallet)
+        }
+    }
+
+    override fun openWallet(
+        config: WalletConfig?,
+        callback: IWalletServiceCallbacks?,
+    ) {
+        requireNotNull(config)
+        serviceScope.launch {
+            val wallet = WalletNative.fullNode(
+                networkId = config.networkId,
+                storageAdapter = config.storageAdapter,
+                remoteNodeClient = config.remoteNodeClient,
+                coroutineContext = serviceScope.coroutineContext,
+            )
+            callback?.onWalletResult(wallet)
         }
     }
 
     private fun createOrRestoreWallet(
         config: WalletConfig?,
-        client: IRemoteNodeClient?,
         secretSpendKey: SecretKey?,
         accountCreationTimestamp: Long? = null,
     ): IWallet {
@@ -71,24 +92,10 @@ internal class WalletServiceImpl(
         requireNotNull(secretSpendKey)
         return WalletNative.fullNode(
             networkId = config.networkId,
+            storageAdapter = config.storageAdapter,
+            remoteNodeClient = config.remoteNodeClient,
             secretSpendKey = secretSpendKey,
-            remoteNodeClient = client,
             accountTimestamp = accountCreationTimestamp,
-            coroutineContext = serviceScope.coroutineContext,
-        )
-    }
-
-    override fun openWallet(
-        config: WalletConfig?,
-        client: IRemoteNodeClient?,
-        source: ParcelFileDescriptor?,
-    ): IWallet {
-        requireNotNull(config)
-        requireNotNull(source)
-        return WalletNative.fullNode(
-            networkId = config.networkId,
-            savedDataFd = source.fd,
-            remoteNodeClient = client,
             coroutineContext = serviceScope.coroutineContext,
         )
     }

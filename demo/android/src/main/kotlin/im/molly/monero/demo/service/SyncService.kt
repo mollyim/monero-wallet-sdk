@@ -10,6 +10,8 @@ import androidx.lifecycle.lifecycleScope
 import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.data.WalletRepository
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.seconds
 
 const val TAG = "SyncService"
@@ -21,6 +23,20 @@ class SyncService(
 
     private suspend fun doSync() = coroutineScope {
         val syncedWalletIds = mutableSetOf<Long>()
+        val mutex = Mutex()
+
+        launch {
+            while (isActive) {
+                mutex.withLock {
+                    syncedWalletIds.map {
+                        walletRepository.getWallet(it)
+                    }.forEach { wallet ->
+                        wallet.commit()
+                    }
+                }
+                delay(60.seconds)
+            }
+        }
 
         walletRepository.getWalletIdList().collect {
             val idSet = it.toSet()
@@ -33,12 +49,14 @@ class SyncService(
                         if (result.isError()) {
                             break
                         }
-                        walletRepository.saveWallet(wallet)
+                        wallet.commit()
                         delay(10.seconds)
                     }
                 }
             }
-            syncedWalletIds.addAll(toSync)
+            mutex.withLock {
+                syncedWalletIds.addAll(toSync)
+            }
         }
     }
 

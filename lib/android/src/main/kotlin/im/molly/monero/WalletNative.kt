@@ -11,39 +11,39 @@ import kotlin.coroutines.CoroutineContext
 
 class WalletNative private constructor(
     networkId: Int,
+    private val storageAdapter: IStorageAdapter?,
     private val remoteNodeClient: IRemoteNodeClient?,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher,
 ) : IWallet.Stub(), Closeable {
 
     companion object {
-        // TODO: Full node wallet != local synchronization wallet
+        // TODO: Find better name because this is a local synchronization wallet, not a full node wallet
         fun fullNode(
             networkId: Int,
-            secretSpendKey: SecretKey? = null,
-            savedDataFd: Int? = null,
-            accountTimestamp: Long? = null,
+            storageAdapter: IStorageAdapter? = null,
             remoteNodeClient: IRemoteNodeClient? = null,
+            secretSpendKey: SecretKey? = null,
+            accountTimestamp: Long? = null,
             coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         ) = WalletNative(
             networkId = networkId,
+            storageAdapter = storageAdapter,
             remoteNodeClient = remoteNodeClient,
             scope = CoroutineScope(coroutineContext),
             ioDispatcher = ioDispatcher,
         ).apply {
-            secretSpendKey?.let { secretKey ->
-                require(savedDataFd == null)
-                require(accountTimestamp == null || accountTimestamp >= 0)
-                val timestampOrNow = accountTimestamp ?: (System.currentTimeMillis() / 1000)
-                nativeRestoreAccount(handle, secretKey.bytes, timestampOrNow)
-            }
-
-            savedDataFd?.let { fd ->
-                require(secretSpendKey == null)
-                require(accountTimestamp == null)
-                if (!nativeLoad(handle, fd)) {
-                    throw IllegalArgumentException("Cannot load wallet data")
+            when {
+                secretSpendKey != null -> {
+                    require(accountTimestamp == null || accountTimestamp >= 0)
+                    val timestampOrNow = accountTimestamp ?: (System.currentTimeMillis() / 1000)
+                    nativeRestoreAccount(handle, secretSpendKey.bytes, timestampOrNow)
+                    tryWriteState()
+                }
+                else -> {
+                    require(accountTimestamp == null)
+                    readState()
                 }
             }
         }
@@ -56,6 +56,31 @@ class WalletNative private constructor(
     }
 
     private val handle: Long = nativeCreate(networkId)
+
+    private fun tryWriteState(): Boolean {
+        requireNotNull(storageAdapter)
+        val pipe = ParcelFileDescriptor.createReliablePipe()
+        return pipe[1].use { writeSide ->
+            val storageIsReady = storageAdapter.writeAsync(pipe[0])
+            if (storageIsReady) {
+                val result = nativeSave(handle, writeSide.fd)
+                if (!result) {
+                    logger.e("Wallet data serialization failed")
+                }
+                result
+            } else false
+        }
+    }
+
+    private fun readState() {
+        requireNotNull(storageAdapter)
+        val pipe = ParcelFileDescriptor.createReliablePipe()
+        return pipe[0].use { readSide ->
+            storageAdapter.readAsync(pipe[1])
+            val result = nativeLoad(handle, readSide.fd)
+            check(result) { "Wallet data deserialization failed" }
+        }
+    }
 
     override fun getPrimaryAccountAddress() = nativeGetPrimaryAccountAddress(handle)
 
@@ -78,7 +103,7 @@ class WalletNative private constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun resumeRefresh(
         skipCoinbaseOutputs: Boolean,
-        callback: IRefreshCallback?,
+        callback: IWalletCallbacks?,
     ) {
         scope.launch {
             val status = suspendCancellableCoroutine { continuation ->
@@ -89,7 +114,7 @@ class WalletNative private constructor(
                     nativeCancelRefresh(handle)
                 }
             }
-            callback?.onResult(currentBlockchainHeight, status)
+            callback?.onRefreshResult(currentBlockchainHeight, status)
         }
     }
 
@@ -102,6 +127,13 @@ class WalletNative private constructor(
     override fun setRefreshSince(blockHeightOrTimestamp: Long) {
         scope.launch(ioDispatcher) {
             nativeSetRefreshSince(handle, blockHeightOrTimestamp)
+        }
+    }
+
+    override fun commit(callback: IWalletCallbacks?) {
+        scope.launch(ioDispatcher) {
+            val result = tryWriteState()
+            callback?.onCommitResult(result)
         }
     }
 
@@ -121,11 +153,6 @@ class WalletNative private constructor(
         balanceListenersLock.withLock {
             balanceListeners.remove(listener)
         }
-    }
-
-    override fun save(destination: ParcelFileDescriptor?) {
-        requireNotNull(destination)
-        nativeSave(handle, destination.fd)
     }
 
     @CalledByNative("wallet.cc")

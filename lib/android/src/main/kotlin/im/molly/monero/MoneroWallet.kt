@@ -3,19 +3,21 @@ package im.molly.monero
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.onFailure
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
+    private val storageAdapter: StorageAdapter,
     val remoteNodeClient: RemoteNodeClient?,
-) : IWallet by wallet, AutoCloseable {
+) : AutoCloseable {
 
     private val logger = loggerFor<MoneroWallet>()
 
-    val publicAddress: String = wallet.primaryAccountAddress
+    val primaryAddress: String = wallet.primaryAccountAddress
+
+    var dataStore by storageAdapter::dataStore
 
     /**
      * A [Flow] of ledger changes.
@@ -25,7 +27,7 @@ class MoneroWallet internal constructor(
             lateinit var lastKnownLedger: Ledger
 
             override fun onBalanceChanged(txOuts: List<OwnedTxOut>?, checkedAtBlockHeight: Long) {
-                lastKnownLedger = Ledger(publicAddress, txOuts!!, checkedAtBlockHeight)
+                lastKnownLedger = Ledger(primaryAddress, txOuts!!, checkedAtBlockHeight)
                 sendLedger(lastKnownLedger)
             }
 
@@ -34,38 +36,49 @@ class MoneroWallet internal constructor(
             }
 
             private fun sendLedger(ledger: Ledger) {
-                trySend(ledger)
-                    .onFailure {
-                        logger.e("Too many ledger updates, channel capacity exceeded")
-                    }
+                trySend(ledger).onFailure {
+                    logger.e("Too many ledger updates, channel capacity exceeded")
+                }
             }
         }
 
-        addBalanceListener(listener)
+        wallet.addBalanceListener(listener)
 
-        awaitClose { removeBalanceListener(listener) }
+        awaitClose { wallet.removeBalanceListener(listener) }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun awaitRefresh(
         skipCoinbaseOutputs: Boolean = false,
     ): RefreshResult = suspendCancellableCoroutine { continuation ->
-        val callback = object : IRefreshCallback.Stub() {
-            override fun onResult(blockHeight: Long, status: Int) {
+        wallet.resumeRefresh(skipCoinbaseOutputs, object : BaseWalletCallbacks() {
+            override fun onRefreshResult(blockHeight: Long, status: Int) {
                 val result = RefreshResult(blockHeight, status)
                 continuation.resume(result) {}
             }
-        }
+        })
 
-        resumeRefresh(skipCoinbaseOutputs, callback)
-
-        continuation.invokeOnCancellation { cancelRefresh() }
+        continuation.invokeOnCancellation { wallet.cancelRefresh() }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun commit(): Boolean = suspendCancellableCoroutine { continuation ->
+        wallet.commit(object : BaseWalletCallbacks() {
+            override fun onCommitResult(success: Boolean) {
+                continuation.resume(success) {}
+            }
+        })
+    }
+
+    override fun close() = wallet.close()
 }
 
-class RefreshResult(
-    val blockHeight: Long,
-    private val status: Int
-) {
+private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
+    override fun onRefreshResult(blockHeight: Long, status: Int) = Unit
+
+    override fun onCommitResult(success: Boolean) = Unit
+}
+
+class RefreshResult(val blockHeight: Long, private val status: Int) {
     fun isError() = status != WalletNative.Status.OK
 }

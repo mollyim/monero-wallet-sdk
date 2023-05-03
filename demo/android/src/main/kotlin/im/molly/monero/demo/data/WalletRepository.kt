@@ -5,6 +5,7 @@ import im.molly.monero.demo.data.model.WalletConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import okhttp3.OkHttpClient
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 class WalletRepository(
@@ -20,14 +21,16 @@ class WalletRepository(
     suspend fun getWallet(walletId: Long): MoneroWallet {
         return walletIdMap.computeIfAbsent(walletId) {
             externalScope.async {
-                val config = getWalletConfig(walletId)
+                val configFlow = getWalletConfig(walletId)
+                val config = configFlow.first()
                 val userSettings = settingsRepository.getUserSettings().first()
                 val httpClient = sharedHttpClient.newBuilder()
                     .proxy(userSettings.activeProxy)
                     .build()
                 val wallet = moneroSdkClient.openWallet(
-                    publicAddress = config.first().publicAddress,
-                    remoteNodes = config.map {
+                    network = MoneroNetwork.of(config.publicAddress),
+                    filename = config.filename,
+                    remoteNodes = configFlow.map {
                         it.remoteNodes.map { node ->
                             RemoteNode(
                                 uri = node.uri,
@@ -38,6 +41,7 @@ class WalletRepository(
                     },
                     httpClient = httpClient,
                 )
+                check(config.publicAddress == wallet.primaryAddress) { "primary address mismatch" }
                 wallet
             }
         }.await()
@@ -59,17 +63,16 @@ class WalletRepository(
         name: String,
         remoteNodeIds: List<Long>,
     ): Pair<Long, MoneroWallet> {
-        val wallet = moneroSdkClient.createWallet(moneroNetwork)
+        val uniqueFilename = UUID.randomUUID().toString()
+        val wallet = moneroSdkClient.createWallet(moneroNetwork, uniqueFilename)
         val walletId = walletDataSource.createWalletConfig(
-            publicAddress = wallet.publicAddress,
+            publicAddress = wallet.primaryAddress,
+            filename = uniqueFilename,
             name = name,
             remoteNodeIds = remoteNodeIds,
         )
         return walletId to wallet
     }
-
-    suspend fun saveWallet(wallet: MoneroWallet) =
-        moneroSdkClient.saveWallet(wallet)
 
     suspend fun updateWalletConfig(walletConfig: WalletConfig) =
         walletDataSource.updateWalletConfig(walletConfig)

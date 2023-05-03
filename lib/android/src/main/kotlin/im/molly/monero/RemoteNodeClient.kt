@@ -16,7 +16,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-// TODO: Hide IRemoteNodeClient methods
+// TODO: Hide IRemoteNodeClient methods and rename to HttpRpcClient
 class RemoteNodeClient private constructor(
     val network: MoneroNetwork,
     private val loadBalancer: LoadBalancer,
@@ -76,15 +76,13 @@ class RemoteNodeClient private constructor(
                 if (responseBody == null) {
                     callback?.onResponse(status, null, null)
                 } else {
-                    val contentType = responseBody.contentType()?.toString()
-                    val pipe = ParcelFileDescriptor.createPipe()
-
-                    callback?.onResponse(status, contentType, pipe[0])
-
-                    responseBody.use {
+                    responseBody.use { body ->
+                        val contentType = body.contentType()?.toString()
+                        val pipe = ParcelFileDescriptor.createPipe()
                         pipe[1].use { writeSide ->
+                            callback?.onResponse(status, contentType, pipe[0])
                             FileOutputStream(writeSide.fileDescriptor).use { out ->
-                                runCatching { it.byteStream().copyTo(out) }
+                                runCatching { body.byteStream().copyTo(out) }
                             }
                         }
                     }

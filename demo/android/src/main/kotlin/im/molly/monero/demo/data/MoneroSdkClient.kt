@@ -1,61 +1,87 @@
 package im.molly.monero.demo.data
 
 import android.content.Context
+import android.util.AtomicFile
 import im.molly.monero.*
 import im.molly.monero.loadbalancer.RoundRobinRule
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import okhttp3.OkHttpClient
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
 
-class MoneroSdkClient(
-    private val context: Context,
-    private val walletDataFileStorage: WalletDataFileStorage,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-) {
-    private val providerDeferred = CoroutineScope(ioDispatcher).async {
+class MoneroSdkClient(private val context: Context) {
+
+    private val providerDeferred = CoroutineScope(Dispatchers.IO).async {
         WalletProvider.connect(context)
     }
 
-    suspend fun createWallet(moneroNetwork: MoneroNetwork): MoneroWallet {
+    suspend fun createWallet(network: MoneroNetwork, filename: String): MoneroWallet {
         val provider = providerDeferred.await()
-        return withContext(ioDispatcher) {
-            val wallet = provider.createNewWallet(moneroNetwork)
-            saveToFile(wallet, provider, false)
-            wallet
-        }
-    }
-
-    suspend fun saveWallet(wallet: MoneroWallet) {
-        withContext(ioDispatcher) {
-            saveToFile(wallet, providerDeferred.await(), true)
-        }
-    }
-
-    private fun saveToFile(wallet: MoneroWallet, provider: WalletProvider, canOverwrite: Boolean) {
-        walletDataFileStorage.tryWriteData(wallet.publicAddress, canOverwrite) { output ->
-            provider.saveWallet(wallet, output)
+        return provider.createNewWallet(
+            network = network,
+            dataStore = WalletDataStoreFile(filename, newFile = true),
+        ).also { wallet ->
+            wallet.commit()
         }
     }
 
     suspend fun openWallet(
-        publicAddress: String,
+        network: MoneroNetwork,
+        filename: String,
         remoteNodes: Flow<List<RemoteNode>>,
         httpClient: OkHttpClient,
     ): MoneroWallet {
+        val dataStore = WalletDataStoreFile(filename)
+        val client = RemoteNodeClient.forNetwork(
+            network = network,
+            remoteNodes = remoteNodes,
+            loadBalancerRule = RoundRobinRule(),
+            httpClient = httpClient,
+        )
         val provider = providerDeferred.await()
-        return withContext(ioDispatcher) {
-            val network = MoneroNetwork.of(publicAddress)
-            val client = RemoteNodeClient.forNetwork(
-                network = network,
-                remoteNodes = remoteNodes,
-                loadBalancerRule = RoundRobinRule(),
-                httpClient = httpClient,
-            )
-            val wallet = walletDataFileStorage.readData(publicAddress).use { input ->
-                provider.openWallet(network, client, input)
+        return provider.openWallet(network, dataStore, client)
+    }
+
+    private val filesDir = context.filesDir
+
+    private inner class WalletDataStoreFile(filename: String, newFile: Boolean = false) :
+        WalletDataStore {
+
+        private val file: AtomicFile = getBackingFile(filename)
+
+        init {
+            if (newFile && !file.baseFile.createNewFile()) {
+                throw IOException("Data file already exists: ${file.baseFile.path}")
             }
-            check(publicAddress == wallet.primaryAccountAddress) { "primary address mismatch" }
-            wallet
+        }
+
+        private fun getBackingFile(filename: String): AtomicFile =
+            AtomicFile(File(getOrCreateWalletDataDir(), "$filename.wallet"))
+
+        private fun getOrCreateWalletDataDir(): File {
+            val walletDataDir = File(filesDir, "wallet_data")
+            if (walletDataDir.exists() || walletDataDir.mkdir()) {
+                return walletDataDir
+            }
+            throw IOException("Cannot create wallet data directory: ${walletDataDir.path}")
+        }
+
+        override suspend fun write(writer: (FileOutputStream) -> Unit) {
+            val output = file.startWrite()
+            try {
+                writer(output)
+                file.finishWrite(output)
+            } catch (ioe: IOException) {
+                file.failWrite(output)
+                throw ioe
+            }
+        }
+
+        override suspend fun read(): FileInputStream {
+            return file.openRead()
         }
     }
 }

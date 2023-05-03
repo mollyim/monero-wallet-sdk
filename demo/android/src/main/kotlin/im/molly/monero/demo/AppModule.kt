@@ -24,12 +24,8 @@ object AppModule {
         WalletDataSource(database.walletDao())
     }
 
-    private val walletDataFileStorage: WalletDataFileStorage by lazy {
-        AppWalletDataFileStorage(application)
-    }
-
     private val moneroSdkClient: MoneroSdkClient by lazy {
-        MoneroSdkClient(application, walletDataFileStorage)
+        MoneroSdkClient(application)
     }
 
     val settingsRepository: SettingsRepository by lazy {

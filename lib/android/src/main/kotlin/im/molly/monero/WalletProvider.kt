@@ -5,10 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.*
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.time.Instant
 
 // TODO: Rename to SandboxedWalletProvider and extract interface, add InProcessWalletProvider
@@ -52,53 +49,82 @@ class WalletProvider private constructor(
 
     private val logger = loggerFor<WalletProvider>()
 
-    fun createNewWallet(
+    suspend fun createNewWallet(
         network: MoneroNetwork,
+        dataStore: WalletDataStore? = null,
         client: RemoteNodeClient? = null,
     ): MoneroWallet {
-        require(client == null || client.network == network)
-        return MoneroWallet(
-            service.createWallet(buildConfig(network), client), client
-        )
+        val storageAdapter = StorageAdapter(dataStore)
+        val wallet = suspendCancellableCoroutine { continuation ->
+            service.createWallet(
+                buildConfig(network, StorageAdapter(dataStore), client),
+                WalletResultCallback(continuation),
+            )
+        }
+        return MoneroWallet(wallet, storageAdapter, client)
     }
 
-    fun restoreWallet(
+    suspend fun restoreWallet(
         network: MoneroNetwork,
+        dataStore: WalletDataStore? = null,
         client: RemoteNodeClient? = null,
         secretSpendKey: SecretKey,
         accountCreationTime: Instant,
     ): MoneroWallet {
-        require(client == null || client.network == network)
-        return MoneroWallet(
+        val storageAdapter = StorageAdapter(dataStore)
+        val wallet = suspendCancellableCoroutine { continuation ->
             service.restoreWallet(
-                buildConfig(network),
-                client,
+                buildConfig(network, StorageAdapter(dataStore), client),
+                WalletResultCallback(continuation),
                 secretSpendKey,
                 accountCreationTime.epochSecond,
-            ),
-            client,
-        )
+            )
+        }
+        return MoneroWallet(wallet, storageAdapter, client)
     }
 
-    fun openWallet(
+    suspend fun openWallet(
         network: MoneroNetwork,
+        dataStore: WalletDataStore,
         client: RemoteNodeClient? = null,
-        source: FileInputStream,
-    ): MoneroWallet =
-        ParcelFileDescriptor.dup(source.fd).use { fd ->
-            MoneroWallet(service.openWallet(buildConfig(network), client, fd), client)
+    ): MoneroWallet {
+        val storageAdapter = StorageAdapter(dataStore)
+        val wallet = suspendCancellableCoroutine { continuation ->
+            service.openWallet(
+                buildConfig(network, storageAdapter, client),
+                WalletResultCallback(continuation),
+            )
         }
-
-    fun saveWallet(wallet: MoneroWallet, destination: FileOutputStream) {
-        ParcelFileDescriptor.dup(destination.fd).use {
-            wallet.save(it)
-        }
+        return MoneroWallet(wallet, storageAdapter, client)
     }
 
-    private fun buildConfig(network: MoneroNetwork) = WalletConfig(network.id)
+    private fun buildConfig(
+        network: MoneroNetwork,
+        storageAdapter: StorageAdapter,
+        remoteNodeClient: RemoteNodeClient?,
+    ): WalletConfig {
+        require(remoteNodeClient == null || remoteNodeClient.network == network)
+        return WalletConfig(network.id, storageAdapter, remoteNodeClient)
+    }
 
     fun disconnect() {
         context.unbindService(serviceConnection)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private class WalletResultCallback(
+        private val continuation: CancellableContinuation<IWallet>
+    ) : IWalletServiceCallbacks.Stub() {
+        override fun onWalletResult(wallet: IWallet?) {
+            when {
+                wallet != null -> {
+                    continuation.resume(wallet) {
+                        wallet.close()
+                    }
+                }
+                else -> TODO()
+            }
+        }
     }
 }
 

@@ -20,6 +20,9 @@ data class WalletEntity(
     @ColumnInfo(name = "public_address")
     val publicAddress: String,
 
+    @ColumnInfo(name = "filename")
+    val filename: String,
+
     @ColumnInfo(name = "name")
     val name: String = "",
 )
@@ -27,6 +30,7 @@ data class WalletEntity(
 fun WalletEntity.asExternalModel() = WalletConfig(
     id = id,
     publicAddress = publicAddress,
+    filename = filename,
     name = name,
     remoteNodes = setOf(),
 )
@@ -34,5 +38,6 @@ fun WalletEntity.asExternalModel() = WalletConfig(
 fun WalletConfig.asEntity() = WalletEntity(
     id = id,
     publicAddress = publicAddress,
+    filename = filename,
     name = name
 )

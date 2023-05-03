@@ -19,12 +19,14 @@ class WalletDataSource(
 
     suspend fun createWalletConfig(
         publicAddress: String,
+        filename: String,
         name: String,
         remoteNodeIds: List<Long>,
     ): Long {
         val walletId = walletDao.insert(
             WalletEntity(
                 publicAddress = publicAddress,
+                filename = filename,
                 name = name,
             )
         )
