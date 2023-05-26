@@ -57,11 +57,11 @@ internal class WalletServiceImpl(
         config: WalletConfig?,
         callback: IWalletServiceCallbacks?,
         secretSpendKey: SecretKey?,
-        accountCreationTimestamp: Long,
+        restorePoint: Long,
     ) {
         serviceScope.launch {
             val wallet = secretSpendKey.use { secret ->
-                createOrRestoreWallet(config, secret, accountCreationTimestamp)
+                createOrRestoreWallet(config, secret, restorePoint)
             }
             callback?.onWalletResult(wallet)
         }
@@ -86,7 +86,7 @@ internal class WalletServiceImpl(
     private fun createOrRestoreWallet(
         config: WalletConfig?,
         secretSpendKey: SecretKey?,
-        accountCreationTimestamp: Long? = null,
+        restorePoint: Long? = null,
     ): IWallet {
         requireNotNull(config)
         requireNotNull(secretSpendKey)
@@ -95,7 +95,7 @@ internal class WalletServiceImpl(
             storageAdapter = config.storageAdapter,
             remoteNodeClient = config.remoteNodeClient,
             secretSpendKey = secretSpendKey,
-            accountTimestamp = accountCreationTimestamp,
+            restorePoint = restorePoint,
             coroutineContext = serviceScope.coroutineContext,
         )
     }

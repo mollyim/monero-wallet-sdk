@@ -24,7 +24,7 @@ class WalletNative private constructor(
             storageAdapter: IStorageAdapter? = null,
             remoteNodeClient: IRemoteNodeClient? = null,
             secretSpendKey: SecretKey? = null,
-            accountTimestamp: Long? = null,
+            restorePoint: Long? = null,
             coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         ) = WalletNative(
@@ -36,13 +36,13 @@ class WalletNative private constructor(
         ).apply {
             when {
                 secretSpendKey != null -> {
-                    require(accountTimestamp == null || accountTimestamp >= 0)
-                    val timestampOrNow = accountTimestamp ?: (System.currentTimeMillis() / 1000)
-                    nativeRestoreAccount(handle, secretSpendKey.bytes, timestampOrNow)
+                    require(restorePoint == null || restorePoint >= 0)
+                    val restorePointOrNow = restorePoint ?: (System.currentTimeMillis() / 1000)
+                    nativeRestoreAccount(handle, secretSpendKey.bytes, restorePointOrNow)
                     tryWriteState()
                 }
                 else -> {
-                    require(accountTimestamp == null)
+                    require(restorePoint == null)
                     readState()
                 }
             }
@@ -251,7 +251,7 @@ class WalletNative private constructor(
     private external fun nativeLoad(handle: Long, fd: Int): Boolean
     private external fun nativeNonReentrantRefresh(handle: Long, skipCoinbase: Boolean): Int
     private external fun nativeRestoreAccount(
-        handle: Long, secretScalar: ByteArray, accountTimestamp: Long
+        handle: Long, secretScalar: ByteArray, restorePoint: Long
     )
 
     private external fun nativeSave(handle: Long, fd: Int): Boolean

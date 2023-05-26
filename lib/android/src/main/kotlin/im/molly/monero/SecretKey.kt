@@ -2,8 +2,6 @@ package im.molly.monero
 
 import android.os.Parcel
 import android.os.Parcelable
-import kotlinx.parcelize.Parceler
-import kotlinx.parcelize.Parcelize
 import java.io.Closeable
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -15,7 +13,6 @@ import javax.security.auth.Destroyable
  * SecretKey wraps a secret scalar value, helping to prevent accidental exposure and securely
  * erasing the value from memory.
  */
-@Parcelize
 class SecretKey : Destroyable, Closeable, Parcelable {
 
     private val secret = ByteArray(32)
@@ -31,14 +28,6 @@ class SecretKey : Destroyable, Closeable, Parcelable {
 
     private constructor(parcel: Parcel) {
         parcel.readByteArray(secret)
-    }
-
-    companion object : Parceler<SecretKey> {
-        override fun create(parcel: Parcel) = SecretKey(parcel)
-
-        override fun SecretKey.write(parcel: Parcel, flags: Int) {
-            parcel.writeByteArray(secret)
-        }
     }
 
     val bytes: ByteArray
@@ -58,6 +47,24 @@ class SecretKey : Destroyable, Closeable, Parcelable {
         if (!destroyed) {
             secret.fill(0)
             destroyed = true
+        }
+    }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeByteArray(secret)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<SecretKey> {
+        override fun createFromParcel(parcel: Parcel): SecretKey {
+            return SecretKey(parcel)
+        }
+
+        override fun newArray(size: Int): Array<SecretKey?> {
+            return arrayOfNulls(size)
         }
     }
 

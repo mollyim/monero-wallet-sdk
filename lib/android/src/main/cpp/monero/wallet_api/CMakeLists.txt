@@ -73,7 +73,6 @@ set(WALLET_API_SOURCES
     src/net/http.cpp
     src/net/i2p_address.cpp
     src/net/parse.cpp
-    src/net/parse.cpp
     src/net/socks.cpp
     src/net/socks_connect.cpp
     src/net/tor_address.cpp

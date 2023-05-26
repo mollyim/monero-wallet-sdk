@@ -28,6 +28,23 @@ class MoneroSdkClient(private val context: Context) {
         }
     }
 
+    suspend fun restoreWallet(
+        network: MoneroNetwork,
+        filename: String,
+        secretSpendKey: SecretKey,
+        restorePoint: RestorePoint,
+    ): MoneroWallet {
+        val provider = providerDeferred.await()
+        return provider.restoreWallet(
+            network = network,
+            dataStore = WalletDataStoreFile(filename, newFile = true),
+            secretSpendKey = secretSpendKey,
+            restorePoint = restorePoint,
+        ).also { wallet ->
+            wallet.commit()
+        }
+    }
+
     suspend fun openWallet(
         network: MoneroNetwork,
         filename: String,

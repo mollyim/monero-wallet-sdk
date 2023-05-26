@@ -26,7 +26,7 @@ class Wallet : tools::i_wallet2_callback {
          int network_id,
          const JvmRef<jobject>& wallet_native);
 
-  void restoreAccount(const std::vector<char>& secret_scalar, uint64_t account_timestamp);
+  void restoreAccount(const std::vector<char>& secret_scalar, uint64_t restore_point);
   uint64_t estimateRestoreHeight(uint64_t timestamp);
 
   bool parseFrom(std::istream& input);

@@ -7,7 +7,7 @@ import im.molly.monero.WalletConfig;
 
 interface IWalletService {
     oneway void createWallet(in WalletConfig config, in IWalletServiceCallbacks callback);
-    oneway void restoreWallet(in WalletConfig config, in IWalletServiceCallbacks callback, in SecretKey spendSecretKey, long accountCreationTimestamp);
+    oneway void restoreWallet(in WalletConfig config, in IWalletServiceCallbacks callback, in SecretKey spendSecretKey, long restorePoint);
     oneway void openWallet(in WalletConfig config, in IWalletServiceCallbacks callback);
     void setListener(in IWalletServiceListener listener);
 }

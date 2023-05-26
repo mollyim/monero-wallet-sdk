@@ -9,6 +9,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.Balance
@@ -80,69 +81,67 @@ private fun WalletScreenPopulated(
 ) {
     var showRenameDialog by remember { mutableStateOf(false) }
 
-    val amountValueString =
-
-        Scaffold(
-            topBar = {
-                Toolbar(
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = AppIcons.ArrowBack,
-                                contentDescription = "Back",
-                            )
-                        }
-                    },
-                    actions = {
-                        WalletKebabMenu(
-                            onRenameClick = { showRenameDialog = true },
-                            onDeleteClick = { },
+    Scaffold(
+        topBar = {
+            Toolbar(
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = AppIcons.ArrowBack,
+                            contentDescription = "Back",
                         )
                     }
-                )
-            }
-        ) { padding ->
-            Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    style = MaterialTheme.typography.headlineLarge,
-                    text = buildAnnotatedString {
-                        append(MoneroCurrency.symbol + " ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(MoneroCurrency.format(ledger.balance.totalAmount))
-                        }
-                    }
-                )
-                Text(text = walletConfig.name, style = MaterialTheme.typography.headlineSmall)
-            }
-
-            if (showRenameDialog) {
-                var name by remember { mutableStateOf(walletConfig.name) }
-                AlertDialog(
-                    onDismissRequest = { showRenameDialog = false },
-                    title = { Text("Enter wallet name") },
-                    text = {
-                        OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            singleLine = true,
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            onWalletConfigChange(walletConfig.copy(name = name))
-                            showRenameDialog = false
-                        }) {
-                            Text("Rename")
-                        }
-                    },
-                )
-            }
+                },
+                actions = {
+                    WalletKebabMenu(
+                        onRenameClick = { showRenameDialog = true },
+                        onDeleteClick = { },
+                    )
+                }
+            )
         }
+    ) { padding ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                style = MaterialTheme.typography.headlineLarge,
+                text = buildAnnotatedString {
+                    append(MoneroCurrency.symbol + " ")
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(MoneroCurrency.format(ledger.balance.totalAmount))
+                    }
+                }
+            )
+            Text(text = walletConfig.name, style = MaterialTheme.typography.headlineSmall)
+        }
+
+        if (showRenameDialog) {
+            var name by remember { mutableStateOf(walletConfig.name) }
+            AlertDialog(
+                onDismissRequest = { showRenameDialog = false },
+                title = { Text("Enter wallet name") },
+                text = {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onWalletConfigChange(walletConfig.copy(name = name))
+                        showRenameDialog = false
+                    }) {
+                        Text("Rename")
+                    }
+                },
+            )
+        }
+    }
 }
 
 @Composable

@@ -74,6 +74,29 @@ class WalletRepository(
         return walletId to wallet
     }
 
+    suspend fun restoreWallet(
+        moneroNetwork: MoneroNetwork,
+        name: String,
+        remoteNodeIds: List<Long>,
+        secretSpendKey: SecretKey,
+        restorePoint: RestorePoint,
+    ): Pair<Long, MoneroWallet> {
+        val uniqueFilename = UUID.randomUUID().toString()
+        val wallet = moneroSdkClient.restoreWallet(
+            moneroNetwork,
+            uniqueFilename,
+            secretSpendKey,
+            restorePoint,
+        )
+        val walletId = walletDataSource.createWalletConfig(
+            publicAddress = wallet.primaryAddress,
+            filename = uniqueFilename,
+            name = name,
+            remoteNodeIds = remoteNodeIds,
+        )
+        return walletId to wallet
+    }
+
     suspend fun updateWalletConfig(walletConfig: WalletConfig) =
         walletDataSource.updateWalletConfig(walletConfig)
 }

@@ -8,9 +8,6 @@ import im.molly.monero.demo.data.model.WalletConfig
 
 @Entity(
     tableName = "wallets",
-    indices = [
-        Index(value = ["public_address"], unique = true)
-    ],
 )
 data class WalletEntity(
     @PrimaryKey(autoGenerate = true)

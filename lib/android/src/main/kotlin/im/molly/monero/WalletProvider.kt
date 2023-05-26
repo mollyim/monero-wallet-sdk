@@ -69,7 +69,7 @@ class WalletProvider private constructor(
         dataStore: WalletDataStore? = null,
         client: RemoteNodeClient? = null,
         secretSpendKey: SecretKey,
-        accountCreationTime: Instant,
+        restorePoint: RestorePoint,
     ): MoneroWallet {
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
@@ -77,7 +77,7 @@ class WalletProvider private constructor(
                 buildConfig(network, StorageAdapter(dataStore), client),
                 WalletResultCallback(continuation),
                 secretSpendKey,
-                accountCreationTime.epochSecond,
+                restorePoint.heightOrTimestamp,
             )
         }
         return MoneroWallet(wallet, storageAdapter, client)
@@ -122,6 +122,7 @@ class WalletProvider private constructor(
                         wallet.close()
                     }
                 }
+
                 else -> TODO()
             }
         }

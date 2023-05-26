@@ -18,14 +18,21 @@ fun MultiSelectRemoteNodeList(
     Column(
         modifier = modifier,
     ) {
-        remoteNodes.forEach { remoteNode ->
-            RemoteNodeItem(
-                remoteNode,
-                checked = selectedIds[remoteNode.id] ?: false,
-                showCheckbox = true,
-                onCheckedChange = { checked ->
-                    selectedIds[remoteNode.id] = checked
-                },
+        if (remoteNodes.isNotEmpty()) {
+            remoteNodes.forEach { remoteNode ->
+                RemoteNodeItem(
+                    remoteNode,
+                    checked = selectedIds[remoteNode.id] ?: false,
+                    showCheckbox = true,
+                    onCheckedChange = { checked ->
+                        selectedIds[remoteNode.id] = checked
+                    },
+                )
+            }
+        } else {
+            Text(
+                text = "No matching remote nodes",
+                style = MaterialTheme.typography.labelMedium,
             )
         }
     }
@@ -121,6 +128,16 @@ private fun MultiSelectRemoteNodeListPreview() {
     val aNode = RemoteNode.EMPTY.copy(uri = Uri.parse("http://node.monero"))
     MultiSelectRemoteNodeList(
         remoteNodes = listOf(aNode),
+        selectedIds = mutableMapOf(),
+    )
+}
+
+@Preview
+@Composable
+private fun EmptyMultiSelectRemoteNodeListPreview() {
+    val aNode = RemoteNode.EMPTY.copy(uri = Uri.parse("http://node.monero"))
+    MultiSelectRemoteNodeList(
+        remoteNodes = listOf(),
         selectedIds = mutableMapOf(),
     )
 }

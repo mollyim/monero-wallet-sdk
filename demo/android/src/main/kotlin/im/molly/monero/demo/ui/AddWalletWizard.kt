@@ -2,12 +2,13 @@ package im.molly.monero.demo.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,7 +72,7 @@ private fun FirstStepScreen(
                 Text("Create a new wallet")
             }
             OutlinedButton(
-                onClick = {}, // TODO: onRestoreClick,
+                onClick = onRestoreClick,
                 modifier = Modifier.padding(top = 8.dp),
             ) {
                 Text("I already have a wallet")
@@ -95,13 +96,26 @@ fun AddWalletSecondStepRoute(
         modifier = modifier,
         onBackClick = onBackClick,
         onCreateClick = {
-            viewModel.createWallet()
+            if (showRestoreOptions) {
+                viewModel.restoreWallet()
+            } else {
+                viewModel.createWallet()
+            }
             onNavigateToHome()
         },
         walletName = viewModel.walletName,
         network = viewModel.network,
+        secretSpendKeyHex = viewModel.secretSpendKeyHex,
+        secretSpendKeyHexError = !viewModel.validateSecretSpendKeyHex(),
+        creationDate = viewModel.creationDate,
+        creationDateError = !viewModel.validateCreationDate(),
+        restoreHeight = viewModel.restoreHeight,
+        restoreHeightError = !viewModel.validateRestoreHeight(),
         onWalletNameChanged = { name -> viewModel.updateWalletName(name) },
         onNetworkChanged = { network -> viewModel.toggleSelectedNetwork(network) },
+        onSecretSpendKeyHexChanged = { value -> viewModel.updateSecretSpendKeyHex(value) },
+        onCreationDateChanged = { value -> viewModel.updateCreationDate(value) },
+        onRestoreHeightChanged = { value -> viewModel.updateRestoreHeight(value) },
         remoteNodes = remoteNodes,
         selectedRemoteNodeIds = viewModel.selectedRemoteNodes,
     )
@@ -112,12 +126,21 @@ fun AddWalletSecondStepRoute(
 private fun SecondStepScreen(
     showRestoreOptions: Boolean,
     modifier: Modifier = Modifier,
-    onBackClick: () -> Unit,
-    onCreateClick: () -> Unit,
+    onBackClick: () -> Unit = {},
+    onCreateClick: () -> Unit = {},
     walletName: String,
+    secretSpendKeyHex: String,
+    secretSpendKeyHexError: Boolean,
+    creationDate: String,
+    creationDateError: Boolean,
+    restoreHeight: String,
+    restoreHeightError: Boolean,
     network: MoneroNetwork,
-    onWalletNameChanged: (String) -> Unit,
-    onNetworkChanged: (MoneroNetwork) -> Unit,
+    onWalletNameChanged: (String) -> Unit = {},
+    onNetworkChanged: (MoneroNetwork) -> Unit = {},
+    onSecretSpendKeyHexChanged: (String) -> Unit = {},
+    onCreationDateChanged: (String) -> Unit = {},
+    onRestoreHeightChanged: (String) -> Unit = {},
     remoteNodes: List<RemoteNode>,
     selectedRemoteNodeIds: MutableMap<Long?, Boolean> = mutableMapOf(),
 ) {
@@ -139,6 +162,7 @@ private fun SecondStepScreen(
         Column(
             modifier = modifier
                 .padding(padding)
+                .imePadding()
                 .verticalScroll(rememberScrollState()),
         ) {
             OutlinedTextField(
@@ -173,13 +197,63 @@ private fun SecondStepScreen(
                 modifier = Modifier
                     .padding(start = 16.dp),
             )
+            if (showRestoreOptions) {
+                Text(
+                    text = "Deterministic wallet recovery",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .padding(16.dp),
+                )
+                OutlinedTextField(
+                    value = secretSpendKeyHex,
+                    label = { Text("Secret spend key") },
+                    onValueChange = onSecretSpendKeyHexChanged,
+                    singleLine = true,
+                    isError = secretSpendKeyHexError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp),
+                )
+                Text(
+                    text = "Synchronization",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .padding(16.dp),
+                )
+                OutlinedTextField(
+                    value = creationDate,
+                    label = { Text("Wallet creation date") },
+                    onValueChange = onCreationDateChanged,
+                    singleLine = true,
+                    isError = creationDateError,
+                    enabled = restoreHeight.isEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp),
+                )
+                OutlinedTextField(
+                    value = restoreHeight,
+                    label = { Text("Restore height") },
+                    onValueChange = onRestoreHeightChanged,
+                    singleLine = true,
+                    isError = restoreHeightError,
+                    enabled = creationDate.isEmpty(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp),
+                )
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                val validInput = !showRestoreOptions || !(secretSpendKeyHexError || creationDateError || restoreHeightError)
                 Button(
                     onClick = onCreateClick,
+                    enabled = validInput,
                     modifier = Modifier
                         .padding(16.dp),
                 ) {
@@ -196,12 +270,14 @@ private fun CreateWalletScreenPreview() {
     AppTheme {
         SecondStepScreen(
             showRestoreOptions = false,
-            onBackClick = {},
-            onCreateClick = {},
             walletName = "Personal",
             network = DefaultMoneroNetwork,
-            onWalletNameChanged = {},
-            onNetworkChanged = {},
+            secretSpendKeyHex = "d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706",
+            secretSpendKeyHexError = false,
+            creationDate = "",
+            creationDateError = false,
+            restoreHeight = "",
+            restoreHeightError = false,
             remoteNodes = listOf(RemoteNode.EMPTY),
             selectedRemoteNodeIds = mutableMapOf(),
         )
@@ -214,12 +290,14 @@ private fun RestoreWalletScreenPreview() {
     AppTheme {
         SecondStepScreen(
             showRestoreOptions = true,
-            onBackClick = {},
-            onCreateClick = {},
             walletName = "Personal",
             network = DefaultMoneroNetwork,
-            onWalletNameChanged = {},
-            onNetworkChanged = {},
+            secretSpendKeyHex = "d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706",
+            secretSpendKeyHexError = false,
+            creationDate = "",
+            creationDateError = false,
+            restoreHeight = "",
+            restoreHeightError = false,
             remoteNodes = listOf(RemoteNode.EMPTY),
             selectedRemoteNodeIds = mutableMapOf(),
         )

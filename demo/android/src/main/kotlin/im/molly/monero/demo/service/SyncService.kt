@@ -47,7 +47,7 @@ class SyncService(
                     while (isActive) {
                         val result = wallet.awaitRefresh()
                         if (result.isError()) {
-                            break
+                            // TODO: Handle non-recoverable errors
                         }
                         wallet.commit()
                         delay(10.seconds)

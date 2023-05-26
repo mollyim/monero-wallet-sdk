@@ -54,16 +54,20 @@ void generateAccountKeys(cryptonote::account_base& account,
   LOG_FATAL_IF(gen != secret_key);
 }
 
-void Wallet::restoreAccount(const std::vector<char>& secret_scalar, uint64_t account_timestamp) {
+void Wallet::restoreAccount(const std::vector<char>& secret_scalar, uint64_t restore_point) {
   LOG_FATAL_IF(m_account_ready, "Account should not be reinitialized");
   std::lock_guard<std::mutex> lock(m_wallet_mutex);
   auto& account = m_wallet.get_account();
   generateAccountKeys(account, secret_scalar);
-  if (account_timestamp > account.get_createtime()) {
-    account.set_createtime(account_timestamp);
+  if (restore_point < CRYPTONOTE_MAX_BLOCK_NUMBER) {
+    m_restore_height = restore_point;
+  } else {
+    if (restore_point > account.get_createtime()) {
+      account.set_createtime(restore_point);
+    }
+    m_restore_height = estimateRestoreHeight(account.get_createtime());
   }
   m_wallet.rescan_blockchain(true, false, false);
-  m_restore_height = estimateRestoreHeight(account.get_createtime());
   m_account_ready = true;
 }
 
@@ -256,12 +260,12 @@ Java_im_molly_monero_WalletNative_nativeRestoreAccount(
     jobject thiz,
     jlong handle,
     jbyteArray p_secret_scalar,
-    jlong account_timestamp) {
+    jlong restore_point) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   std::vector<char> secret_scalar = jvmToNativeByteArray(
       env, JvmParamRef<jbyteArray>(p_secret_scalar));
   Eraser secret_eraser(secret_scalar);
-  wallet->restoreAccount(secret_scalar, account_timestamp);
+  wallet->restoreAccount(secret_scalar, restore_point);
 }
 
 extern "C"
