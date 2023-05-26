@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import kotlinx.coroutines.*
-import java.time.Instant
 
 // TODO: Rename to SandboxedWalletProvider and extract interface, add InProcessWalletProvider
 class WalletProvider private constructor(
@@ -54,10 +53,11 @@ class WalletProvider private constructor(
         dataStore: WalletDataStore? = null,
         client: RemoteNodeClient? = null,
     ): MoneroWallet {
+        require(client == null || client.network == network)
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.createWallet(
-                buildConfig(network, StorageAdapter(dataStore), client),
+                buildConfig(network), storageAdapter, client,
                 WalletResultCallback(continuation),
             )
         }
@@ -71,10 +71,11 @@ class WalletProvider private constructor(
         secretSpendKey: SecretKey,
         restorePoint: RestorePoint,
     ): MoneroWallet {
+        require(client == null || client.network == network)
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.restoreWallet(
-                buildConfig(network, StorageAdapter(dataStore), client),
+                buildConfig(network), storageAdapter, client,
                 WalletResultCallback(continuation),
                 secretSpendKey,
                 restorePoint.heightOrTimestamp,
@@ -88,23 +89,19 @@ class WalletProvider private constructor(
         dataStore: WalletDataStore,
         client: RemoteNodeClient? = null,
     ): MoneroWallet {
+        require(client == null || client.network == network)
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.openWallet(
-                buildConfig(network, storageAdapter, client),
+                buildConfig(network), storageAdapter, client,
                 WalletResultCallback(continuation),
             )
         }
         return MoneroWallet(wallet, storageAdapter, client)
     }
 
-    private fun buildConfig(
-        network: MoneroNetwork,
-        storageAdapter: StorageAdapter,
-        remoteNodeClient: RemoteNodeClient?,
-    ): WalletConfig {
-        require(remoteNodeClient == null || remoteNodeClient.network == network)
-        return WalletConfig(network.id, storageAdapter, remoteNodeClient)
+    private fun buildConfig(network: MoneroNetwork): WalletConfig {
+        return WalletConfig(network.id)
     }
 
     fun disconnect() {

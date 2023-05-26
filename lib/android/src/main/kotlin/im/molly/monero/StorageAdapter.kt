@@ -10,22 +10,19 @@ import kotlinx.coroutines.sync.withLock
 
 internal class StorageAdapter(var dataStore: WalletDataStore?) : IStorageAdapter.Stub() {
 
-    private val logger = loggerFor<StorageAdapter>()
-
-    private val storageScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val ioStorageScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val mutex = Mutex()
 
     override fun writeAsync(pfd: ParcelFileDescriptor?): Boolean {
         requireNotNull(pfd)
-        val inputStream = ParcelFileDescriptor.AutoCloseInputStream(pfd)
         val localDataStore = dataStore
         if (localDataStore == null) {
-            logger.i("Unable to save wallet data because WalletDataStore is unset")
-            inputStream.close()
+            pfd.close()
             return false
         }
-        storageScope.launch {
+        val inputStream = ParcelFileDescriptor.AutoCloseInputStream(pfd)
+        ioStorageScope.launch {
             mutex.withLock {
                 localDataStore.write { output ->
                     inputStream.copyTo(output)
@@ -37,13 +34,13 @@ internal class StorageAdapter(var dataStore: WalletDataStore?) : IStorageAdapter
 
     override fun readAsync(pfd: ParcelFileDescriptor?) {
         requireNotNull(pfd)
-        val outputStream = ParcelFileDescriptor.AutoCloseOutputStream(pfd)
         val localDataStore = dataStore
         if (localDataStore == null) {
-            outputStream.close()
+            pfd.close()
             throw IllegalArgumentException("WalletDataStore cannot be null")
         }
-        storageScope.launch {
+        val outputStream = ParcelFileDescriptor.AutoCloseOutputStream(pfd)
+        ioStorageScope.launch {
             mutex.withLock {
                 localDataStore.read().use { input ->
                     input.copyTo(outputStream)

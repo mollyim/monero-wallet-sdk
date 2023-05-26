@@ -8,7 +8,8 @@
     <application android:usesCleartextTraffic="true">
         <service
             android:name=".WalletService"
-            android:exported="false" />
-        <!--            android:isolatedProcess="true" />-->
+            android:process=":wallet_service"
+            android:isolatedProcess="true"
+            />
     </application>
 </manifest>
