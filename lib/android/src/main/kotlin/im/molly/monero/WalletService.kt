@@ -78,6 +78,7 @@ internal class WalletServiceImpl(
         callback: IWalletServiceCallbacks?,
     ) {
         requireNotNull(config)
+        requireNotNull(storage)
         serviceScope.launch {
             val wallet = WalletNative.fullNode(
                 networkId = config.networkId,
@@ -97,6 +98,7 @@ internal class WalletServiceImpl(
         restorePoint: Long? = null,
     ): IWallet {
         requireNotNull(config)
+        requireNotNull(storage)
         requireNotNull(secretSpendKey)
         return WalletNative.fullNode(
             networkId = config.networkId,

@@ -17,30 +17,28 @@ internal class StorageAdapter(var dataStore: WalletDataStore?) : IStorageAdapter
     override fun writeAsync(pfd: ParcelFileDescriptor?): Boolean {
         requireNotNull(pfd)
         val localDataStore = dataStore
-        if (localDataStore == null) {
-            pfd.close()
-            return false
-        }
-        val inputStream = ParcelFileDescriptor.AutoCloseInputStream(pfd)
-        ioStorageScope.launch {
-            mutex.withLock {
-                localDataStore.write { output ->
-                    inputStream.copyTo(output)
+        return if (localDataStore != null) {
+            val inputStream = ParcelFileDescriptor.AutoCloseInputStream(pfd)
+            ioStorageScope.launch {
+                mutex.withLock {
+                    localDataStore.write { output ->
+                        inputStream.copyTo(output)
+                    }
                 }
-            }
-        }.invokeOnCompletion { inputStream.close() }
-        return true
+            }.invokeOnCompletion { inputStream.close() }
+            true
+        } else {
+            pfd.close()
+            false
+        }
     }
 
     override fun readAsync(pfd: ParcelFileDescriptor?) {
         requireNotNull(pfd)
-        val localDataStore = dataStore
-        if (localDataStore == null) {
-            pfd.close()
-            throw IllegalArgumentException("WalletDataStore cannot be null")
-        }
         val outputStream = ParcelFileDescriptor.AutoCloseOutputStream(pfd)
         ioStorageScope.launch {
+            val localDataStore =
+                dataStore ?: throw IllegalArgumentException("WalletDataStore cannot be null")
             mutex.withLock {
                 localDataStore.read().use { input ->
                     input.copyTo(outputStream)

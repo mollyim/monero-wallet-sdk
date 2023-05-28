@@ -11,7 +11,7 @@ import kotlin.coroutines.CoroutineContext
 
 class WalletNative private constructor(
     networkId: Int,
-    private val storageAdapter: IStorageAdapter?,
+    private val storageAdapter: IStorageAdapter,
     private val remoteNodeClient: IRemoteNodeClient?,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher,
@@ -21,7 +21,7 @@ class WalletNative private constructor(
         // TODO: Find better name because this is a local synchronization wallet, not a full node wallet
         suspend fun fullNode(
             networkId: Int,
-            storageAdapter: IStorageAdapter? = null,
+            storageAdapter: IStorageAdapter,
             remoteNodeClient: IRemoteNodeClient? = null,
             secretSpendKey: SecretKey? = null,
             restorePoint: Long? = null,
@@ -59,13 +59,17 @@ class WalletNative private constructor(
     private val handle: Long = nativeCreate(networkId)
 
     private suspend fun tryWriteState(): Boolean {
-        requireNotNull(storageAdapter)
         return withContext(ioDispatcher) {
-            val pipe = ParcelFileDescriptor.createReliablePipe()
-            pipe[1].use { writeSide ->
-                val storageIsReady = storageAdapter.writeAsync(pipe[0])
+            val pipe = ParcelFileDescriptor.createPipe()
+            val readFd = pipe[0]
+            val writeFd = pipe[1]
+            val storageIsReady = storageAdapter.writeAsync(readFd)
+            if (storageAdapter.isRemote()) {
+                readFd.close()
+            }
+            writeFd.use {
                 if (storageIsReady) {
-                    val result = nativeSave(handle, writeSide.fd)
+                    val result = nativeSave(handle, it.fd)
                     if (!result) {
                         logger.e("Wallet data serialization failed")
                     }
@@ -79,15 +83,18 @@ class WalletNative private constructor(
     }
 
     private suspend fun readState() {
-        requireNotNull(storageAdapter)
-        return withContext(ioDispatcher) {
-            val pipe = ParcelFileDescriptor.createReliablePipe()
-            pipe[0].use { readSide ->
-                pipe[1].use { writeSide ->
-                    storageAdapter.readAsync(writeSide)
+        withContext(ioDispatcher) {
+            val pipe = ParcelFileDescriptor.createPipe()
+            val readFd = pipe[0]
+            val writeFd = pipe[1]
+            storageAdapter.readAsync(writeFd)
+            if (storageAdapter.isRemote()) {
+                writeFd.close()
+            }
+            readFd.use {
+                if (!nativeLoad(handle, it.fd)) {
+                    throw IllegalStateException("Wallet data deserialization failed")
                 }
-                val result = nativeLoad(handle, readSide.fd)
-                check(result) { "Wallet data deserialization failed" }
             }
         }
     }

@@ -8,9 +8,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import okhttp3.OkHttpClient
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 
 class MoneroSdkClient(private val context: Context) {
 
@@ -86,7 +86,7 @@ class MoneroSdkClient(private val context: Context) {
             throw IOException("Cannot create wallet data directory: ${walletDataDir.path}")
         }
 
-        override suspend fun write(writer: (FileOutputStream) -> Unit) {
+        override suspend fun write(writer: (OutputStream) -> Unit) {
             val output = file.startWrite()
             try {
                 writer(output)
@@ -97,7 +97,7 @@ class MoneroSdkClient(private val context: Context) {
             }
         }
 
-        override suspend fun read(): FileInputStream {
+        override suspend fun read(): InputStream {
             return file.openRead()
         }
     }
