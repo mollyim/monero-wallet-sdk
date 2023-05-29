@@ -19,16 +19,16 @@ constructor(
     val spentInBlockHeight: Long,
 ) : Parcelable {
 
-    init {
-        require(blockHeight <= spentInBlockHeight)
-        require(amount >= 0) { "TX amount cannot be negative" }
-    }
-
     @IgnoredOnParcel
     val spent: Boolean = spentInBlockHeight != 0L
 
     @IgnoredOnParcel
     val notSpent = !spent
+
+    init {
+        require(notSpent || blockHeight <= spentInBlockHeight)
+        require(amount >= 0) { "TX amount $amount cannot be negative" }
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
