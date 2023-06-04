@@ -30,6 +30,9 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
 endif()
 
+# Prevent locale issues
+set(ENV{LC_ALL} C)
+
 # Common definitions across builds
 include(cmake/toolchain.cmake)
 
