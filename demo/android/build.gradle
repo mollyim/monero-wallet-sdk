@@ -4,7 +4,7 @@ apply plugin: 'com.google.devtools.ksp'
 
 ext {
     composeVersion = '1.4.0-alpha04'
-    composeCompilerVersion = '1.4.0'
+    composeCompilerVersion = '1.5.3'
     lifecycleVersion = '2.6.0-alpha04'
     roomVersion = '2.5.0'
 }
