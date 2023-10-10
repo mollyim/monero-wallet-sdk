@@ -69,7 +69,7 @@ class WalletProvider private constructor(
         dataStore: WalletDataStore? = null,
         client: RemoteNodeClient? = null,
         secretSpendKey: SecretKey,
-        restorePoint: RestorePoint,
+        restorePoint: BlockchainTime,
     ): MoneroWallet {
         require(client == null || client.network == network)
         val storageAdapter = StorageAdapter(dataStore)
@@ -78,7 +78,7 @@ class WalletProvider private constructor(
                 buildConfig(network), storageAdapter, client,
                 WalletResultCallback(continuation),
                 secretSpendKey,
-                restorePoint.heightOrTimestamp,
+                restorePoint.toLong(),
             )
         }
         return MoneroWallet(wallet, storageAdapter, client)

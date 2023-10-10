@@ -4,7 +4,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import im.molly.monero.MoneroNetwork
-import im.molly.monero.RestorePoint
+import im.molly.monero.BlockchainTime
 import im.molly.monero.SecretKey
 import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.data.RemoteNodeRepository
@@ -96,19 +96,17 @@ class AddWalletViewModel(
         creationDate.isEmpty() || runCatching { LocalDate.parse(creationDate) }.isSuccess
 
     fun validateRestoreHeight(): Boolean =
-        restoreHeight.isEmpty() || runCatching { RestorePoint(restoreHeight.toLong()) }.isSuccess
+        restoreHeight.isEmpty() || runCatching { BlockchainTime.Block(restoreHeight.toInt()) }.isSuccess
 
     fun createWallet() = viewModelScope.launch {
         walletRepository.addWallet(network, walletName, getSelectedRemoteNodeIds())
     }
 
     fun restoreWallet() = viewModelScope.launch {
-        val restorePoint = if (creationDate.isNotEmpty()) {
-            RestorePoint(creationDate = LocalDate.parse(creationDate))
-        } else if (restoreHeight.isNotEmpty()) {
-            RestorePoint(blockHeight = restoreHeight.toLong())
-        } else {
-            RestorePoint(blockHeight = 0)
+        val restorePoint = when {
+            creationDate.isNotEmpty() -> BlockchainTime.Timestamp(LocalDate.parse(creationDate))
+            restoreHeight.isNotEmpty() -> BlockchainTime.Block(restoreHeight.toInt())
+            else -> BlockchainTime.Genesis
         }
         SecretKey(secretSpendKeyHex.parseHex()).use { secretSpendKey ->
             walletRepository.restoreWallet(

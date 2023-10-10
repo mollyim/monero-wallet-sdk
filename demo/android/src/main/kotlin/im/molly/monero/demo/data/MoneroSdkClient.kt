@@ -32,7 +32,7 @@ class MoneroSdkClient(private val context: Context) {
         network: MoneroNetwork,
         filename: String,
         secretSpendKey: SecretKey,
-        restorePoint: RestorePoint,
+        restorePoint: BlockchainTime,
     ): MoneroWallet {
         val provider = providerDeferred.await()
         return provider.restoreWallet(

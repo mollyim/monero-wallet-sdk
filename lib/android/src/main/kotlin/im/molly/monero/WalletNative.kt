@@ -2,6 +2,8 @@ package im.molly.monero
 
 import android.os.ParcelFileDescriptor
 import androidx.annotation.GuardedBy
+import im.molly.monero.internal.TxInfo
+import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.*
 import java.io.Closeable
 import java.util.*
@@ -93,21 +95,21 @@ class WalletNative private constructor(
             }
             readFd.use {
                 if (!nativeLoad(handle, it.fd)) {
-                    throw IllegalStateException("Wallet data deserialization failed")
+                    error("Wallet data deserialization failed")
                 }
             }
         }
     }
 
-    override fun getPrimaryAccountAddress() = nativeGetPrimaryAccountAddress(handle)
+    override fun getAccountPrimaryAddress() = nativeGetAccountPrimaryAddress(handle)
 
-    val currentBlockchainHeight: Long
+    val currentBlockchainHeight: Int
         get() = nativeGetCurrentBlockchainHeight(handle)
 
     val currentBalance: Balance
-        get() = Balance.of(ownedTxOutsSnapshot())
+        get() = TODO() // txHistorySnapshot().consolidateTransactions().second.balance()
 
-    private fun ownedTxOutsSnapshot(): List<OwnedTxOut> = nativeGetOwnedTxOuts(handle).toList()
+    private fun txHistorySnapshot(): List<TxInfo> = nativeGetTxHistory(handle).toList()
 
     @GuardedBy("listenersLock")
     private val balanceListeners = mutableSetOf<IBalanceListener>()
@@ -161,7 +163,7 @@ class WalletNative private constructor(
         requireNotNull(listener)
         balanceListenersLock.withLock {
             balanceListeners.add(listener)
-            listener.onBalanceChanged(ownedTxOutsSnapshot(), currentBlockchainHeight)
+            listener.onBalanceChanged(txHistorySnapshot(), currentBlockchainHeight)
         }
     }
 
@@ -173,13 +175,12 @@ class WalletNative private constructor(
     }
 
     @CalledByNative("wallet.cc")
-    private fun onRefresh(blockchainHeight: Long, balanceChanged: Boolean) {
+    private fun onRefresh(blockchainHeight: Int, balanceChanged: Boolean) {
         balanceListenersLock.withLock {
             if (balanceListeners.isNotEmpty()) {
                 val call = fun(listener: IBalanceListener) {
                     if (balanceChanged) {
-                        val txOuts = ownedTxOutsSnapshot()
-                        listener.onBalanceChanged(txOuts, blockchainHeight)
+                        listener.onBalanceChanged(txHistorySnapshot(), blockchainHeight)
                     } else {
                         listener.onRefresh(blockchainHeight)
                     }
@@ -262,9 +263,10 @@ class WalletNative private constructor(
     private external fun nativeCancelRefresh(handle: Long)
     private external fun nativeCreate(networkId: Int): Long
     private external fun nativeDispose(handle: Long)
-    private external fun nativeGetCurrentBlockchainHeight(handle: Long): Long
-    private external fun nativeGetOwnedTxOuts(handle: Long): Array<OwnedTxOut>
-    private external fun nativeGetPrimaryAccountAddress(handle: Long): String
+    private external fun nativeGetCurrentBlockchainHeight(handle: Long): Int
+    private external fun nativeGetTxHistory(handle: Long): Array<TxInfo>
+    private external fun nativeGetAccountPrimaryAddress(handle: Long): String
+//    private external fun nativeGetAccountSubAddress(handle: Long, accountIndex: Int, subAddressIndex: Int): String
     private external fun nativeLoad(handle: Long, fd: Int): Boolean
     private external fun nativeNonReentrantRefresh(handle: Long, skipCoinbase: Boolean): Int
     private external fun nativeRestoreAccount(

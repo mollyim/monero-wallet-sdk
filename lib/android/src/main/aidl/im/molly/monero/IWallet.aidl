@@ -4,7 +4,7 @@ import im.molly.monero.IBalanceListener;
 import im.molly.monero.IWalletCallbacks;
 
 interface IWallet {
-    String getPrimaryAccountAddress();
+    String getAccountPrimaryAddress();
     void addBalanceListener(in IBalanceListener listener);
     void removeBalanceListener(in IBalanceListener listener);
     oneway void resumeRefresh(boolean skipCoinbaseOutputs, in IWalletCallbacks callback);

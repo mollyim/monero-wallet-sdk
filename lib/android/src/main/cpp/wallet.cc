@@ -11,15 +11,20 @@
 #include "eraser.h"
 #include "fd.h"
 
+#include "string_tools.h"
+
 namespace io = boost::iostreams;
 
 namespace monero {
 
 using namespace std::chrono_literals;
+using namespace epee::string_tools;
 
 static_assert(COIN == 1e12, "Monero atomic unit must be 1e-12 XMR");
 static_assert(CRYPTONOTE_MAX_BLOCK_NUMBER == 500000000,
               "Min timestamp must be higher than max block height");
+static_assert(CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE == 10, ""); // TODO
+static_assert(DIFFICULTY_TARGET_V2 == 120, "");
 
 Wallet::Wallet(
     JNIEnv* env,
@@ -93,14 +98,14 @@ bool Wallet::parseFrom(std::istream& input) {
   if (!serialization::serialize(ar, m_wallet))
     return false;
   m_blockchain_height = m_wallet.get_blockchain_current_height();
-  m_wallet.get_transfers(m_tx_outs);
+  captureTxHistorySnapshot(m_tx_history);
   m_account_ready = true;
   return true;
 }
 
 bool Wallet::writeTo(std::ostream& output) {
   return suspendRefreshAndRunLocked([&]() -> bool {
-    binary_archive<true> ar(output);
+    binary_archive < true > ar(output);
     if (!serialization::serialize_noeof(ar, *this))
       return false;
     if (!serialization::serialize_noeof(ar, require_account()))
@@ -111,10 +116,10 @@ bool Wallet::writeTo(std::ostream& output) {
   });
 }
 
-template<typename Callback>
-void Wallet::getOwnedTxOuts(Callback callback) {
-  std::lock_guard<std::mutex> lock(m_tx_outs_mutex);
-  callback(m_tx_outs);
+template<typename Consumer>
+void Wallet::withTxHistory(Consumer consumer) {
+  std::lock_guard<std::mutex> lock(m_tx_history_mutex);
+  consumer(m_tx_history);
 }
 
 std::string Wallet::public_address() const {
@@ -127,36 +132,228 @@ cryptonote::account_base& Wallet::require_account() {
   return m_wallet.get_account();
 }
 
-// Reading m_transfers from wallet2 is not guarded by any lock; call this function only
-// from wallet2's callback thread.
-void Wallet::handleBalanceChanged(uint64_t at_block_height) {
-  LOGV("handleBalanceChanged(%lu)", at_block_height);
-  m_tx_outs_mutex.lock();
-  m_wallet.get_transfers(m_tx_outs);
-  m_tx_outs_mutex.unlock();
-  m_blockchain_height = at_block_height;
-  callOnRefresh(true);
-}
-
-void Wallet::handleNewBlock(uint64_t height) {
-  m_blockchain_height = height;
-  // Notify the blockchain height once every 200 ms if the height is a multiple of 100.
-  bool debounce = true;
-  if (height % 100 == 0) {
-    static std::chrono::steady_clock::time_point last_time;
-    auto now = std::chrono::steady_clock::now();
-    if (now - last_time >= 200.ms) {
-      last_time = now;
-      debounce = false;
+const payment_details* find_matching_payment(
+    const std::list<std::pair<crypto::hash, payment_details>> pds,
+    uint64_t amount,
+    const crypto::hash& txid,
+    const cryptonote::subaddress_index& subaddr_index) {
+  if (txid == crypto::null_hash) {
+    return nullptr;
+  }
+  for (const auto& p: pds) {
+    const auto& pd = p.second;
+    if (pd.m_amount == amount && pd.m_tx_hash == txid && pd.m_subaddr_index == subaddr_index) {
+      return &pd;
     }
   }
-  if (!debounce) {
-    callOnRefresh(false);
+  return nullptr;
+};
+
+// Only call this function from the callback thread or during initialization,
+// as there is no locking mechanism to safeguard reading transaction history
+// from wallet2.
+void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
+  snapshot.clear();
+
+  std::vector<transfer_details> tds;
+  m_wallet.get_transfers(tds);
+
+  uint64_t min_height = 0;
+
+  std::list<std::pair<crypto::hash, payment_details>> pds;
+  std::list<std::pair<crypto::hash, pool_payment_details>> upds;
+  std::list<std::pair<crypto::hash, confirmed_transfer_details>> txs;
+  std::list<std::pair<crypto::hash, unconfirmed_transfer_details>> utxs;
+  m_wallet.get_payments(pds, min_height);
+  m_wallet.get_unconfirmed_payments(upds, min_height);
+  m_wallet.get_payments_out(txs, min_height);
+  m_wallet.get_unconfirmed_payments_out(utxs);
+
+  // Iterate through the known owned outputs (incoming transactions).
+  for (const auto& td: tds) {
+    snapshot.emplace_back(td.m_txid, TxInfo::INCOMING);
+    TxInfo& recv = snapshot.back();
+    recv.m_key = td.get_public_key();
+    recv.m_key_image = td.m_key_image;
+    recv.m_key_image_known = td.m_key_image_known;
+    recv.m_subaddress_major = td.m_subaddr_index.major;
+    recv.m_subaddress_minor = td.m_subaddr_index.minor;
+    recv.m_recipient = m_wallet.get_subaddress_as_str(td.m_subaddr_index);
+    recv.m_amount = td.m_amount;
+    recv.m_unlock_time = td.m_tx.unlock_time;
+
+    // Check if the payment exists and update metadata if found.
+    const auto* pd = find_matching_payment(pds, td.m_amount, td.m_txid, td.m_subaddr_index);
+    if (pd) {
+      recv.m_height = pd->m_block_height;
+      recv.m_timestamp = pd->m_timestamp;
+      recv.m_fee = pd->m_fee;
+      recv.m_coinbase = pd->m_coinbase;
+      recv.m_state = TxInfo::ON_CHAIN;
+    } else {
+      recv.m_state = TxInfo::OFF_CHAIN;
+    }
+  }
+
+  // Confirmed outgoing transactions.
+  for (const auto& pair: txs) {
+    const auto& tx = pair.second;
+    uint64_t fee = tx.m_amount_in - tx.m_amount_out;
+
+    for (const auto& dest: tx.m_dests) {
+      snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
+      TxInfo& spent = snapshot.back();
+      spent.m_recipient = dest.address(m_wallet.nettype(), tx.m_payment_id);
+      spent.m_amount = dest.amount;
+      spent.m_height = tx.m_block_height;
+      spent.m_unlock_time = tx.m_unlock_time;
+      spent.m_timestamp = tx.m_timestamp;
+      spent.m_fee = fee;
+      spent.m_change = tx.m_change;
+      spent.m_state = TxInfo::ON_CHAIN;
+    }
+
+    for (const auto& in: tx.m_tx.vin) {
+      if (in.type() != typeid(cryptonote::txin_to_key)) continue;
+      const auto& txin = boost::get<cryptonote::txin_to_key>(in);
+      snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
+      TxInfo& spent = snapshot.back();
+      spent.m_key_image = txin.k_image;
+      spent.m_key_image_known = true;
+      spent.m_amount = txin.amount;
+      spent.m_height = tx.m_block_height;
+      spent.m_unlock_time = tx.m_unlock_time;
+      spent.m_timestamp = tx.m_timestamp;
+      spent.m_fee = fee;
+      spent.m_state = TxInfo::ON_CHAIN;
+    }
+  }
+
+  // Unconfirmed outgoing transactions.
+  for (const auto& pair: utxs) {
+    const auto& utx = pair.second;
+    uint64_t fee = utx.m_amount_in - utx.m_amount_out;
+    auto state = (utx.m_state == unconfirmed_transfer_details::pending)
+                    ? TxInfo::PENDING
+                    : TxInfo::FAILED;
+
+    for (const auto& dest: utx.m_dests) {
+      if (const auto dest_subaddr_idx = m_wallet.get_subaddress_index(dest.addr)) {
+        // Add pending transfers to our own wallet.
+        snapshot.emplace_back(pair.first, TxInfo::INCOMING);
+        TxInfo& recv = snapshot.back();
+        // TODO: recv.m_key
+        recv.m_recipient = m_wallet.get_subaddress_as_str(*dest_subaddr_idx);
+        recv.m_subaddress_major = (*dest_subaddr_idx).major;
+        recv.m_subaddress_minor = (*dest_subaddr_idx).minor;
+        recv.m_amount = dest.amount;
+        recv.m_unlock_time = utx.m_tx.unlock_time;
+        recv.m_timestamp = utx.m_timestamp;
+        recv.m_fee = fee;
+        recv.m_state = state;
+      } else {
+        snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
+        TxInfo& spent = snapshot.back();
+        spent.m_recipient = dest.address(m_wallet.nettype(), utx.m_payment_id);
+        spent.m_amount = dest.amount;
+        spent.m_unlock_time = utx.m_tx.unlock_time;
+        spent.m_timestamp = utx.m_timestamp;
+        spent.m_fee = fee;
+        spent.m_change = utx.m_change;
+        spent.m_state = state;
+      }
+    }
+
+    // Change is ours too.
+    if (utx.m_change > 0) {
+      snapshot.emplace_back(pair.first, TxInfo::INCOMING);
+      TxInfo& change = snapshot.back();
+      // TODO: change.m_key
+      change.m_recipient = m_wallet.get_subaddress_as_str({utx.m_subaddr_account, 0});
+      change.m_subaddress_major = utx.m_subaddr_account;
+      change.m_subaddress_minor = 0;  // All changes go to 0-th subaddress
+      change.m_amount = utx.m_change;
+      change.m_unlock_time = utx.m_tx.unlock_time;
+      change.m_timestamp = utx.m_timestamp;
+      change.m_fee = fee;
+      change.m_state = state;
+    }
+
+    for (const auto& in: utx.m_tx.vin) {
+      if (in.type() != typeid(cryptonote::txin_to_key)) continue;
+      const auto& txin = boost::get<cryptonote::txin_to_key>(in);
+      snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
+      TxInfo& spent = snapshot.back();
+      spent.m_key_image = txin.k_image;
+      spent.m_key_image_known = true;
+      spent.m_amount = txin.amount;
+      spent.m_timestamp = utx.m_timestamp;
+      spent.m_fee = fee;
+      spent.m_state = state;
+    }
+  }
+
+  // Add outputs of unconfirmed payments pending in the pool.
+  for (const auto& pair: upds) {
+    const auto& upd = pair.second.m_pd;
+    bool double_spend_seen = pair.second.m_double_spend_seen; // Unused
+    // Denormalize individual amounts sent to a single subaddress in a single tx.
+    for (uint64_t amount: upd.m_amounts) {
+      snapshot.emplace_back(upd.m_tx_hash, TxInfo::INCOMING);
+      TxInfo& recv = snapshot.back();
+      // TODO: recv.m_key
+      recv.m_recipient = m_wallet.get_subaddress_as_str(upd.m_subaddr_index);
+      recv.m_subaddress_major = upd.m_subaddr_index.major;
+      recv.m_subaddress_minor = upd.m_subaddr_index.minor;
+      recv.m_amount = amount;
+      recv.m_height = upd.m_block_height;
+      recv.m_unlock_time = upd.m_unlock_time;
+      recv.m_timestamp = upd.m_timestamp;
+      recv.m_fee = upd.m_fee;
+      recv.m_coinbase = upd.m_coinbase;
+      recv.m_state = TxInfo::PENDING;
+    }
   }
 }
 
-void Wallet::callOnRefresh(bool balance_changed) {
-  m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh, m_blockchain_height, balance_changed);
+void Wallet::handleNewBlock(uint64_t height, bool refresh_running) {
+  m_blockchain_height = height;
+  if (m_balance_changed) {
+    m_tx_history_mutex.lock();
+    captureTxHistorySnapshot(m_tx_history);
+    m_tx_history_mutex.unlock();
+  }
+  notifyRefresh(!m_balance_changed && refresh_running);
+  m_balance_changed = false;
+}
+
+void Wallet::handleReorgEvent(uint64_t at_block_height) {
+  m_balance_changed = true;
+}
+
+void Wallet::handleMoneyEvent(uint64_t at_block_height) {
+  m_balance_changed = true;
+}
+
+void Wallet::notifyRefresh(bool debounce) {
+  static std::chrono::steady_clock::time_point last_time;
+  // If debouncing is requested and the blockchain height is a multiple of 100, it limits
+  // the notifications to once every 200 ms.
+  if (debounce) {
+    if (m_blockchain_height % 100 == 0) {
+      auto now = std::chrono::steady_clock::now();
+      if (now - last_time >= 200.ms) {
+        last_time = now;
+        debounce = false;
+      }
+    }
+  } else {
+    last_time = std::chrono::steady_clock::now();
+  }
+  if (!debounce) {
+    m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh,
+                              m_blockchain_height, m_balance_changed);
+  }
 }
 
 Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
@@ -170,7 +367,7 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
     m_wallet.set_refresh_from_block_height(m_restore_height);
     try {
       // refresh() will block until stop() is called or it syncs successfully.
-      m_wallet.refresh(false);
+      m_wallet.refresh(false /* trusted_daemon */);
       if (!m_wallet.stopped()) {
         m_wallet.stop();
         ret = Status::OK;
@@ -190,9 +387,8 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
     ret = Status::INTERRUPTED;
   }
   m_refresh_running.store(false);
-  m_blockchain_height = m_wallet.get_blockchain_current_height();
-  // Always notify the last block height.
-  callOnRefresh(false);
+  // Ensure the latest block and pool state are consistently processed.
+  handleNewBlock(m_wallet.get_blockchain_current_height(), false);
   return ret;
 }
 
@@ -214,6 +410,7 @@ auto Wallet::suspendRefreshAndRunLocked(T block) -> decltype(block()) {
     m_callback.callVoidMethod(env, WalletNative_onSuspendRefresh, false);
     m_refresh_cond.notify_one();
   }
+  // Call the lambda and release the mutex upon completion.
   return block();
 }
 
@@ -347,7 +544,7 @@ Java_im_molly_monero_WalletNative_nativeSetRefreshSince(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeGetPrimaryAccountAddress(
+Java_im_molly_monero_WalletNative_nativeGetAccountPrimaryAddress(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -356,47 +553,54 @@ Java_im_molly_monero_WalletNative_nativeGetPrimaryAccountAddress(
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL
+JNIEXPORT jint JNICALL
 Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   uint64_t height = wallet->current_blockchain_height();
-  LOG_FATAL_IF(height > std::numeric_limits<jlong>::max(),
-               "Blockchain height overflowed jlong");
-  return static_cast<jlong>(height);
+  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
+               "Blockchain max height reached");
+  return static_cast<jint>(height);
 }
 
-ScopedJvmLocalRef<jobject> nativeToJvmOwnedTxOut(JNIEnv* env,
-                                                 const TxOut& tx_out) {
-  LOG_FATAL_IF(tx_out.m_spent
-               && (tx_out.m_spent_height == 0 ||
-                   tx_out.m_spent_height < tx_out.m_block_height),
-               "Unexpected spent block height in tx output");
-  return {env, OwnedTxOut.newObject(
-      env,
-      OwnedTxOut_ctor,
-      nativeToJvmByteArray(env, tx_out.m_txid.data, sizeof(tx_out.m_txid.data)).obj(),
-      tx_out.m_amount,
-      tx_out.m_block_height,
-      tx_out.m_spent_height)
+ScopedJvmLocalRef<jobject> nativeToJvmTxInfo(JNIEnv* env,
+                                             const TxInfo& info) {
+  LOG_FATAL_IF(info.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
+               "Blockchain max height reached");
+  return {env, TxInfoClass.newObject(
+      env, TxInfo_ctor,
+      nativeToJvmString(env, pod_to_hex(info.m_tx_hash)).obj(),
+      nativeToJvmString(env, pod_to_hex(info.m_key)).obj(),
+      info.m_key_image_known ? nativeToJvmString(env, pod_to_hex(info.m_key_image)).obj(): nullptr,
+      info.m_subaddress_major,
+      info.m_subaddress_minor,
+      (!info.m_recipient.empty()) ? nativeToJvmString(env, info.m_recipient).obj() : nullptr,
+      info.m_amount,
+      static_cast<jint>(info.m_height),
+      info.m_state,
+      info.m_unlock_time,
+      info.m_timestamp,
+      info.m_fee,
+      info.m_coinbase,
+      info.m_type == TxInfo::INCOMING)
   };
 }
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL
-Java_im_molly_monero_WalletNative_nativeGetOwnedTxOuts(
+Java_im_molly_monero_WalletNative_nativeGetTxHistory(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   ScopedJvmLocalRef<jobjectArray> j_array;
-  wallet->getOwnedTxOuts([env, &j_array](std::vector<TxOut> const& tx_outs) {
+  wallet->withTxHistory([env, &j_array](std::vector<TxInfo> const& txs) {
     j_array = nativeToJvmObjectArray(env,
-                                     tx_outs,
-                                     OwnedTxOut.getClass(),
-                                     &nativeToJvmOwnedTxOut);
+                                     txs,
+                                     TxInfoClass.getClass(),
+                                     &nativeToJvmTxInfo);
   });
   return j_array.Release();
 }

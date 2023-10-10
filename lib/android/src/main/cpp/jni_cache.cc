@@ -3,12 +3,12 @@
 namespace monero {
 
 // im.molly.monero
-ScopedJvmGlobalRef<jclass> OwnedTxOut;
+ScopedJvmGlobalRef<jclass> TxInfoClass;
 jmethodID HttpResponse_getBody;
 jmethodID HttpResponse_getCode;
 jmethodID HttpResponse_getContentType;
 jmethodID Logger_logFromNative;
-jmethodID OwnedTxOut_ctor;
+jmethodID TxInfo_ctor;
 jmethodID WalletNative_callRemoteNode;
 jmethodID WalletNative_onRefresh;
 jmethodID WalletNative_onSuspendRefresh;
@@ -20,8 +20,10 @@ void initializeJniCache(JNIEnv* env) {
   // im.molly.monero
   auto httpResponse = findClass(env, "im/molly/monero/HttpResponse");
   auto logger = findClass(env, "im/molly/monero/Logger");
-  auto ownedTxOut = findClass(env, "im/molly/monero/OwnedTxOut");
+  auto txInfoClass = findClass(env, "im/molly/monero/internal/TxInfo");
   auto walletNative = findClass(env, "im/molly/monero/WalletNative");
+
+  TxInfoClass = txInfoClass;
 
   HttpResponse_getBody = httpResponse
       .getMethodId(env, "getBody", "()Landroid/os/ParcelFileDescriptor;");
@@ -31,8 +33,8 @@ void initializeJniCache(JNIEnv* env) {
       .getMethodId(env, "getContentType", "()Ljava/lang/String;");
   Logger_logFromNative = logger
       .getMethodId(env, "logFromNative", "(ILjava/lang/String;Ljava/lang/String;)V");
-  OwnedTxOut_ctor = ownedTxOut
-      .getMethodId(env, "<init>", "([BJJJ)V");
+  TxInfo_ctor = txInfoClass
+      .getMethodId(env, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;JIIJJJJZZ)V");
   WalletNative_callRemoteNode = walletNative
       .getMethodId(env,
                    "callRemoteNode",
@@ -41,8 +43,6 @@ void initializeJniCache(JNIEnv* env) {
       .getMethodId(env, "onRefresh", "(JZ)V");
   WalletNative_onSuspendRefresh = walletNative
       .getMethodId(env, "onSuspendRefresh", "(Z)V");
-
-  OwnedTxOut = ownedTxOut;
 
   // android.os
   auto parcelFileDescriptor = findClass(env, "android/os/ParcelFileDescriptor");

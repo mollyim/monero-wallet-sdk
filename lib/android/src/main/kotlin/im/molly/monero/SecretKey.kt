@@ -12,6 +12,8 @@ import javax.security.auth.Destroyable
  *
  * SecretKey wraps a secret scalar value, helping to prevent accidental exposure and securely
  * erasing the value from memory.
+ *
+ * This class is not thread-safe.
  */
 class SecretKey : Destroyable, Closeable, Parcelable {
 
@@ -22,13 +24,16 @@ class SecretKey : Destroyable, Closeable, Parcelable {
     }
 
     constructor(secretScalar: ByteArray) {
-        require(secretScalar.size == 32) { "Secret key must be 256 bits" }
+        require(secretScalar.size == 32) { "Secret key must be 32 bytes" }
         secretScalar.copyInto(secret)
     }
 
     private constructor(parcel: Parcel) {
         parcel.readByteArray(secret)
     }
+
+    internal val isNonZero
+        get() = !MessageDigest.isEqual(secret, ByteArray(secret.size))
 
     val bytes: ByteArray
         get() {
@@ -37,17 +42,14 @@ class SecretKey : Destroyable, Closeable, Parcelable {
             return secret.clone()
         }
 
-    val isNonZero
-        get() = !MessageDigest.isEqual(secret, ByteArray(secret.size))
-
     var destroyed = false
         private set
 
     override fun destroy() {
         if (!destroyed) {
             secret.fill(0)
-            destroyed = true
         }
+        destroyed = true
     }
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
@@ -68,16 +70,10 @@ class SecretKey : Destroyable, Closeable, Parcelable {
         }
     }
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is SecretKey) return false
+    override fun equals(other: Any?): Boolean =
+        this === other || other is SecretKey && MessageDigest.isEqual(secret, other.secret)
 
-        return MessageDigest.isEqual(secret, other.secret)
-    }
-
-    override fun hashCode(): Int {
-        return secret.contentHashCode()
-    }
+    override fun hashCode(): Int = secret.contentHashCode()
 
     override fun close() = destroy()
 

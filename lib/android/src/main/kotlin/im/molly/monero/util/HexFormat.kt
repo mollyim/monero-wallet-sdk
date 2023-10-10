@@ -7,3 +7,5 @@ fun CharSequence.parseHex(): ByteArray {
         Integer.parseInt(substring(it * 2, (it + 1) * 2), 16).toByte()
     }
 }
+
+fun ByteArray.toHex(): String = joinToString(separator = "") { "%02x".format(it) }

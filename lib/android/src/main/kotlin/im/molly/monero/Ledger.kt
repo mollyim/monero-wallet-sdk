@@ -2,12 +2,13 @@ package im.molly.monero
 
 //import im.molly.monero.proto.LedgerProto
 
-data class Ledger constructor(
+data class Ledger(
     val publicAddress: String,
-    val receivedOutputs: List<OwnedTxOut>,
-    val checkedAtBlockHeight: Long,
+    val txs: Map<String, Transaction>,
+    val spendableEnotes: Set<TimeLocked<Enote>>,
+    val checkedAt: BlockchainTime,
 ) {
-    val balance = Balance.of(receivedOutputs)
+    val balance = spendableEnotes.balance()
 
 //    companion object {
 //        fun fromProto(proto: LedgerProto) = Ledger(

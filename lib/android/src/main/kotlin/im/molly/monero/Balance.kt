@@ -1,23 +1,31 @@
 package im.molly.monero
 
 data class Balance(
-    private val spendableTxOuts: Set<OwnedTxOut>,
+    val pendingBalance: AtomicAmount,
+    val timeLockedAmounts: Set<TimeLocked<AtomicAmount>>,
 ) {
-    val totalAmount: AtomicAmount = spendableTxOuts.sumOf { it.amount }
+    val confirmedBalance: AtomicAmount = timeLockedAmounts.sumOf { it.value }
 
-    fun totalAmountUnlockedAt(
-        blockHeight: Long,
-        timestampMillis: Long = System.currentTimeMillis()
-        // TODO: Create Timelock class
-    ): AtomicAmount {
-        require(blockHeight > 0)
-        require(timestampMillis >= 0)
-        TODO()
-    }
+    fun unlockedBalance(currentTime: BlockchainTime): AtomicAmount =
+        timeLockedAmounts
+            .mapNotNull { it.getValueIfUnlocked(currentTime) }
+            .sum()
 
-    companion object {
-        fun of(txOuts: List<OwnedTxOut>) = Balance(
-            spendableTxOuts = txOuts.filter { it.notSpent }.toSet(),
-        )
-    }
+    fun lockedBalance(currentTime: BlockchainTime): Map<BlockchainTimeSpan, AtomicAmount> =
+        timeLockedAmounts
+            .filter { it.isLocked(currentTime) }
+            .groupBy({ it.timeUntilUnlock(currentTime) }, { it.value })
+            .mapValues { (_, amounts) -> amounts.sum() }
+}
+
+fun Iterable<TimeLocked<Enote>>.balance(subAccountSelector: (Int) -> Boolean = { true }): Balance {
+    val enotes = filter { subAccountSelector(it.value.owner.accountIndex) }
+    val (pending, confirmed) = enotes.partition { it.value.age == 0 }
+
+    val timeLockedSet = confirmed
+        .groupBy({ it.unlockTime }, { it.value.amount })
+        .map { (unlockTime, amounts) -> TimeLocked(amounts.sum(), unlockTime) }
+        .toSet()
+
+    return Balance(pending.sumOf { it.value.amount }, timeLockedSet)
 }

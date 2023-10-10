@@ -1,11 +1,14 @@
 package im.molly.monero
 
+import im.molly.monero.internal.TxInfo
+import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.time.Instant
 
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
@@ -15,7 +18,7 @@ class MoneroWallet internal constructor(
 
     private val logger = loggerFor<MoneroWallet>()
 
-    val primaryAddress: String = wallet.primaryAccountAddress
+    val primaryAddress: String = wallet.accountPrimaryAddress
 
     var dataStore by storageAdapter::dataStore
 
@@ -26,13 +29,17 @@ class MoneroWallet internal constructor(
         val listener = object : IBalanceListener.Stub() {
             lateinit var lastKnownLedger: Ledger
 
-            override fun onBalanceChanged(txOuts: List<OwnedTxOut>?, checkedAtBlockHeight: Long) {
-                lastKnownLedger = Ledger(primaryAddress, txOuts!!, checkedAtBlockHeight)
+            override fun onBalanceChanged(txHistory: List<TxInfo>, blockchainHeight: Int) {
+                val now = Instant.now()
+                val checkedAt = BlockchainTime(blockchainHeight, now)
+                val (txs, spendableEnotes) = txHistory.consolidateTransactions(checkedAt)
+                lastKnownLedger = Ledger(primaryAddress, txs, spendableEnotes, checkedAt)
                 sendLedger(lastKnownLedger)
             }
 
-            override fun onRefresh(blockchainHeight: Long) {
-                sendLedger(lastKnownLedger.copy(checkedAtBlockHeight = blockchainHeight))
+            override fun onRefresh(blockHeight: Int) {
+                val checkedAt = BlockchainTime.Block(blockHeight)
+                sendLedger(lastKnownLedger.copy(checkedAt = checkedAt))
             }
 
             private fun sendLedger(ledger: Ledger) {
@@ -52,7 +59,7 @@ class MoneroWallet internal constructor(
         skipCoinbaseOutputs: Boolean = false,
     ): RefreshResult = suspendCancellableCoroutine { continuation ->
         wallet.resumeRefresh(skipCoinbaseOutputs, object : BaseWalletCallbacks() {
-            override fun onRefreshResult(blockHeight: Long, status: Int) {
+            override fun onRefreshResult(blockHeight: Int, status: Int) {
                 val result = RefreshResult(blockHeight, status)
                 continuation.resume(result) {}
             }
@@ -74,11 +81,11 @@ class MoneroWallet internal constructor(
 }
 
 private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
-    override fun onRefreshResult(blockHeight: Long, status: Int) = Unit
+    override fun onRefreshResult(blockHeight: Int, status: Int) = Unit
 
     override fun onCommitResult(success: Boolean) = Unit
 }
 
-class RefreshResult(val blockHeight: Long, private val status: Int) {
+class RefreshResult(val blockHeight: Int, private val status: Int) {
     fun isError() = status != WalletNative.Status.OK
 }

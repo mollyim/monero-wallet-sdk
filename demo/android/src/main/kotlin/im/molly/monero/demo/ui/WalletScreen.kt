@@ -112,7 +112,7 @@ private fun WalletScreenPopulated(
                 text = buildAnnotatedString {
                     append(MoneroCurrency.symbol + " ")
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(MoneroCurrency.format(ledger.balance.totalAmount))
+                        append(MoneroCurrency.format(ledger.balance.confirmedBalance))
                     }
                 }
             )

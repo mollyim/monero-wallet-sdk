@@ -61,9 +61,10 @@ object Decoder {
         out.position(newOutPos)
     }
 
-    private fun findOutputBlockSize(blockSize: Int): Int = blockSizes[blockSize].also {
-        require(it >= 0) { "Invalid block size" }
-    }
+    private fun findOutputBlockSize(blockSize: Int): Int =
+        blockSizes[blockSize].also {
+            require(it >= 0) { "Invalid block size" }
+        }
 }
 
 fun String.decodeBase58(): ByteArray =
