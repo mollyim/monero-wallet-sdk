@@ -97,7 +97,7 @@ bool Wallet::parseFrom(std::istream& input) {
     return false;
   if (!serialization::serialize(ar, m_wallet))
     return false;
-  m_blockchain_height = m_wallet.get_blockchain_current_height();
+  set_current_blockchain_height(m_wallet.get_blockchain_current_height());
   captureTxHistorySnapshot(m_tx_history);
   m_account_ready = true;
   return true;
@@ -125,6 +125,12 @@ void Wallet::withTxHistory(Consumer consumer) {
 std::string Wallet::public_address() const {
   auto account = const_cast<Wallet*>(this)->require_account();
   return account.get_public_address_str(m_wallet.nettype());
+}
+
+void Wallet::set_current_blockchain_height(uint64_t height) {
+  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
+               "Blockchain max height reached");
+  m_blockchain_height = height;
 }
 
 cryptonote::account_base& Wallet::require_account() {
@@ -317,7 +323,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
 }
 
 void Wallet::handleNewBlock(uint64_t height, bool refresh_running) {
-  m_blockchain_height = height;
+  set_current_blockchain_height(height);
   if (m_balance_changed) {
     m_tx_history_mutex.lock();
     captureTxHistorySnapshot(m_tx_history);
@@ -339,8 +345,9 @@ void Wallet::notifyRefresh(bool debounce) {
   static std::chrono::steady_clock::time_point last_time;
   // If debouncing is requested and the blockchain height is a multiple of 100, it limits
   // the notifications to once every 200 ms.
+  uint32_t height = current_blockchain_height();
   if (debounce) {
-    if (m_blockchain_height % 100 == 0) {
+    if (height % 100 == 0) {
       auto now = std::chrono::steady_clock::now();
       if (now - last_time >= 200.ms) {
         last_time = now;
@@ -352,7 +359,7 @@ void Wallet::notifyRefresh(bool debounce) {
   }
   if (!debounce) {
     m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh,
-                              m_blockchain_height, m_balance_changed);
+                              height, m_balance_changed);
   }
 }
 
@@ -559,10 +566,7 @@ Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  uint64_t height = wallet->current_blockchain_height();
-  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
-               "Blockchain max height reached");
-  return static_cast<jint>(height);
+  return wallet->current_blockchain_height();
 }
 
 ScopedJvmLocalRef<jobject> nativeToJvmTxInfo(JNIEnv* env,

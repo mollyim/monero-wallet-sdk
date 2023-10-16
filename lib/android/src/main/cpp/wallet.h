@@ -95,7 +95,8 @@ class Wallet : tools::i_wallet2_callback {
 
   std::string public_address() const;
 
-  uint64_t current_blockchain_height() const { return m_blockchain_height; }
+  void set_current_blockchain_height(uint64_t height);
+  uint32_t current_blockchain_height() const { return static_cast<uint32_t>(m_blockchain_height); }
 
   // Extra state that must be persistent but isn't restored by wallet2's serializer.
   BEGIN_SERIALIZE_OBJECT()
