@@ -2,7 +2,7 @@ package im.molly.monero.internal
 
 import android.os.Parcelable
 import im.molly.monero.AccountAddress
-import im.molly.monero.AtomicAmount
+import im.molly.monero.MoneroAmount
 import im.molly.monero.BlockHeader
 import im.molly.monero.BlockchainTime
 import im.molly.monero.CalledByNative
@@ -43,8 +43,6 @@ internal data class TxInfo
     val incoming: Boolean,
 ) : Parcelable {
 
-    val outgoing get() = !incoming
-
     companion object State {
         const val OFF_CHAIN: Int = 0
         const val PENDING: Int = 1
@@ -61,93 +59,109 @@ internal data class TxInfo
 }
 
 internal fun List<TxInfo>.consolidateTransactions(
-    blockchainTime: BlockchainTime,
+    blockchainContext: BlockchainTime,
 ): Pair<Map<String, Transaction>, Set<TimeLocked<Enote>>> {
-    val enoteMap = mutableMapOf<String, Enote>()
-    val keyImageMap = mutableMapOf<String, Enote>()
-    val spentSet = mutableSetOf<String>()
+    val (enoteByKey, enoteByKeyImage) = extractEnotesFromIncomingTxs(blockchainContext)
 
-    forEach { txInfo ->
-        if (txInfo.incoming) {
-            enoteMap.computeIfAbsent(txInfo.key) {
-                txInfo.toEnote(blockchainTime.height).also { enote ->
-                    txInfo.keyImage?.let { keyImageMap[it] = enote }
+    val timeLockedEnotes = HashSet<TimeLocked<Enote>>(enoteByKey.size)
+
+    // Group transactions by their hash and then map each group to a Transaction
+    val groupedByTxId = groupBy { it.txHash }
+    val txById = groupedByTxId.mapValues { (_, infoList) ->
+        createTransaction(blockchainContext, infoList, enoteByKey, enoteByKeyImage)
+            .also { tx ->
+                if (tx.state !is TxState.Failed) {
+                    val lockedEnotesToAdd =
+                        tx.received.map { enote -> TimeLocked(enote, tx.timeLock) }
+                    timeLockedEnotes.addAll(lockedEnotesToAdd)
+                    tx.sent.forEach { enote -> enote.spent = true }
                 }
             }
-        } else if (txInfo.keyImage != null) {
-            spentSet.add(txInfo.key)
+    }
+
+    return txById to timeLockedEnotes
+}
+
+private fun List<TxInfo>.extractEnotesFromIncomingTxs(
+    blockchainContext: BlockchainTime,
+): Pair<Map<String, Enote>, Map<String, Enote>> {
+    val enoteByKey = mutableMapOf<String, Enote>()
+    val enoteByKeyImage = mutableMapOf<String, Enote>()
+
+    for (txInfo in filter { it.incoming }) {
+        enoteByKey.computeIfAbsent(txInfo.key) {
+            val enote = txInfo.toEnote(blockchainContext.height)
+            txInfo.keyImage?.let { keyImage ->
+                enoteByKeyImage[keyImage] = enote
+            }
+            enote
         }
     }
 
-    val groupedByTxHash = groupBy { it.txHash }
-    val txs = groupedByTxHash.mapValues { (txHash, infoList) ->
-        createTransaction(txHash, infoList, enoteMap, keyImageMap, blockchainTime)
-    }
-
-    val spendableEnotes = enoteMap
-        .filterKeys { !spentSet.contains(it) }
-        .map { (_, enote) ->
-            TimeLocked(enote, txs[enote.emissionTxId]!!.timeLock)
-        }
-        .toSet()
-
-    return txs to spendableEnotes
+    return enoteByKey to enoteByKeyImage
 }
 
 private fun createTransaction(
-    txHash: String,
+    blockchainContext: BlockchainTime,
     infoList: List<TxInfo>,
     enoteMap: Map<String, Enote>,
     keyImageMap: Map<String, Enote>,
-    blockchainTime: BlockchainTime,
 ): Transaction {
+    val txHash = infoList.first().txHash
     val unlockTime = infoList.maxOf { it.unlockTime }
     val fee = infoList.maxOf { it.fee }
     val change = infoList.maxOf { it.change }
 
     val (ins, outs) = infoList.partition { it.incoming }
-    val received = ins.map { enoteMap.getValue(it.key) }
+
+    val receivedEnotes = ins.map { enoteMap.getValue(it.key) }
     val spentKeyImages = outs.mapNotNull { it.keyImage }.toSet()
-    val sent = keyImageMap.filterKeys { it in spentKeyImages }.values
+    val sentEnotes = keyImageMap.filterKeys { spentKeyImages.contains(it) }.values
     val payments = outs.map { it.toPaymentDetail() }
 
     return Transaction(
         hash = HashDigest(txHash),
         state = determineTxState(infoList),
-        timeLock = blockchainTime.fromUnlockTime(unlockTime),
-        sent = sent.toSet(),
-        received = received.toSet(),
+        timeLock = blockchainContext.resolveUnlockTime(unlockTime),
+        sent = sentEnotes.toSet(),
+        received = receivedEnotes.toSet(),
         payments = payments,
-        fee = AtomicAmount(fee),
-        change = AtomicAmount(change),
+        fee = MoneroAmount(fee),
+        change = MoneroAmount(change),
     )
 }
 
 private fun determineTxState(infoList: List<TxInfo>): TxState {
     val txInfo = infoList.distinctBy { it.state }.single()
+
     return when (txInfo.state) {
         TxInfo.OFF_CHAIN -> TxState.OffChain
         TxInfo.PENDING -> TxState.InMemoryPool
         TxInfo.FAILED -> TxState.Failed
         TxInfo.ON_CHAIN -> TxState.OnChain(BlockHeader(txInfo.height, txInfo.timestamp))
-        else -> throw IllegalArgumentException("Invalid tx state value: ${txInfo.state}")
+        else -> error("Invalid tx state value: ${txInfo.state}")
     }
 }
 
-private fun TxInfo.toEnote(blockchainHeight: Int) = Enote(
-    amount = AtomicAmount(amount),
-    owner = AccountAddress(
+private fun TxInfo.toEnote(blockchainHeight: Int): Enote {
+    val ownerAddress = AccountAddress(
         publicAddress = PublicAddress.parse(recipient!!),
         accountIndex = subAddressMajor,
-        subAddressIndex = subAddressMinor,
-    ),
-    key = PublicKey(key),
-    keyImage = keyImage?.let { HashDigest(it) },
-    emissionTxId = txHash,
-    age = if (height == 0) 0 else (blockchainHeight - height + 1)
-)
+        subAddressIndex = subAddressMinor
+    )
+
+    val calculatedAge = if (height == 0) 0 else blockchainHeight - height + 1
+
+    return Enote(
+        amount = MoneroAmount(amount),
+        owner = ownerAddress,
+        key = PublicKey(key),
+        keyImage = keyImage?.let { HashDigest(it) },
+        age = calculatedAge,
+    )
+}
 
 private fun TxInfo.toPaymentDetail() = PaymentDetail(
-    amount = AtomicAmount(amount),
+    amount = MoneroAmount(amount),
     recipient = PublicAddress.parse(recipient!!),
 )

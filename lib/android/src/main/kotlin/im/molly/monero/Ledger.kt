@@ -4,11 +4,11 @@ package im.molly.monero
 
 data class Ledger(
     val publicAddress: String,
-    val txs: Map<String, Transaction>,
-    val spendableEnotes: Set<TimeLocked<Enote>>,
+    val transactions: Map<String, Transaction>,
+    val enotes: Set<TimeLocked<Enote>>,
     val checkedAt: BlockchainTime,
 ) {
-    val balance = spendableEnotes.balance()
+    val balance: Balance = enotes.calculateBalance()
 
 //    companion object {
 //        fun fromProto(proto: LedgerProto) = Ledger(

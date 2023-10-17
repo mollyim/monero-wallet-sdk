@@ -1,21 +1,33 @@
 package im.molly.monero
 
-import im.molly.monero.internal.constants.CRYPTONOTE_DISPLAY_DECIMAL_POINT
-import java.math.BigDecimal
 import java.text.NumberFormat
-import java.util.*
+import java.util.Locale
 
 object MoneroCurrency {
-    const val symbol = "XMR"
+    const val SYMBOL = "XMR"
 
-    fun format(atomicAmount: AtomicAmount, formatter: NumberFormat = DefaultFormatter): String =
-        formatter.format(BigDecimal.valueOf(atomicAmount.value, CRYPTONOTE_DISPLAY_DECIMAL_POINT))
+    const val MAX_PRECISION = MoneroAmount.ATOMIC_UNIT_SCALE
 
-    fun parse(source: String, formatter: NumberFormat = DefaultFormatter): AtomicAmount {
-        TODO()
+    val DefaultFormatter = Formatter()
+
+    data class Formatter(
+        val precision: Int = MAX_PRECISION,
+        val locale: Locale = Locale.US,
+    ) {
+        init {
+            require(precision in 0..MAX_PRECISION) {
+                "Precision must be between 0 and $MAX_PRECISION"
+            }
+        }
+
+        private val numberFormat = NumberFormat.getInstance(locale).apply {
+            minimumFractionDigits = precision
+        }
+
+        fun format(amount: MoneroAmount): String = numberFormat.format(amount.toXmr())
+
+        fun parse(source: String): MoneroAmount {
+            TODO()
+        }
     }
-}
-
-val DefaultFormatter: NumberFormat = NumberFormat.getInstance(Locale.US).apply {
-    minimumFractionDigits = 5
 }

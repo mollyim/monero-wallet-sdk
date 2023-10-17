@@ -1,13 +1,14 @@
 package im.molly.monero
 
 data class Enote(
-    val amount: AtomicAmount,
+    val amount: MoneroAmount,
     val owner: AccountAddress,
     val key: PublicKey,
     val keyImage: HashDigest?,
-    val emissionTxId: String?,
     val age: Int,
 ) {
+    var spent: Boolean = false
+
     init {
         require(age >= 0) { "Enote age $age must not be negative" }
     }

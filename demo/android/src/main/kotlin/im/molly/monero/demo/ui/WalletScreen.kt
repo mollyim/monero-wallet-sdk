@@ -9,15 +9,16 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import im.molly.monero.Balance
+import im.molly.monero.BlockchainTime
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroCurrency
 import im.molly.monero.demo.data.model.WalletConfig
 import im.molly.monero.demo.ui.component.Toolbar
 import im.molly.monero.demo.ui.theme.AppIcons
+import im.molly.monero.demo.ui.theme.AppTheme
 
 @Composable
 fun WalletRoute(
@@ -41,9 +42,9 @@ fun WalletRoute(
 @Composable
 private fun WalletScreen(
     uiState: WalletUiState,
-    onWalletConfigChange: (WalletConfig) -> Unit,
-    onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onWalletConfigChange: (WalletConfig) -> Unit = {},
+    onBackClick: () -> Unit = {},
 ) {
     when (uiState) {
         WalletUiState.Error -> WalletScreenError(onBackClick = onBackClick)
@@ -110,9 +111,9 @@ private fun WalletScreenPopulated(
             Text(
                 style = MaterialTheme.typography.headlineLarge,
                 text = buildAnnotatedString {
-                    append(MoneroCurrency.symbol + " ")
+                    append(MoneroCurrency.SYMBOL + " ")
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(MoneroCurrency.format(ledger.balance.confirmedBalance))
+                        append(MoneroCurrency.Formatter(precision = 5).format(ledger.balance.confirmedAmount))
                     }
                 }
             )
@@ -174,6 +175,30 @@ private fun WalletKebabMenu(
                 onDeleteClick()
                 expanded = false
             },
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun WalletScreenPreview() {
+    AppTheme {
+        WalletScreen(
+            uiState = WalletUiState.Success(
+                WalletConfig(
+                    id = 0,
+                    publicAddress = "888tNkZrPN6JsEgekjMnABU4TBzc2Dt29EPAvkRxbANsAnjyPbb3iQ1YBRk1UXcdRsiKc9dhwMVgN5S9cQUiyoogDavup3H",
+                    filename = "",
+                    name = "Personal",
+                    remoteNodes = emptySet(),
+                ),
+                Ledger(
+                    publicAddress = "888tNkZrPN6JsEgekjMnABU4TBzc2Dt29EPAvkRxbANsAnjyPbb3iQ1YBRk1UXcdRsiKc9dhwMVgN5S9cQUiyoogDavup3H",
+                    transactions = emptyMap(),
+                    enotes = emptySet(),
+                    checkedAt = BlockchainTime.Genesis,
+                ),
+            ),
         )
     }
 }

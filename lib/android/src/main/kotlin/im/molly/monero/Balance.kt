@@ -1,31 +1,38 @@
 package im.molly.monero
 
 data class Balance(
-    val pendingBalance: AtomicAmount,
-    val timeLockedAmounts: Set<TimeLocked<AtomicAmount>>,
+    val pendingAmount: MoneroAmount,
+    val timeLockedAmounts: List<TimeLocked<MoneroAmount>>,
 ) {
-    val confirmedBalance: AtomicAmount = timeLockedAmounts.sumOf { it.value }
+    val confirmedAmount: MoneroAmount = timeLockedAmounts.sumOf { it.value }
+    val totalAmount: MoneroAmount = confirmedAmount + pendingAmount
 
-    fun unlockedBalance(currentTime: BlockchainTime): AtomicAmount =
+    fun unlockedAmountAt(targetTime: BlockchainTime): MoneroAmount =
         timeLockedAmounts
-            .mapNotNull { it.getValueIfUnlocked(currentTime) }
-            .sum()
+            .filter { it.isUnlocked(targetTime) }
+            .sumOf { it.value }
 
-    fun lockedBalance(currentTime: BlockchainTime): Map<BlockchainTimeSpan, AtomicAmount> =
+    fun lockedAmountsAt(targetTime: BlockchainTime): Map<BlockchainTimeSpan, MoneroAmount> =
         timeLockedAmounts
-            .filter { it.isLocked(currentTime) }
-            .groupBy({ it.timeUntilUnlock(currentTime) }, { it.value })
-            .mapValues { (_, amounts) -> amounts.sum() }
+            .filter { it.isLocked(targetTime) }
+            .groupBy({ it.timeUntilUnlock(targetTime) }, { it.value })
+            .mapValues { (_, amounts) ->
+                amounts.sum()
+            }
 }
 
-fun Iterable<TimeLocked<Enote>>.balance(subAccountSelector: (Int) -> Boolean = { true }): Balance {
-    val enotes = filter { subAccountSelector(it.value.owner.accountIndex) }
-    val (pending, confirmed) = enotes.partition { it.value.age == 0 }
+fun Iterable<TimeLocked<Enote>>.calculateBalance(): Balance {
+    var pendingAmount = MoneroAmount.ZERO
 
-    val timeLockedSet = confirmed
-        .groupBy({ it.unlockTime }, { it.value.amount })
-        .map { (unlockTime, amounts) -> TimeLocked(amounts.sum(), unlockTime) }
-        .toSet()
+    val lockedAmounts = mutableListOf<TimeLocked<MoneroAmount>>()
 
-    return Balance(pending.sumOf { it.value.amount }, timeLockedSet)
+    for (timeLocked in filter { it.value.spent }) {
+        if (timeLocked.value.age == 0) {
+            pendingAmount += timeLocked.value.amount
+        } else {
+            lockedAmounts.add(TimeLocked(timeLocked.value.amount, timeLocked.unlockTime))
+        }
+    }
+
+    return Balance(pendingAmount, lockedAmounts)
 }

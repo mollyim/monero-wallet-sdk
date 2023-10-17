@@ -128,8 +128,7 @@ std::string Wallet::public_address() const {
 }
 
 void Wallet::set_current_blockchain_height(uint64_t height) {
-  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
-               "Blockchain max height reached");
+  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
   m_blockchain_height = height;
 }
 
@@ -571,8 +570,8 @@ Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
 
 ScopedJvmLocalRef<jobject> nativeToJvmTxInfo(JNIEnv* env,
                                              const TxInfo& info) {
-  LOG_FATAL_IF(info.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
-               "Blockchain max height reached");
+  LOG_FATAL_IF(info.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
+  // TODO: Check amount overflow
   return {env, TxInfoClass.newObject(
       env, TxInfo_ctor,
       nativeToJvmString(env, pod_to_hex(info.m_tx_hash)).obj(),

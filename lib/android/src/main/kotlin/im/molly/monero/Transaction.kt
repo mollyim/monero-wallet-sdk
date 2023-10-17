@@ -8,22 +8,13 @@ data class Transaction(
     val sent: Set<Enote>,
     val received: Set<Enote>,
     val payments: List<PaymentDetail>,
-    val fee: AtomicAmount,
-    val change: AtomicAmount,
+    val fee: MoneroAmount,
+    val change: MoneroAmount,
 ) {
     val txId: String get() = hash.toString()
-
-    val netAmount: AtomicAmount = calculateNetAmount()
-
-    private fun calculateNetAmount(): AtomicAmount {
-        val receivedSum = received.sumOf { it.amount }
-        val sentSum = sent.sumOf { it.amount }
-        return receivedSum - sentSum
-    }
 }
 
 sealed interface TxState {
-    val confirmed get() = this is OnChain
 
     data class OnChain(
         val blockHeader: BlockHeader,
@@ -39,6 +30,6 @@ sealed interface TxState {
 }
 
 data class PaymentDetail(
-    val amount: AtomicAmount,
+    val amount: MoneroAmount,
     val recipient: PublicAddress,
 )

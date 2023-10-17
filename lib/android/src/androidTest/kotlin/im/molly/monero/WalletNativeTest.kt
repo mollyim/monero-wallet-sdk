@@ -57,8 +57,8 @@ class WalletNativeTest {
                 secretSpendKey = randomSecretKey(),
             ).currentBalance
         ) {
-            assertThat(totalAmount).isEqualTo(0.toAtomicAmount())
-            assertThat(totalAmountUnlockedAt(1)).isEqualTo(0.toAtomicAmount())
+            assertThat(totalAmount).isEqualTo(0.toAtomicUnits())
+            assertThat(totalAmountUnlockedAt(1)).isEqualTo(0.toAtomicUnits())
         }
     }
 }
