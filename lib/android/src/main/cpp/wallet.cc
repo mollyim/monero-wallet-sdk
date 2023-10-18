@@ -178,7 +178,8 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   for (const auto& td: tds) {
     snapshot.emplace_back(td.m_txid, TxInfo::INCOMING);
     TxInfo& recv = snapshot.back();
-    recv.m_key = td.get_public_key();
+    recv.m_public_key = td.get_public_key();
+    recv.m_public_key_known =  true;
     recv.m_key_image = td.m_key_image;
     recv.m_key_image_known = td.m_key_image_known;
     recv.m_subaddress_major = td.m_subaddr_index.major;
@@ -247,7 +248,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
         // Add pending transfers to our own wallet.
         snapshot.emplace_back(pair.first, TxInfo::INCOMING);
         TxInfo& recv = snapshot.back();
-        // TODO: recv.m_key
         recv.m_recipient = m_wallet.get_subaddress_as_str(*dest_subaddr_idx);
         recv.m_subaddress_major = (*dest_subaddr_idx).major;
         recv.m_subaddress_minor = (*dest_subaddr_idx).minor;
@@ -273,7 +273,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     if (utx.m_change > 0) {
       snapshot.emplace_back(pair.first, TxInfo::INCOMING);
       TxInfo& change = snapshot.back();
-      // TODO: change.m_key
       change.m_recipient = m_wallet.get_subaddress_as_str({utx.m_subaddr_account, 0});
       change.m_subaddress_major = utx.m_subaddr_account;
       change.m_subaddress_minor = 0;  // All changes go to 0-th subaddress
@@ -306,7 +305,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     for (uint64_t amount: upd.m_amounts) {
       snapshot.emplace_back(upd.m_tx_hash, TxInfo::INCOMING);
       TxInfo& recv = snapshot.back();
-      // TODO: recv.m_key
       recv.m_recipient = m_wallet.get_subaddress_as_str(upd.m_subaddr_index);
       recv.m_subaddress_major = upd.m_subaddr_index.major;
       recv.m_subaddress_minor = upd.m_subaddr_index.minor;
@@ -569,25 +567,26 @@ Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
 }
 
 ScopedJvmLocalRef<jobject> nativeToJvmTxInfo(JNIEnv* env,
-                                             const TxInfo& info) {
-  LOG_FATAL_IF(info.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
+                                             const TxInfo& tx) {
+  LOG_FATAL_IF(tx.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
   // TODO: Check amount overflow
   return {env, TxInfoClass.newObject(
       env, TxInfo_ctor,
-      nativeToJvmString(env, pod_to_hex(info.m_tx_hash)).obj(),
-      nativeToJvmString(env, pod_to_hex(info.m_key)).obj(),
-      info.m_key_image_known ? nativeToJvmString(env, pod_to_hex(info.m_key_image)).obj(): nullptr,
-      info.m_subaddress_major,
-      info.m_subaddress_minor,
-      (!info.m_recipient.empty()) ? nativeToJvmString(env, info.m_recipient).obj() : nullptr,
-      info.m_amount,
-      static_cast<jint>(info.m_height),
-      info.m_state,
-      info.m_unlock_time,
-      info.m_timestamp,
-      info.m_fee,
-      info.m_coinbase,
-      info.m_type == TxInfo::INCOMING)
+      nativeToJvmString(env, pod_to_hex(tx.m_tx_hash)).obj(),
+      tx.m_public_key_known ? nativeToJvmString(env, pod_to_hex(tx.m_public_key)).obj() : nullptr,
+      tx.m_key_image_known ? nativeToJvmString(env, pod_to_hex(tx.m_key_image)).obj() : nullptr,
+      tx.m_subaddress_major,
+      tx.m_subaddress_minor,
+      (!tx.m_recipient.empty()) ? nativeToJvmString(env, tx.m_recipient).obj() : nullptr,
+      tx.m_amount,
+      static_cast<jint>(tx.m_height),
+      tx.m_state,
+      tx.m_unlock_time,
+      tx.m_timestamp,
+      tx.m_fee,
+      tx.m_change,
+      tx.m_coinbase,
+      tx.m_type == TxInfo::INCOMING)
   };
 }
 

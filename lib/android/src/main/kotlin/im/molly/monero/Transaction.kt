@@ -4,18 +4,21 @@ data class Transaction(
     val hash: HashDigest,
     // TODO: val version: ProtocolInfo,
     val state: TxState,
-    val timeLock: BlockchainTime,
+    val timeLock: BlockchainTime?,
     val sent: Set<Enote>,
     val received: Set<Enote>,
     val payments: List<PaymentDetail>,
     val fee: MoneroAmount,
     val change: MoneroAmount,
 ) {
-    val txId: String get() = hash.toString()
+    val txId: String
+        get() = hash.toString()
+
+    val blockHeight: Int?
+        get() = (state as? TxState.OnChain)?.blockHeader?.height
 }
 
 sealed interface TxState {
-
     data class OnChain(
         val blockHeader: BlockHeader,
     ) : TxState

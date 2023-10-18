@@ -25,6 +25,8 @@ open class BlockchainTime(
     override fun compareTo(other: BlockchainTime): Int =
         this.height.compareTo(other.height)
 
+    override fun toString(): String = "Block #$height | $timestamp"
+
     data object Genesis : BlockchainTime(0, Instant.ofEpochSecond(1397818193))
 
     class Block(height: Int, referencePoint: BlockchainTime = Genesis) :
@@ -42,17 +44,20 @@ open class BlockchainTime(
     }
 
     companion object {
-        val AVERAGE_BLOCK_TIME = Duration.ofSeconds(DIFFICULTY_TARGET_V2)
+        val AVERAGE_BLOCK_TIME: Duration = Duration.ofSeconds(DIFFICULTY_TARGET_V2)
 
         fun estimateTimestamp(targetHeight: Int, referencePoint: BlockchainTime): Instant {
-            require(targetHeight >= 0) { "Block height $targetHeight must not be negative" }
+            require(targetHeight >= 0) {
+                "Block height $targetHeight must not be negative"
+            }
 
-            return if (targetHeight == 0) {
-                Genesis.timestamp
-            } else {
-                val heightDiff = targetHeight - referencePoint.height
-                val estTimeDiff = AVERAGE_BLOCK_TIME.multipliedBy(heightDiff.toLong())
-                referencePoint.timestamp.plus(estTimeDiff)
+            return when (targetHeight) {
+                0 -> Genesis.timestamp
+                else -> {
+                    val heightDiff = targetHeight - referencePoint.height
+                    val estTimeDiff = AVERAGE_BLOCK_TIME.multipliedBy(heightDiff.toLong())
+                    referencePoint.timestamp.plus(estTimeDiff)
+                }
             }
         }
 
@@ -85,6 +90,10 @@ open class BlockchainTime(
 
     operator fun minus(other: BlockchainTime): BlockchainTimeSpan = other.until(this)
 }
+
+fun max(a: BlockchainTime, b: BlockchainTime) = if (a >= b) a else b
+
+fun min(a: BlockchainTime, b: BlockchainTime) = if (a <= b) a else b
 
 data class BlockchainTimeSpan(val duration: Duration, val blocks: Int) {
     companion object {

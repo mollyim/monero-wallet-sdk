@@ -19,7 +19,7 @@ using unconfirmed_transfer_details = tools::wallet2::unconfirmed_transfer_detail
 // Basic structure combining transaction details with input or output info.
 struct TxInfo {
   crypto::hash m_tx_hash;
-  crypto::public_key m_key;
+  crypto::public_key m_public_key;
   crypto::key_image m_key_image;
   uint32_t m_subaddress_major;
   uint32_t m_subaddress_minor;
@@ -31,6 +31,7 @@ struct TxInfo {
   uint64_t m_fee;
   uint64_t m_change;
   bool m_coinbase;
+  bool m_public_key_known;
   bool m_key_image_known;
 
   enum TxType {
@@ -47,7 +48,7 @@ struct TxInfo {
 
   TxInfo(crypto::hash tx_hash, TxType type):
       m_tx_hash(tx_hash),
-      m_key(crypto::public_key{}),
+      m_public_key(crypto::public_key{}),
       m_key_image(crypto::key_image{}),
       m_subaddress_major(-1),
       m_subaddress_minor(-1),
@@ -59,6 +60,7 @@ struct TxInfo {
       m_fee(0),
       m_change(0),
       m_coinbase(false),
+      m_public_key_known(false),
       m_key_image_known(false),
       m_type(type),
       m_state(OFF_CHAIN) {}

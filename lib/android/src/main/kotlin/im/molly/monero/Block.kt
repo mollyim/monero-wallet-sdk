@@ -13,7 +13,7 @@ data class Block(
 
 data class BlockHeader(
     val height: Int,
-    val timestamp: Long,
+    val epochSecond: Long,
 ) {
     companion object {
         const val MAX_HEIGHT = CRYPTONOTE_MAX_BLOCK_NUMBER - 1

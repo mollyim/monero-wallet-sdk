@@ -2,18 +2,20 @@ package im.molly.monero.internal
 
 import android.os.Parcelable
 import im.molly.monero.AccountAddress
-import im.molly.monero.MoneroAmount
 import im.molly.monero.BlockHeader
 import im.molly.monero.BlockchainTime
 import im.molly.monero.CalledByNative
 import im.molly.monero.Enote
 import im.molly.monero.HashDigest
+import im.molly.monero.MoneroAmount
 import im.molly.monero.PaymentDetail
 import im.molly.monero.PublicAddress
 import im.molly.monero.PublicKey
 import im.molly.monero.TimeLocked
 import im.molly.monero.Transaction
 import im.molly.monero.TxState
+import im.molly.monero.internal.constants.CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE
+import im.molly.monero.max
 import kotlinx.parcelize.Parcelize
 
 /**
@@ -27,7 +29,7 @@ import kotlinx.parcelize.Parcelize
 internal data class TxInfo
 @CalledByNative("wallet.cc") constructor(
     val txHash: String,
-    val key: String,
+    val publicKey: String?,
     val keyImage: String?,
     val subAddressMajor: Int,
     val subAddressMinor: Int,
@@ -61,85 +63,87 @@ internal data class TxInfo
 internal fun List<TxInfo>.consolidateTransactions(
     blockchainContext: BlockchainTime,
 ): Pair<Map<String, Transaction>, Set<TimeLocked<Enote>>> {
-    val (enoteByKey, enoteByKeyImage) = extractEnotesFromIncomingTxs(blockchainContext)
+    // Extract enotes from incoming transactions
+    val allEnotes = filter { it.incoming }.map { it.toEnote(blockchainContext.height) }
 
-    val timeLockedEnotes = HashSet<TimeLocked<Enote>>(enoteByKey.size)
+    val enoteByTxId = allEnotes.groupBy { enote -> enote.sourceTxId!! }
 
-    // Group transactions by their hash and then map each group to a Transaction
-    val groupedByTxId = groupBy { it.txHash }
+    val enoteByKeyImage = allEnotes.mapNotNull { enote ->
+        enote.keyImage?.let { keyImage -> keyImage.toString() to enote }
+    }.toMap()
+
+    val validEnotes = HashSet<TimeLocked<Enote>>(allEnotes.size)
+
+    // Group transaction info by their hash and then map each group to a Transaction
+    val groupedByTxId = groupBy { txInfo -> txInfo.txHash }
     val txById = groupedByTxId.mapValues { (_, infoList) ->
-        createTransaction(blockchainContext, infoList, enoteByKey, enoteByKeyImage)
-            .also { tx ->
-                if (tx.state !is TxState.Failed) {
-                    val lockedEnotesToAdd =
-                        tx.received.map { enote -> TimeLocked(enote, tx.timeLock) }
-                    timeLockedEnotes.addAll(lockedEnotesToAdd)
-                    tx.sent.forEach { enote -> enote.spent = true }
-                }
-            }
-    }
+        val tx = infoList.createTransaction(blockchainContext, enoteByTxId, enoteByKeyImage)
 
-    return txById to timeLockedEnotes
-}
+        // If transaction isn't failed, calculate unlock time and save enotes
+        if (tx.state !is TxState.Failed) {
+            val defaultUnlockTime = BlockchainTime.Block(
+                height = tx.blockHeight!! + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE,
+                referencePoint = blockchainContext,
+            )
+            val maxUnlockTime = max(defaultUnlockTime, tx.timeLock ?: BlockchainTime.Genesis)
 
-private fun List<TxInfo>.extractEnotesFromIncomingTxs(
-    blockchainContext: BlockchainTime,
-): Pair<Map<String, Enote>, Map<String, Enote>> {
-    val enoteByKey = mutableMapOf<String, Enote>()
-    val enoteByKeyImage = mutableMapOf<String, Enote>()
-
-    for (txInfo in filter { it.incoming }) {
-        enoteByKey.computeIfAbsent(txInfo.key) {
-            val enote = txInfo.toEnote(blockchainContext.height)
-            txInfo.keyImage?.let { keyImage ->
-                enoteByKeyImage[keyImage] = enote
-            }
-            enote
+            val lockedEnotesToAdd = tx.received.map { enote -> TimeLocked(enote, maxUnlockTime) }
+            validEnotes.addAll(lockedEnotesToAdd)
         }
+
+        // Mark the sent enotes as spent
+        tx.sent.forEach { enote -> enote.markAsSpent() }
+
+        tx
     }
 
-    return enoteByKey to enoteByKeyImage
+    return txById to validEnotes
 }
 
-private fun createTransaction(
+private fun List<TxInfo>.createTransaction(
     blockchainContext: BlockchainTime,
-    infoList: List<TxInfo>,
-    enoteMap: Map<String, Enote>,
-    keyImageMap: Map<String, Enote>,
+    enoteByTxId: Map<String, List<Enote>>,
+    enoteByKeyImage: Map<String, Enote>,
 ): Transaction {
-    val txHash = infoList.first().txHash
-    val unlockTime = infoList.maxOf { it.unlockTime }
-    val fee = infoList.maxOf { it.fee }
-    val change = infoList.maxOf { it.change }
+    val txHash = first().txHash
 
-    val (ins, outs) = infoList.partition { it.incoming }
+    val fee = maxOf { it.fee }
+    val change = maxOf { it.change }
 
-    val receivedEnotes = ins.map { enoteMap.getValue(it.key) }
-    val spentKeyImages = outs.mapNotNull { it.keyImage }.toSet()
-    val sentEnotes = keyImageMap.filterKeys { spentKeyImages.contains(it) }.values
-    val payments = outs.map { it.toPaymentDetail() }
+    val timeLock = maxOf { it.unlockTime }.let { unlockTime ->
+        if (unlockTime == 0L) null else blockchainContext.resolveUnlockTime(unlockTime)
+    }
+
+    val receivedEnotes = enoteByTxId.getValue(txHash).toSet()
+
+    val outTxs = filter { !it.incoming }
+
+    val spentKeyImages = outTxs.mapNotNull { it.keyImage }
+    val sentEnotes = enoteByKeyImage.filterKeys { ki -> ki in spentKeyImages }.values.toSet()
+
+    val payments = outTxs.map { it.toPaymentDetail() }
 
     return Transaction(
         hash = HashDigest(txHash),
-        state = determineTxState(infoList),
-        timeLock = blockchainContext.resolveUnlockTime(unlockTime),
-        sent = sentEnotes.toSet(),
-        received = receivedEnotes.toSet(),
+        state = determineTxState(),
+        timeLock = timeLock,
+        sent = sentEnotes,
+        received = receivedEnotes,
         payments = payments,
-        fee = MoneroAmount(fee),
-        change = MoneroAmount(change),
+        fee = MoneroAmount(atomicUnits = fee),
+        change = MoneroAmount(atomicUnits = change),
     )
 }
 
-private fun determineTxState(infoList: List<TxInfo>): TxState {
-    val txInfo = infoList.distinctBy { it.state }.single()
+private fun List<TxInfo>.determineTxState(): TxState {
+    val uniqueTx = distinctBy { it.state }.single()
 
-    return when (txInfo.state) {
+    return when (uniqueTx.state) {
         TxInfo.OFF_CHAIN -> TxState.OffChain
         TxInfo.PENDING -> TxState.InMemoryPool
         TxInfo.FAILED -> TxState.Failed
-        TxInfo.ON_CHAIN -> TxState.OnChain(BlockHeader(txInfo.height, txInfo.timestamp))
-        else -> error("Invalid tx state value: ${txInfo.state}")
+        TxInfo.ON_CHAIN -> TxState.OnChain(BlockHeader(uniqueTx.height, uniqueTx.timestamp))
+        else -> error("Invalid tx state value: ${uniqueTx.state}")
     }
 }
 
@@ -153,15 +157,16 @@ private fun TxInfo.toEnote(blockchainHeight: Int): Enote {
     val calculatedAge = if (height == 0) 0 else blockchainHeight - height + 1
 
     return Enote(
-        amount = MoneroAmount(amount),
+        amount = MoneroAmount(atomicUnits = amount),
         owner = ownerAddress,
-        key = PublicKey(key),
+        key = publicKey?.let { PublicKey(it) },
         keyImage = keyImage?.let { HashDigest(it) },
         age = calculatedAge,
+        sourceTxId = txHash,
     )
 }
 
 private fun TxInfo.toPaymentDetail() = PaymentDetail(
-    amount = MoneroAmount(amount),
+    amount = MoneroAmount(atomicUnits = amount),
     recipient = PublicAddress.parse(recipient!!),
 )
