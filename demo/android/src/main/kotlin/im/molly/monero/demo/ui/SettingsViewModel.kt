@@ -98,5 +98,5 @@ sealed interface SettingsUiState {
         val remoteNodes: List<RemoteNode>,
     ) : SettingsUiState
 
-    object Loading : SettingsUiState
+    data object Loading : SettingsUiState
 }

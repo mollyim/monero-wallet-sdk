@@ -8,9 +8,9 @@ object MoneroCurrency {
 
     const val MAX_PRECISION = MoneroAmount.ATOMIC_UNIT_SCALE
 
-    val DefaultFormatter = Formatter()
+    val DefaultFormat = Format()
 
-    data class Formatter(
+    data class Format(
         val precision: Int = MAX_PRECISION,
         val locale: Locale = Locale.US,
     ) {

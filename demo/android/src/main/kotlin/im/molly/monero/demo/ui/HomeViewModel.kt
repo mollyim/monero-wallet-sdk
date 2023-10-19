@@ -21,16 +21,16 @@ class HomeViewModel(
 }
 
 sealed interface HomeUiState {
-    object Loading : HomeUiState
+    data object Loading : HomeUiState
 
 //    data class Ready(
 //        val wallets: List<WalletDetails>
 //    ) : HomeUiState
 
-    object Empty : HomeUiState
+    data object Empty : HomeUiState
 }
 
 sealed interface WalletListUiState {
     data class Success(val ids: List<Long>) : WalletListUiState
-    object Loading : WalletListUiState
+    data object Loading : WalletListUiState
 }

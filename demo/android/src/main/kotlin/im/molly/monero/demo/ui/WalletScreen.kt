@@ -113,11 +113,16 @@ private fun WalletScreenPopulated(
                 text = buildAnnotatedString {
                     append(MoneroCurrency.SYMBOL + " ")
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(MoneroCurrency.Formatter(precision = 5).format(ledger.balance.confirmedAmount))
+                        append(MoneroCurrency.Format(precision = 5).format(ledger.balance.confirmedAmount))
                     }
                 }
             )
             Text(text = walletConfig.name, style = MaterialTheme.typography.headlineSmall)
+
+            WalletBalanceView(
+                balance = ledger.balance,
+                blockchainTime = ledger.checkedAt,
+            )
         }
 
         if (showRenameDialog) {

@@ -71,6 +71,6 @@ sealed interface WalletUiState {
         val ledger: Ledger,
     ) : WalletUiState
 
-    object Error : WalletUiState
-    object Loading : WalletUiState
+    data object Error : WalletUiState
+    data object Loading : WalletUiState
 }
