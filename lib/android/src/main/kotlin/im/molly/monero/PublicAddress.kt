@@ -25,7 +25,7 @@ interface PublicAddress {
                 return StandardAddress(network)
             }
             SubAddress.prefixes[prefix]?.let { network ->
-                TODO()
+                return SubAddress(network)
             }
             IntegratedAddress.prefixes[prefix]?.let { network ->
                 TODO()
@@ -60,7 +60,7 @@ data class SubAddress(
     companion object {
         val prefixes = mapOf(
             42L to MoneroNetwork.Mainnet,
-            64L to MoneroNetwork.Testnet,
+            63L to MoneroNetwork.Testnet,
             36L to MoneroNetwork.Stagenet,
         )
     }

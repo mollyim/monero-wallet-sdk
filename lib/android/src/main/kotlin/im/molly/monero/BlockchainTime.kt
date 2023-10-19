@@ -96,19 +96,24 @@ fun max(a: BlockchainTime, b: BlockchainTime) = if (a >= b) a else b
 fun min(a: BlockchainTime, b: BlockchainTime) = if (a <= b) a else b
 
 data class BlockchainTimeSpan(val duration: Duration, val blocks: Int) {
+    val timeRemaining: Duration
+        get() = maxOf(Duration.ZERO, duration)
+
     companion object {
         val ZERO = BlockchainTimeSpan(duration = Duration.ZERO, blocks = 0)
     }
 }
 
-class TimeLocked<T>(val value: T, val unlockTime: BlockchainTime) {
-    fun isLocked(currentTime: BlockchainTime): Boolean = currentTime < unlockTime
+class TimeLocked<T>(val value: T, val unlockTime: BlockchainTime?) {
+    fun isLocked(currentTime: BlockchainTime): Boolean {
+        return currentTime < (unlockTime ?: return false)
+    }
 
     fun isUnlocked(currentTime: BlockchainTime) = !isLocked(currentTime)
 
     fun timeUntilUnlock(currentTime: BlockchainTime): BlockchainTimeSpan {
         return if (isLocked(currentTime)) {
-            unlockTime.minus(currentTime)
+            unlockTime!!.minus(currentTime)
         } else {
             BlockchainTimeSpan.ZERO
         }

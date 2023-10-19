@@ -139,16 +139,33 @@ cryptonote::account_base& Wallet::require_account() {
 
 const payment_details* find_matching_payment(
     const std::list<std::pair<crypto::hash, payment_details>> pds,
-    uint64_t amount,
-    const crypto::hash& txid,
-    const cryptonote::subaddress_index& subaddr_index) {
-  if (txid == crypto::null_hash) {
+    const transfer_details& td) {
+  if (td.m_txid == crypto::null_hash) {
     return nullptr;
   }
   for (const auto& p: pds) {
     const auto& pd = p.second;
-    if (pd.m_amount == amount && pd.m_tx_hash == txid && pd.m_subaddr_index == subaddr_index) {
+    if (td.m_amount == pd.m_amount
+        && td.m_subaddr_index == pd.m_subaddr_index
+        && td.m_txid == pd.m_tx_hash) {
       return &pd;
+    }
+  }
+  return nullptr;
+};
+
+const confirmed_transfer_details* find_matching_transfer_for_change(
+    const std::list<std::pair<crypto::hash, confirmed_transfer_details>> txs,
+    const transfer_details& td) {
+  if (td.m_txid == crypto::null_hash || td.m_subaddr_index.minor != 0) {
+    return nullptr;
+  }
+  for (const auto& p: txs) {
+    const auto& tx = p.second;
+    if (td.m_amount == tx.m_change
+        && td.m_subaddr_index.major == tx.m_subaddr_account
+        && td.m_txid == p.first) {
+      return &tx;
     }
   }
   return nullptr;
@@ -174,7 +191,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   m_wallet.get_payments_out(txs, min_height);
   m_wallet.get_unconfirmed_payments_out(utxs);
 
-  // Iterate through the known owned outputs (incoming transactions).
+  // Iterate through the known owned outputs.
   for (const auto& td: tds) {
     snapshot.emplace_back(td.m_txid, TxInfo::INCOMING);
     TxInfo& recv = snapshot.back();
@@ -188,13 +205,17 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     recv.m_amount = td.m_amount;
     recv.m_unlock_time = td.m_tx.unlock_time;
 
-    // Check if the payment exists and update metadata if found.
-    const auto* pd = find_matching_payment(pds, td.m_amount, td.m_txid, td.m_subaddr_index);
-    if (pd) {
+    // Check if the payment or change exists and update metadata if found.
+    if (const auto* pd = find_matching_payment(pds, td)) {
       recv.m_height = pd->m_block_height;
       recv.m_timestamp = pd->m_timestamp;
       recv.m_fee = pd->m_fee;
       recv.m_coinbase = pd->m_coinbase;
+      recv.m_state = TxInfo::ON_CHAIN;
+    } else if (const auto tx = find_matching_transfer_for_change(txs, td)) {
+      recv.m_height = tx->m_block_height;
+      recv.m_timestamp = tx->m_timestamp;
+      recv.m_fee = tx->m_amount_in - tx->m_amount_out;
       recv.m_state = TxInfo::ON_CHAIN;
     } else {
       recv.m_state = TxInfo::OFF_CHAIN;
@@ -219,18 +240,16 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       spent.m_state = TxInfo::ON_CHAIN;
     }
 
-    for (const auto& in: tx.m_tx.vin) {
-      if (in.type() != typeid(cryptonote::txin_to_key)) continue;
-      const auto& txin = boost::get<cryptonote::txin_to_key>(in);
+    for (const auto& ring : tx.m_rings) {
       snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
       TxInfo& spent = snapshot.back();
-      spent.m_key_image = txin.k_image;
+      spent.m_key_image = ring.first;
       spent.m_key_image_known = true;
-      spent.m_amount = txin.amount;
       spent.m_height = tx.m_block_height;
       spent.m_unlock_time = tx.m_unlock_time;
       spent.m_timestamp = tx.m_timestamp;
       spent.m_fee = fee;
+      spent.m_change = tx.m_change;
       spent.m_state = TxInfo::ON_CHAIN;
     }
   }
@@ -269,7 +288,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       }
     }
 
-    // Change is ours too.
+    // Change is ours too, but the output is not yet in transfer_details
     if (utx.m_change > 0) {
       snapshot.emplace_back(pair.first, TxInfo::INCOMING);
       TxInfo& change = snapshot.back();
@@ -283,16 +302,14 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       change.m_state = state;
     }
 
-    for (const auto& in: utx.m_tx.vin) {
-      if (in.type() != typeid(cryptonote::txin_to_key)) continue;
-      const auto& txin = boost::get<cryptonote::txin_to_key>(in);
+    for (const auto& ring : utx.m_rings) {
       snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
       TxInfo& spent = snapshot.back();
-      spent.m_key_image = txin.k_image;
+      spent.m_key_image = ring.first;
       spent.m_key_image_known = true;
-      spent.m_amount = txin.amount;
       spent.m_timestamp = utx.m_timestamp;
       spent.m_fee = fee;
+      spent.m_change = utx.m_change;
       spent.m_state = state;
     }
   }

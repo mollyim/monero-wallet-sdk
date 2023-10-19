@@ -81,13 +81,16 @@ internal fun List<TxInfo>.consolidateTransactions(
 
         // If transaction isn't failed, calculate unlock time and save enotes
         if (tx.state !is TxState.Failed) {
-            val defaultUnlockTime = BlockchainTime.Block(
-                height = tx.blockHeight!! + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE,
-                referencePoint = blockchainContext,
-            )
-            val maxUnlockTime = max(defaultUnlockTime, tx.timeLock ?: BlockchainTime.Genesis)
-
-            val lockedEnotesToAdd = tx.received.map { enote -> TimeLocked(enote, maxUnlockTime) }
+            val maxUnlockTime = tx.blockHeight?.let { height ->
+                val defaultUnlockTime = BlockchainTime.Block(
+                    height = height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE,
+                    referencePoint = blockchainContext,
+                )
+                max(defaultUnlockTime, tx.timeLock ?: BlockchainTime.Genesis)
+            }
+            val lockedEnotesToAdd = tx.received.map { enote ->
+                TimeLocked(enote, maxUnlockTime)
+            }
             validEnotes.addAll(lockedEnotesToAdd)
         }
 
@@ -114,14 +117,14 @@ private fun List<TxInfo>.createTransaction(
         if (unlockTime == 0L) null else blockchainContext.resolveUnlockTime(unlockTime)
     }
 
-    val receivedEnotes = enoteByTxId.getValue(txHash).toSet()
+    val receivedEnotes = enoteByTxId.getOrDefault(txHash, emptyList()).toSet()
 
     val outTxs = filter { !it.incoming }
 
     val spentKeyImages = outTxs.mapNotNull { it.keyImage }
     val sentEnotes = enoteByKeyImage.filterKeys { ki -> ki in spentKeyImages }.values.toSet()
 
-    val payments = outTxs.map { it.toPaymentDetail() }
+    val payments = outTxs.mapNotNull { it.toPaymentDetail() }
 
     return Transaction(
         hash = HashDigest(txHash),
@@ -166,7 +169,10 @@ private fun TxInfo.toEnote(blockchainHeight: Int): Enote {
     )
 }
 
-private fun TxInfo.toPaymentDetail() = PaymentDetail(
-    amount = MoneroAmount(atomicUnits = amount),
-    recipient = PublicAddress.parse(recipient!!),
-)
+private fun TxInfo.toPaymentDetail(): PaymentDetail? {
+    val recipient = PublicAddress.parse(recipient ?: return null)
+    return PaymentDetail(
+        amount = MoneroAmount(atomicUnits = amount),
+        recipient = recipient,
+    )
+}
