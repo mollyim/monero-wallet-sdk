@@ -2,6 +2,7 @@ package im.molly.monero
 
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.absoluteValue
 
 object MoneroCurrency {
     const val SYMBOL = "XMR"
@@ -33,7 +34,11 @@ object MoneroCurrency {
 
     val ExactFormat = object : Format(MoneroAmount.ATOMIC_UNIT_SCALE) {
         override fun format(amount: MoneroAmount) = buildString {
-            val num = amount.atomicUnits.toString()
+            if (amount.atomicUnits < 0) {
+                append('-')
+            }
+
+            val num = amount.atomicUnits.absoluteValue.toString()
 
             if (precision < num.length) {
                 val point = num.length - precision
@@ -50,8 +55,11 @@ object MoneroCurrency {
         }
     }
 
-
     fun format(amount: MoneroAmount, outputFormat: Format = ExactFormat): String {
         return outputFormat.format(amount)
+    }
+
+    fun format(amount: MoneroAmount, precision: Int): String {
+        return Format(precision = precision).format(amount)
     }
 }

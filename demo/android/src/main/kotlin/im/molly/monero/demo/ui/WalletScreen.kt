@@ -100,7 +100,7 @@ private fun WalletScreenLoaded(
                 .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(style = MaterialTheme.typography.headlineLarge, text = buildAnnotatedString {
+            Text(style = MaterialTheme.typography.headlineMedium, text = buildAnnotatedString {
                 append(MoneroCurrency.SYMBOL + " ")
                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                     append(

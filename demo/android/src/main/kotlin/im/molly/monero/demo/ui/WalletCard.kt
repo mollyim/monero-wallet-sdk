@@ -2,6 +2,7 @@ package im.molly.monero.demo.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,17 +34,16 @@ fun WalletCard(
     val uiState: WalletUiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Card(
-        onClick = onClick, modifier = modifier.padding(8.dp)
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, start = 8.dp, end = 8.dp),
     ) {
-        Column {
+        Column(
+            modifier = Modifier.padding(14.dp),
+        ) {
             when (uiState) {
-                is WalletUiState.Loaded -> {
-                    WalletCardExpanded(
-                        (uiState as WalletUiState.Loaded).config,
-                        (uiState as WalletUiState.Loaded).balance,
-                    )
-                }
-
+                is WalletUiState.Loaded -> WalletCardExpanded(uiState as WalletUiState.Loaded)
                 WalletUiState.Error -> WalletCardError()
                 WalletUiState.Loading -> WalletCardLoading()
             }
@@ -53,14 +53,13 @@ fun WalletCard(
 
 @Composable
 fun WalletCardExpanded(
-    config: WalletConfig,
-    balance: Balance,
+    uiState: WalletUiState.Loaded,
 ) {
     Row {
-        Text(text = "Name: ${config.name}")
+        Text(text = "Wallet ID #${uiState.config.id} (${uiState.config.name}) ${uiState.config.publicAddress}")
     }
     Row {
-        Text(text = "Ledger: $balance")
+        Text(text = uiState.blockchainTime.toString())
     }
 }
 

@@ -80,6 +80,8 @@ private fun TransactionScreen(
                         val tx = uiState.transaction
                         TransactionDetail("State", tx.state.toString())
                         Spacer(modifier = Modifier.height(12.dp))
+                        TransactionDetail("Amount", MoneroCurrency.format(tx.amount))
+                        Spacer(modifier = Modifier.height(12.dp))
                         TransactionDetail("Sent", tx.sent.toString())
                         Spacer(modifier = Modifier.height(12.dp))
                         TransactionDetail("Received", tx.received.toString())

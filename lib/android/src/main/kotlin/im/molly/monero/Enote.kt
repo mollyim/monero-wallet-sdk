@@ -23,4 +23,16 @@ class Enote(
     override fun hashCode() = System.identityHashCode(this)
 
     override fun equals(other: Any?) = this === other
+
+    override fun toString(): String {
+        return "Enote(" +
+                "amount=${amount.xmr}" +
+                ", age=$age" +
+                ", spent=$spent" +
+                ", owner=$owner" +
+                ", key=$key" +
+                ", keyImage=$keyImage" +
+                ", sourceTxId=$sourceTxId" +
+                ")"
+    }
 }

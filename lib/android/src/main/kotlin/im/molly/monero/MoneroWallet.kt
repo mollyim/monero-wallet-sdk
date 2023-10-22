@@ -44,7 +44,7 @@ class MoneroWallet internal constructor(
 
             private fun sendLedger(ledger: Ledger) {
                 trySend(ledger).onFailure {
-                    logger.e("Too many ledger updates, channel capacity exceeded")
+                    logger.e("Too many ledger updates, channel capacity exceeded", it)
                 }
             }
         }

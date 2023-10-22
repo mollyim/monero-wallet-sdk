@@ -1,6 +1,7 @@
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -9,6 +10,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -17,6 +19,10 @@ import im.molly.monero.MoneroCurrency
 import im.molly.monero.Transaction
 import im.molly.monero.demo.ui.preview.PreviewParameterData
 import im.molly.monero.demo.ui.theme.AppTheme
+import im.molly.monero.demo.ui.theme.Blue40
+import im.molly.monero.demo.ui.theme.Red40
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,29 +31,47 @@ fun TransactionCardExpanded(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
     Card(
         onClick = onClick,
-        modifier = modifier.padding(top = 8.dp, start = 8.dp, end = 8.dp)
+        modifier = modifier.padding(top = 8.dp, start = 8.dp, end = 8.dp),
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp)
         ) {
-            TransactionDetail("State", transaction.state.toString())
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Sent", transaction.sent.toString())
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Received", transaction.received.toString())
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Payments", transaction.payments.toString())
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Time lock", transaction.timeLock.toString())
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Change", MoneroCurrency.format(transaction.change))
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Fee", MoneroCurrency.format(transaction.fee))
-            Spacer(modifier = Modifier.height(12.dp))
-            TransactionDetail("Transaction ID", transaction.txId)
-            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = modifier.fillMaxWidth(),
+            ) {
+                val timestamp = transaction.timestamp?.let {
+                    val localDateTime = it.atZone(ZoneId.systemDefault()).toLocalDateTime()
+                    localDateTime.format(formatter)
+                }
+                Text(
+                    text = timestamp ?: "",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = MoneroCurrency.format(transaction.amount, precision = 5),
+                    color = if (transaction.amount < 0) Red40 else Blue40,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "#${transaction.blockHeight}",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = "fee ${MoneroCurrency.format(transaction.fee, precision = 8)}",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
         }
     }
 }
@@ -82,6 +106,7 @@ private fun TransactionCardExpandedPreview(
     }
 }
 
-private class TransactionCardPreviewParameterProvider : PreviewParameterProvider<List<Transaction>> {
+private class TransactionCardPreviewParameterProvider :
+    PreviewParameterProvider<List<Transaction>> {
     override val values = sequenceOf(PreviewParameterData.transactions)
 }

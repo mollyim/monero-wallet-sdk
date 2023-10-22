@@ -1,5 +1,7 @@
 package im.molly.monero
 
+import java.time.Instant
+
 data class Transaction(
     val hash: HashDigest,
     // TODO: val version: ProtocolInfo,
@@ -11,11 +13,16 @@ data class Transaction(
     val fee: MoneroAmount,
     val change: MoneroAmount,
 ) {
+    val amount: MoneroAmount = received.sumOf { it.amount } - sent.sumOf { it.amount }
+
     val txId: String
         get() = hash.toString()
 
     val blockHeight: Int?
         get() = (state as? TxState.OnChain)?.blockHeader?.height
+
+    val timestamp: Instant?
+        get() = (state as? TxState.OnChain)?.let { Instant.ofEpochSecond(it.blockHeader.epochSecond) }
 }
 
 sealed interface TxState {

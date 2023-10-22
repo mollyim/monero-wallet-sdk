@@ -62,7 +62,9 @@ private fun walletUiState(
                 val balance = ledger.balance
                 val blockchainTime = ledger.checkedAt
                 val transactions =
-                    ledger.transactions.map { WalletTransaction(config.id, it.value) }
+                    ledger.transactions
+                        .map { WalletTransaction(config.id, it.value) }
+                        .sortedByDescending { it.transaction.timestamp }
                 WalletUiState.Loaded(config, blockchainTime, balance, transactions)
             }
 
