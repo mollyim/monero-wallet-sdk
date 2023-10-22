@@ -18,9 +18,9 @@ import im.molly.monero.demo.ui.component.Toolbar
 fun HomeRoute(
     navigateToAddWalletWizard: () -> Unit,
     navigateToWallet: (Long) -> Unit,
-    viewModel: HomeViewModel = viewModel(),
+    walletListViewModel: WalletListViewModel = viewModel(),
 ) {
-    val walletListUiState: WalletListUiState by viewModel.walletListUiState.collectAsStateWithLifecycle()
+    val walletListUiState by walletListViewModel.uiState.collectAsStateWithLifecycle()
 
     HomeScreen(
         walletListUiState = walletListUiState,
@@ -56,8 +56,8 @@ private fun HomeScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding))
-        {
+                .padding(padding),
+        ) {
             walletCards(walletListUiState, onWalletClick)
         }
     }
@@ -71,8 +71,11 @@ private fun LazyListScope.walletCards(
         WalletListUiState.Loading -> item {
             Text(text = "Loading wallet list...") // TODO
         }
-        is WalletListUiState.Success -> {
-            walletCardsItems(walletListUiState.ids, onWalletClick)
+
+        is WalletListUiState.Loaded -> {
+            walletCardItems(walletListUiState.walletIds, onWalletClick)
         }
+
+        is WalletListUiState.Empty -> Unit // TODO
     }
 }

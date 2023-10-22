@@ -9,7 +9,8 @@ class Enote(
     val sourceTxId: String?,
 ) {
     init {
-        require(age >= 0) { "Enote age $age must not be negative" }
+        require(amount > 0) { "Amount must be greater than 0" }
+        require(age >= 0) { "Age cannot be negative" }
     }
 
     var spent: Boolean = false

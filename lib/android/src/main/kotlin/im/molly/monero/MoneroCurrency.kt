@@ -8,10 +8,8 @@ object MoneroCurrency {
 
     const val MAX_PRECISION = MoneroAmount.ATOMIC_UNIT_SCALE
 
-    val DefaultFormat = Format()
-
-    data class Format(
-        val precision: Int = MAX_PRECISION,
+    open class Format(
+        val precision: Int,
         val locale: Locale = Locale.US,
     ) {
         init {
@@ -24,10 +22,36 @@ object MoneroCurrency {
             minimumFractionDigits = precision
         }
 
-        fun format(amount: MoneroAmount): String = numberFormat.format(amount.toXmr())
+        open fun format(amount: MoneroAmount): String {
+            return numberFormat.format(amount.xmr)
+        }
 
-        fun parse(source: String): MoneroAmount {
+        open fun parse(source: String): MoneroAmount {
             TODO()
         }
+    }
+
+    val ExactFormat = object : Format(MoneroAmount.ATOMIC_UNIT_SCALE) {
+        override fun format(amount: MoneroAmount) = buildString {
+            val num = amount.atomicUnits.toString()
+
+            if (precision < num.length) {
+                val point = num.length - precision
+                append(num.substring(0, point))
+                append('.')
+                append(num.substring(point))
+            } else {
+                append("0.")
+                for (i in 1..(precision - num.length)) {
+                    append('0')
+                }
+                append(num)
+            }
+        }
+    }
+
+
+    fun format(amount: MoneroAmount, outputFormat: Format = ExactFormat): String {
+        return outputFormat.format(amount)
     }
 }

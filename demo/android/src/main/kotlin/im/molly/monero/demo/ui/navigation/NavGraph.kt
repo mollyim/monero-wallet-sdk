@@ -25,13 +25,23 @@ fun NavGraph(
                 navController.navigateToAddWalletWizardGraph()
             },
         )
-        historyScreen()
+        historyScreen(
+            navigateToTransaction = { txId, walletId ->
+                navController.navigateToTransaction(txId, walletId)
+            },
+        )
         settingsScreen(
             navigateToEditRemoteNode = { remoteNodeId ->
                 navController.navigateToEditRemoteNode(remoteNodeId)
             },
         )
         walletScreen(
+            navigateToTransaction = { txId, walletId ->
+                navController.navigateToTransaction(txId, walletId)
+            },
+            onBackClick = onBackClick,
+        )
+        transactionScreen(
             onBackClick = onBackClick,
         )
         editRemoteNodeDialog(

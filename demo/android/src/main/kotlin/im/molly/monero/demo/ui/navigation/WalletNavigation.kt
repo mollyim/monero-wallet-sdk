@@ -32,6 +32,7 @@ fun NavController.navigateToAddWalletSecondStep(restoreWallet: Boolean) {
 }
 
 fun NavGraphBuilder.walletScreen(
+    navigateToTransaction: (String, Long) -> Unit,
     onBackClick: () -> Unit,
 ) {
     composable(
@@ -44,6 +45,7 @@ fun NavGraphBuilder.walletScreen(
         val walletId = arguments.getLong(walletIdArg)
         WalletRoute(
             walletId = walletId,
+            onTransactionClick = navigateToTransaction,
             onBackClick = onBackClick,
         )
     }

@@ -3,7 +3,9 @@ package im.molly.monero.demo.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
@@ -51,9 +53,11 @@ fun WalletBalanceView(
             .padding(16.dp)
     ) {
         Text(
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.bodyLarge,
             text = "Balance at Block #${blockchainTime.height}",
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         BalanceRow("Confirmed", balance.confirmedAmount)
         BalanceRow("Pending", balance.pendingAmount)
@@ -71,7 +75,6 @@ fun WalletBalanceView(
 fun BalanceRow(
     label: String,
     amount: MoneroAmount,
-    format: MoneroCurrency.Format = MoneroCurrency.Format(),
 ) {
     Row(
         modifier = Modifier
@@ -79,8 +82,8 @@ fun BalanceRow(
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label)
-        Text(text = format.format(amount))
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(text = MoneroCurrency.format(amount), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -90,7 +93,6 @@ fun LockedBalanceRow(
     amount: MoneroAmount,
     blockCount: Int,
     timeRemaining: Duration,
-    moneroFormat: MoneroCurrency.Format = MoneroCurrency.DefaultFormat,
 ) {
     Row(
         modifier = Modifier
@@ -101,10 +103,10 @@ fun LockedBalanceRow(
         val durationText =
             "${timeRemaining.toKotlinDuration()} ($blockCount blocks)"
         Column {
-            Text(text = label)
-            Text(text = durationText, fontSize = 12.sp)
+            Text(text = label, style = MaterialTheme.typography.bodyMedium)
+            Text(text = durationText, style = MaterialTheme.typography.bodySmall)
         }
-        Text(text = moneroFormat.format(amount))
+        Text(text = MoneroCurrency.format(amount), style = MaterialTheme.typography.bodyMedium)
     }
 }
 

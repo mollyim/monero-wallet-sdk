@@ -3,7 +3,7 @@ package im.molly.monero
 //import im.molly.monero.proto.LedgerProto
 
 data class Ledger(
-    val publicAddress: String,
+    val primaryAddress: String,
     val transactions: Map<String, Transaction>,
     val enotes: Set<TimeLocked<Enote>>,
     val checkedAt: BlockchainTime,

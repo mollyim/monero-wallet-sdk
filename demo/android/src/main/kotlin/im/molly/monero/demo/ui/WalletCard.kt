@@ -5,50 +5,81 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import im.molly.monero.Balance
+import im.molly.monero.Ledger
+import im.molly.monero.demo.data.model.WalletConfig
+import im.molly.monero.demo.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletCard(
     walletId: Long,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onClick: (Long) -> Unit,
     viewModel: WalletViewModel = viewModel(
         factory = WalletViewModel.factory(walletId),
-        key = walletId.toString(),
+        key = WalletViewModel.key(walletId),
     ),
 ) {
-    val walletUiState: WalletUiState by viewModel.walletUiState.collectAsStateWithLifecycle()
+    val uiState: WalletUiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Card(
-        onClick = { onClick(walletId) },
-        modifier = modifier
-            .padding(8.dp)
+        onClick = onClick, modifier = modifier.padding(8.dp)
     ) {
         Column {
-            when (walletUiState) {
-                WalletUiState.Error -> {
-                    Text(text = "Error") // TODO
+            when (uiState) {
+                is WalletUiState.Loaded -> {
+                    WalletCardExpanded(
+                        (uiState as WalletUiState.Loaded).config,
+                        (uiState as WalletUiState.Loaded).balance,
+                    )
                 }
-                WalletUiState.Loading -> {
-                    Text(text = "Loading wallet...") // TODO
-                }
-                is WalletUiState.Success -> {
-                    val state = walletUiState as WalletUiState.Success
-                    Row {
-                        Text(text = "Name: ${state.config.name}")
-                    }
-                    Row {
-                        Text(text = "Ledger: ${state.ledger}")
-                    }
-                }
+
+                WalletUiState.Error -> WalletCardError()
+                WalletUiState.Loading -> WalletCardLoading()
             }
         }
     }
 }
+
+@Composable
+fun WalletCardExpanded(
+    config: WalletConfig,
+    balance: Balance,
+) {
+    Row {
+        Text(text = "Name: ${config.name}")
+    }
+    Row {
+        Text(text = "Ledger: $balance")
+    }
+}
+
+@Composable
+fun WalletCardError() {
+    Text(text = "Error") // TODO
+}
+
+@Composable
+fun WalletCardLoading() {
+    Text(text = "Loading wallet...") // TODO
+}
+
+//@Preview
+//@Composable
+//private fun WalletCardExpandedPreview() {
+//    AppTheme {
+//        Surface {
+//            WalletCardExpanded()
+//        }
+//    }
+//}

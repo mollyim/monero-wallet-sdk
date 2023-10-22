@@ -6,14 +6,18 @@ data class AccountAddress(
     val subAddressIndex: Int = 0,
 ) : PublicAddress by publicAddress {
 
+    val isPrimaryAddress: Boolean
+        get() = accountIndex == 0 && subAddressIndex == 0
+
     init {
         when (publicAddress) {
-            is SubAddress -> require(accountIndex != -1 && subAddressIndex != -1)
-            else -> require(accountIndex == 0 && subAddressIndex == 0)
+            is StandardAddress -> require(isPrimaryAddress) {
+                "Standard addresses must have subaddress indices set to zero"
+            }
+            is SubAddress -> require(accountIndex != -1 && subAddressIndex != -1) {
+                "Invalid subaddress indices"
+            }
+            else -> throw IllegalArgumentException("Unsupported address type")
         }
-    }
-
-    fun belongsTo(targetAccountIndex: Int): Boolean {
-        return accountIndex == targetAccountIndex
     }
 }

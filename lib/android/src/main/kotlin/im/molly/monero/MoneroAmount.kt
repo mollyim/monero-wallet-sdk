@@ -15,7 +15,8 @@ value class MoneroAmount(val atomicUnits: Long) : Parcelable {
         val ZERO = MoneroAmount(0)
     }
 
-    fun toXmr(): BigDecimal = BigDecimal.valueOf(atomicUnits, ATOMIC_UNIT_SCALE)
+    val xmr: BigDecimal
+        get() = BigDecimal.valueOf(atomicUnits, ATOMIC_UNIT_SCALE)
 
     override fun toString() = atomicUnits.toString()
 

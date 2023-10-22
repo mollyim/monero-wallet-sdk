@@ -12,8 +12,12 @@ fun NavController.navigateToHistory(navOptions: NavOptions? = null) {
     navigate(historyNavRoute, navOptions)
 }
 
-fun NavGraphBuilder.historyScreen() {
+fun NavGraphBuilder.historyScreen(
+    navigateToTransaction: (String, Long) -> Unit,
+) {
     composable(route = historyNavRoute) {
-        HistoryRoute()
+        HistoryRoute(
+            navigateToTransaction = navigateToTransaction,
+        )
     }
 }
