@@ -23,6 +23,8 @@ protobuf {
 }
 
 android {
+    namespace = "im.molly.monero"
+
     buildToolsVersion '33.0.1'
     compileSdk 33
 
@@ -71,6 +73,11 @@ android {
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
+    }
+
+    buildFeatures {
+        aidl true
+        buildConfig true
     }
 
 //    testOptions {

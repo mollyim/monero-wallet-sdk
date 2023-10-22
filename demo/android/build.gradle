@@ -10,6 +10,8 @@ ext {
 }
 
 android {
+    namespace = "im.molly.monero.demo"
+
     compileSdk 33
 
     defaultConfig {
