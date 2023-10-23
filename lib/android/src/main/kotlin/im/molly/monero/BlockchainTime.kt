@@ -1,6 +1,8 @@
 package im.molly.monero
 
+import android.os.Parcelable
 import im.molly.monero.internal.constants.DIFFICULTY_TARGET_V2
+import kotlinx.parcelize.Parcelize
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -9,10 +11,11 @@ import java.time.LocalDate
 /**
  * A point in the blockchain timeline, which could be either a block height or a timestamp.
  */
+@Parcelize
 open class BlockchainTime(
     val height: Int,
     val timestamp: Instant,
-) : Comparable<BlockchainTime> {
+) : Comparable<BlockchainTime>, Parcelable {
 
     init {
         require(isBlockHeightInRange(height)) {
@@ -25,12 +28,15 @@ open class BlockchainTime(
     override fun compareTo(other: BlockchainTime): Int =
         this.height.compareTo(other.height)
 
-    override fun toString(): String = "Block #$height | $timestamp"
+    override fun toString(): String = "Block $height | Time $timestamp"
 
     data object Genesis : BlockchainTime(0, Instant.ofEpochSecond(1397818193))
 
     class Block(height: Int, referencePoint: BlockchainTime = Genesis) :
-        BlockchainTime(height, estimateTimestamp(height, referencePoint)) {}
+        BlockchainTime(height, estimateTimestamp(height, referencePoint)) {
+
+        override fun toString(): String = "Block $height | Time $timestamp (Estimated)"
+    }
 
     class Timestamp(timestamp: Instant, referencePoint: BlockchainTime = Genesis) :
         BlockchainTime(estimateBlockHeight(timestamp, referencePoint), timestamp) {
@@ -41,6 +47,8 @@ open class BlockchainTime(
 
         override fun compareTo(other: BlockchainTime): Int =
             this.timestamp.compareTo(other.timestamp)
+
+        override fun toString(): String = "Block $height (Estimated) | Time $timestamp"
     }
 
     companion object {

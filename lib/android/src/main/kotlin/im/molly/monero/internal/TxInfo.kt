@@ -83,7 +83,7 @@ internal fun List<TxInfo>.consolidateTransactions(
         if (tx.state !is TxState.Failed) {
             val maxUnlockTime = tx.blockHeight?.let { height ->
                 val defaultUnlockTime = BlockchainTime.Block(
-                    height = height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE,
+                    height = height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE - 1,
                     referencePoint = blockchainContext,
                 )
                 max(defaultUnlockTime, tx.timeLock ?: BlockchainTime.Genesis)
@@ -139,14 +139,15 @@ private fun List<TxInfo>.createTransaction(
 }
 
 private fun List<TxInfo>.determineTxState(): TxState {
-    val uniqueTx = distinctBy { it.state }.single()
+    val height = maxOf { it.height }
+    val timestamp = maxOf { it.timestamp }
 
-    return when (uniqueTx.state) {
+    return when (val state = first().state) {
         TxInfo.OFF_CHAIN -> TxState.OffChain
         TxInfo.PENDING -> TxState.InMemoryPool
         TxInfo.FAILED -> TxState.Failed
-        TxInfo.ON_CHAIN -> TxState.OnChain(BlockHeader(uniqueTx.height, uniqueTx.timestamp))
-        else -> error("Invalid tx state value: ${uniqueTx.state}")
+        TxInfo.ON_CHAIN -> TxState.OnChain(BlockHeader(height, timestamp))
+        else -> error("Invalid tx state value: $state")
     }
 }
 
@@ -157,7 +158,7 @@ private fun TxInfo.toEnote(blockchainHeight: Int): Enote {
         subAddressIndex = subAddressMinor
     )
 
-    val calculatedAge = if (height == 0) 0 else blockchainHeight - height + 1
+    val calculatedAge = if (height > 0) (blockchainHeight - height + 1) else 0
 
     return Enote(
         amount = MoneroAmount(atomicUnits = amount),

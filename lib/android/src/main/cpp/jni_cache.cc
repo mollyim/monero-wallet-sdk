@@ -40,7 +40,7 @@ void initializeJniCache(JNIEnv* env) {
                    "callRemoteNode",
                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)Lim/molly/monero/HttpResponse;");
   WalletNative_onRefresh = walletNative
-      .getMethodId(env, "onRefresh", "(IZ)V");
+      .getMethodId(env, "onRefresh", "(IJZ)V");
   WalletNative_onSuspendRefresh = walletNative
       .getMethodId(env, "onSuspendRefresh", "(Z)V");
 

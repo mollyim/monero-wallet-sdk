@@ -49,7 +49,7 @@ fun TransactionCardExpanded(
                     localDateTime.format(formatter)
                 }
                 Text(
-                    text = timestamp ?: "",
+                    text = timestamp ?: "Pending",
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
@@ -64,7 +64,7 @@ fun TransactionCardExpanded(
                 modifier = modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "#${transaction.blockHeight}",
+                    text = transaction.blockHeight?.toString() ?: "",
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(

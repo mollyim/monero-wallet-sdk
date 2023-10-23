@@ -97,13 +97,15 @@ class Wallet : tools::i_wallet2_callback {
 
   std::string public_address() const;
 
-  void set_current_blockchain_height(uint64_t height);
-  uint32_t current_blockchain_height() const { return static_cast<uint32_t>(m_blockchain_height); }
+  uint32_t current_blockchain_height() const { return static_cast<uint32_t>(m_last_block_height); }
+  uint64_t current_blockchain_timestamp() const { return m_last_block_timestamp; }
 
   // Extra state that must be persistent but isn't restored by wallet2's serializer.
   BEGIN_SERIALIZE_OBJECT()
     VERSION_FIELD(0)
     FIELD(m_restore_height)
+    FIELD(m_last_block_height)
+    FIELD(m_last_block_timestamp)
   END_SERIALIZE()
 
  private:
@@ -113,7 +115,8 @@ class Wallet : tools::i_wallet2_callback {
 
   bool m_account_ready;
   uint64_t m_restore_height;
-  uint64_t m_blockchain_height;
+  uint64_t m_last_block_height;
+  uint64_t m_last_block_timestamp;
 
   // Saved transaction history.
   std::vector<TxInfo> m_tx_history;
@@ -131,20 +134,22 @@ class Wallet : tools::i_wallet2_callback {
   bool m_refresh_canceled;
   bool m_balance_changed;
 
-  void notifyRefresh(bool debounce);
+  void processBalanceChanges(bool refresh_running);
+  void notifyRefreshState(bool debounce);
 
   template<typename T>
   auto suspendRefreshAndRunLocked(T block) -> decltype(block());
 
   void captureTxHistorySnapshot(std::vector<TxInfo>& snapshot);
-  void handleNewBlock(uint64_t height, bool refresh_running);
+  void handleNewBlock(uint64_t height, uint64_t timestmap);
   void handleReorgEvent(uint64_t at_block_height);
   void handleMoneyEvent(uint64_t at_block_height);
 
   // Implementation of i_wallet2_callback follows.
  private:
   void on_new_block(uint64_t height, const cryptonote::block& block) override {
-    handleNewBlock(height, true);
+    // Block could be empty during a fast refresh.
+    handleNewBlock(height, block.timestamp);
   }
 
   void on_reorg(uint64_t height) override {

@@ -29,17 +29,14 @@ class MoneroWallet internal constructor(
         val listener = object : IBalanceListener.Stub() {
             lateinit var lastKnownLedger: Ledger
 
-            override fun onBalanceChanged(txHistory: List<TxInfo>, blockchainHeight: Int) {
-                val now = Instant.now()
-                val checkedAt = BlockchainTime(blockchainHeight, now)
-                val (txs, spendableEnotes) = txHistory.consolidateTransactions(checkedAt)
-                lastKnownLedger = Ledger(primaryAddress, txs, spendableEnotes, checkedAt)
+            override fun onBalanceChanged(txHistory: List<TxInfo>, blockchainTime: BlockchainTime) {
+                val (txs, spendableEnotes) = txHistory.consolidateTransactions(blockchainTime)
+                lastKnownLedger = Ledger(primaryAddress, txs, spendableEnotes, blockchainTime)
                 sendLedger(lastKnownLedger)
             }
 
-            override fun onRefresh(blockHeight: Int) {
-                val checkedAt = BlockchainTime.Block(blockHeight)
-                sendLedger(lastKnownLedger.copy(checkedAt = checkedAt))
+            override fun onRefresh(blockchainTime: BlockchainTime) {
+                sendLedger(lastKnownLedger.copy(checkedAt = blockchainTime))
             }
 
             private fun sendLedger(ledger: Ledger) {
@@ -59,8 +56,8 @@ class MoneroWallet internal constructor(
         skipCoinbaseOutputs: Boolean = false,
     ): RefreshResult = suspendCancellableCoroutine { continuation ->
         wallet.resumeRefresh(skipCoinbaseOutputs, object : BaseWalletCallbacks() {
-            override fun onRefreshResult(blockHeight: Int, status: Int) {
-                val result = RefreshResult(blockHeight, status)
+            override fun onRefreshResult(blockchainTime: BlockchainTime, status: Int) {
+                val result = RefreshResult(blockchainTime, status)
                 continuation.resume(result) {}
             }
         })
@@ -81,11 +78,11 @@ class MoneroWallet internal constructor(
 }
 
 private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
-    override fun onRefreshResult(blockHeight: Int, status: Int) = Unit
+    override fun onRefreshResult(blockchainTime: BlockchainTime, status: Int) = Unit
 
     override fun onCommitResult(success: Boolean) = Unit
 }
 
-class RefreshResult(val blockHeight: Int, private val status: Int) {
+class RefreshResult(val blockchainTime: BlockchainTime, private val status: Int) {
     fun isError() = status != WalletNative.Status.OK
 }

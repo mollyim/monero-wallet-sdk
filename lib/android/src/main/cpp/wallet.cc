@@ -36,7 +36,8 @@ Wallet::Wallet(
                std::make_unique<RemoteNodeClientFactory>(env, wallet_native)),
       m_callback(env, wallet_native),
       m_account_ready(false),
-      m_blockchain_height(1),
+      m_last_block_height(1),
+      m_last_block_timestamp(1397818193),
       m_restore_height(0),
       m_refresh_running(false),
       m_refresh_canceled(false) {
@@ -97,7 +98,6 @@ bool Wallet::parseFrom(std::istream& input) {
     return false;
   if (!serialization::serialize(ar, m_wallet))
     return false;
-  set_current_blockchain_height(m_wallet.get_blockchain_current_height());
   captureTxHistorySnapshot(m_tx_history);
   m_account_ready = true;
   return true;
@@ -127,49 +127,40 @@ std::string Wallet::public_address() const {
   return account.get_public_address_str(m_wallet.nettype());
 }
 
-void Wallet::set_current_blockchain_height(uint64_t height) {
-  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
-  m_blockchain_height = height;
-}
-
 cryptonote::account_base& Wallet::require_account() {
   LOG_FATAL_IF(!m_account_ready, "Account is not initialized");
   return m_wallet.get_account();
 }
 
-const payment_details* find_matching_payment(
-    const std::list<std::pair<crypto::hash, payment_details>> pds,
-    const transfer_details& td) {
-  if (td.m_txid == crypto::null_hash) {
+const payment_details* find_payment_by_txid(
+    const std::list<std::pair<crypto::hash, payment_details>>& pds,
+    const crypto::hash& txid) {
+  if (txid == crypto::null_hash) {
     return nullptr;
   }
-  for (const auto& p: pds) {
-    const auto& pd = p.second;
-    if (td.m_amount == pd.m_amount
-        && td.m_subaddr_index == pd.m_subaddr_index
-        && td.m_txid == pd.m_tx_hash) {
-      return &pd;
+  for (auto it = pds.begin(); it != pds.end(); ++it) {
+    const auto pd = &it->second;
+    if (txid == pd->m_tx_hash) {
+      return pd;
     }
   }
   return nullptr;
-};
+}
 
-const confirmed_transfer_details* find_matching_transfer_for_change(
-    const std::list<std::pair<crypto::hash, confirmed_transfer_details>> txs,
-    const transfer_details& td) {
-  if (td.m_txid == crypto::null_hash || td.m_subaddr_index.minor != 0) {
+const confirmed_transfer_details* find_transfer_by_txid(
+    const std::list<std::pair<crypto::hash, confirmed_transfer_details>>& txs,
+    const crypto::hash& txid) {
+  if (txid == crypto::null_hash) {
     return nullptr;
   }
-  for (const auto& p: txs) {
-    const auto& tx = p.second;
-    if (td.m_amount == tx.m_change
-        && td.m_subaddr_index.major == tx.m_subaddr_account
-        && td.m_txid == p.first) {
-      return &tx;
+  for (auto it = txs.begin(); it != txs.end(); ++it) {
+    const auto tx = &it->second;
+    if (txid == it->first) {
+      return tx;
     }
   }
   return nullptr;
-};
+}
 
 // Only call this function from the callback thread or during initialization,
 // as there is no locking mechanism to safeguard reading transaction history
@@ -205,14 +196,14 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     recv.m_amount = td.m_amount;
     recv.m_unlock_time = td.m_tx.unlock_time;
 
-    // Check if the payment or change exists and update metadata if found.
-    if (const auto* pd = find_matching_payment(pds, td)) {
+    // Check if the payment or transfer exists and update metadata if found.
+    if (const auto* pd = find_payment_by_txid(pds, td.m_txid)) {
       recv.m_height = pd->m_block_height;
       recv.m_timestamp = pd->m_timestamp;
       recv.m_fee = pd->m_fee;
       recv.m_coinbase = pd->m_coinbase;
       recv.m_state = TxInfo::ON_CHAIN;
-    } else if (const auto tx = find_matching_transfer_for_change(txs, td)) {
+    } else if (const auto* tx = find_transfer_by_txid(txs, td.m_txid)) {
       recv.m_height = tx->m_block_height;
       recv.m_timestamp = tx->m_timestamp;
       recv.m_fee = tx->m_amount_in - tx->m_amount_out;
@@ -336,15 +327,11 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   }
 }
 
-void Wallet::handleNewBlock(uint64_t height, bool refresh_running) {
-  set_current_blockchain_height(height);
-  if (m_balance_changed) {
-    m_tx_history_mutex.lock();
-    captureTxHistorySnapshot(m_tx_history);
-    m_tx_history_mutex.unlock();
-  }
-  notifyRefresh(!m_balance_changed && refresh_running);
-  m_balance_changed = false;
+void Wallet::handleNewBlock(uint64_t height, uint64_t timestamp) {
+  LOG_FATAL_IF(height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
+  m_last_block_height = height;
+  m_last_block_timestamp = timestamp;
+  processBalanceChanges(true);
 }
 
 void Wallet::handleReorgEvent(uint64_t at_block_height) {
@@ -355,11 +342,22 @@ void Wallet::handleMoneyEvent(uint64_t at_block_height) {
   m_balance_changed = true;
 }
 
-void Wallet::notifyRefresh(bool debounce) {
+void Wallet::processBalanceChanges(bool refresh_running) {
+  if (m_balance_changed) {
+    m_tx_history_mutex.lock();
+    captureTxHistorySnapshot(m_tx_history);
+    m_tx_history_mutex.unlock();
+  }
+  notifyRefreshState(!m_balance_changed && refresh_running);
+  m_balance_changed = false;
+}
+
+void Wallet::notifyRefreshState(bool debounce) {
   static std::chrono::steady_clock::time_point last_time;
   // If debouncing is requested and the blockchain height is a multiple of 100, it limits
   // the notifications to once every 200 ms.
   uint32_t height = current_blockchain_height();
+  uint64_t ts = current_blockchain_timestamp();
   if (debounce) {
     if (height % 100 == 0) {
       auto now = std::chrono::steady_clock::now();
@@ -373,7 +371,7 @@ void Wallet::notifyRefresh(bool debounce) {
   }
   if (!debounce) {
     m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh,
-                              height, m_balance_changed);
+                              height, ts, m_balance_changed);
   }
 }
 
@@ -409,7 +407,7 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
   }
   m_refresh_running.store(false);
   // Ensure the latest block and pool state are consistently processed.
-  handleNewBlock(m_wallet.get_blockchain_current_height(), false);
+  processBalanceChanges(false);
   return ret;
 }
 
@@ -581,6 +579,16 @@ Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   return wallet->current_blockchain_height();
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainTimestamp(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  return wallet->current_blockchain_timestamp();
 }
 
 ScopedJvmLocalRef<jobject> nativeToJvmTxInfo(JNIEnv* env,

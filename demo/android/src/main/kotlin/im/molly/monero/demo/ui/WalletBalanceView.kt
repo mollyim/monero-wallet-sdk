@@ -54,7 +54,7 @@ fun WalletBalanceView(
     ) {
         Text(
             style = MaterialTheme.typography.bodyLarge,
-            text = "Balance at Block #${blockchainTime.height}",
+            text = "Balance at ${blockchainTime}",
         )
 
         Spacer(modifier = Modifier.height(12.dp))
