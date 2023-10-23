@@ -2,6 +2,7 @@ package im.molly.monero.demo.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -15,12 +16,14 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroCurrency
 import im.molly.monero.PublicAddress
 import im.molly.monero.demo.data.model.WalletConfig
+import im.molly.monero.demo.ui.component.CopyableText
 import im.molly.monero.demo.ui.component.Toolbar
 import im.molly.monero.demo.ui.preview.PreviewParameterData
 import im.molly.monero.demo.ui.theme.AppIcons
@@ -114,18 +117,53 @@ private fun WalletScreenLoaded(
             var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
 
             WalletHeaderTabs(
-                titles = listOf("Balance", "Transactions"),
+                titles = listOf("Balance", "Send", "Receive", "History"),
                 selectedTabIndex = selectedTabIndex,
                 onTabSelected = { index -> selectedTabIndex = index },
             )
 
             when (selectedTabIndex) {
                 0 -> {
-                    WalletBalanceView(balance = uiState.balance, blockchainTime = uiState.blockchainTime)
+                    WalletBalanceView(
+                        balance = uiState.balance,
+                        blockchainTime = uiState.blockchainTime
+                    )
                 }
 
-                1 -> {
-                    LazyColumn {
+                1 -> {} // TODO
+
+                2 -> {
+                    Column(
+                        modifier = modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Primary address",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        CopyableText(
+                            text = uiState.config.publicAddress,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+
+                3 -> {
+                    val scrollState = rememberLazyListState()
+
+                    var lastTxId by remember { mutableStateOf("") }
+                    lastTxId = uiState.transactions.firstOrNull()?.transaction?.txId ?: ""
+
+                    LaunchedEffect(lastTxId) {
+                        if (uiState.transactions.isNotEmpty()) {
+                            scrollState.scrollToItem(0)
+                        }
+                    }
+
+                    LazyColumn(
+                        state = scrollState,
+                    ) {
                         transactionCardItems(
                             items = uiState.transactions,
                             onTransactionClick = onTransactionClick,
