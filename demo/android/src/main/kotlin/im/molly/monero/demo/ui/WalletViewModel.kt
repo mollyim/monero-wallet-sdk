@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import im.molly.monero.Balance
 import im.molly.monero.BlockchainTime
+import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.common.Result
 import im.molly.monero.demo.common.asResult
@@ -65,7 +66,8 @@ private fun walletUiState(
                     ledger.transactions
                         .map { WalletTransaction(config.id, it.value) }
                         .sortedByDescending { it.transaction.timestamp }
-                WalletUiState.Loaded(config, blockchainTime, balance, transactions)
+                val network = ledger.primaryAddress.network
+                WalletUiState.Loaded(config, network, blockchainTime, balance, transactions)
             }
 
             is Result.Loading -> {
@@ -82,6 +84,7 @@ private fun walletUiState(
 sealed interface WalletUiState {
     data class Loaded(
         val config: WalletConfig,
+        val network: MoneroNetwork,
         val blockchainTime: BlockchainTime,
         val balance: Balance,
         val transactions: List<WalletTransaction>,

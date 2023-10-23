@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,10 +57,22 @@ fun WalletCardExpanded(
     uiState: WalletUiState.Loaded,
 ) {
     Row {
-        Text(text = "Wallet ID #${uiState.config.id} (${uiState.config.name}) ${uiState.config.publicAddress}")
+        Text(
+            text = "Wallet ID #${uiState.config.id} (${uiState.config.name}) ${uiState.network.name}",
+            style = MaterialTheme.typography.bodyMedium,
+            )
     }
     Row {
-        Text(text = uiState.blockchainTime.toString())
+        Text(
+            text = uiState.config.publicAddress,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+    Row {
+        Text(
+            text = uiState.blockchainTime.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

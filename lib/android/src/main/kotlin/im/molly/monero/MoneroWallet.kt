@@ -18,7 +18,7 @@ class MoneroWallet internal constructor(
 
     private val logger = loggerFor<MoneroWallet>()
 
-    val primaryAddress: String = wallet.accountPrimaryAddress
+    val primaryAddress: PublicAddress = PublicAddress.parse(wallet.accountPrimaryAddress)
 
     var dataStore by storageAdapter::dataStore
 
