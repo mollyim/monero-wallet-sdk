@@ -19,7 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import im.molly.monero.MoneroAmount
 import im.molly.monero.Balance
 import im.molly.monero.BlockchainTime

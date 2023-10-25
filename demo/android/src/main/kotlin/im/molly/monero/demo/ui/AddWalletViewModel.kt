@@ -49,7 +49,7 @@ class AddWalletViewModel(
             .stateIn(
                 scope = viewModelScope,
                 started = WhileSubscribed(5000),
-                initialValue = listOf(RemoteNode.EMPTY),
+                initialValue = emptyList(),
             )
 
     val selectedRemoteNodes = mutableStateMapOf<Long?, Boolean>()

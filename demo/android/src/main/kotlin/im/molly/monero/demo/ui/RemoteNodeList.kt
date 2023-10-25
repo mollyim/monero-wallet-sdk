@@ -31,7 +31,7 @@ fun MultiSelectRemoteNodeList(
             }
         } else {
             Text(
-                text = "No matching remote nodes",
+                text = "Empty list. Start by adding new remote nodes in the settings.",
                 style = MaterialTheme.typography.labelMedium,
             )
         }

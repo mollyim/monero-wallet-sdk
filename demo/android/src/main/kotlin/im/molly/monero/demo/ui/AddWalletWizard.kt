@@ -44,21 +44,16 @@ private fun FirstStepScreen(
     onRestoreClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        topBar = {
-            Toolbar(
-                title = "Add wallet",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = AppIcons.ArrowBack,
-                            contentDescription = "Back",
-                        )
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    Scaffold(topBar = {
+        Toolbar(title = "Add wallet", navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = AppIcons.ArrowBack,
+                    contentDescription = "Back",
+                )
+            }
+        })
+    }) { padding ->
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -144,21 +139,20 @@ private fun SecondStepScreen(
     remoteNodes: List<RemoteNode>,
     selectedRemoteNodeIds: MutableMap<Long?, Boolean> = mutableMapOf(),
 ) {
-    Scaffold(
-        topBar = {
-            Toolbar(
-                title = if (showRestoreOptions) "Restore wallet" else "New wallet",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = AppIcons.ArrowBack,
-                            contentDescription = "Back",
-                        )
-                    }
+    var showOffLineConfirmationDialog by remember { mutableStateOf(false) }
+
+    Scaffold(topBar = {
+        Toolbar(
+            title = if (showRestoreOptions) "Restore wallet" else "New wallet",
+            navigationIcon = {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = AppIcons.ArrowBack,
+                        contentDescription = "Back",
+                    )
                 }
-            )
-        }
-    ) { padding ->
+            })
+    }) { padding ->
         Column(
             modifier = modifier
                 .padding(padding)
@@ -188,21 +182,18 @@ private fun SecondStepScreen(
             Text(
                 text = "Remote node selection",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier
-                    .padding(16.dp),
+                modifier = Modifier.padding(16.dp),
             )
             MultiSelectRemoteNodeList(
                 remoteNodes = remoteNodes,
                 selectedIds = selectedRemoteNodeIds,
-                modifier = Modifier
-                    .padding(start = 16.dp),
+                modifier = Modifier.padding(start = 16.dp),
             )
             if (showRestoreOptions) {
                 Text(
                     text = "Deterministic wallet recovery",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                 )
                 OutlinedTextField(
                     value = secretSpendKeyHex,
@@ -217,8 +208,7 @@ private fun SecondStepScreen(
                 Text(
                     text = "Synchronization",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                 )
                 OutlinedTextField(
                     value = creationDate,
@@ -246,20 +236,46 @@ private fun SecondStepScreen(
             }
 
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                val validInput = !showRestoreOptions || !(secretSpendKeyHexError || creationDateError || restoreHeightError)
+                val validInput =
+                    !showRestoreOptions || !(secretSpendKeyHexError || creationDateError || restoreHeightError)
                 Button(
-                    onClick = onCreateClick,
+                    onClick = {
+                        if (selectedRemoteNodeIds.filterValues { checked -> checked }.isEmpty()) {
+                            showOffLineConfirmationDialog = true
+                        } else {
+                            onCreateClick()
+                        }
+                    },
                     enabled = validInput,
-                    modifier = Modifier
-                        .padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                 ) {
                     Text("Finish")
                 }
             }
+        }
+
+        if (showOffLineConfirmationDialog) {
+            AlertDialog(onDismissRequest = { showOffLineConfirmationDialog = false }, title = {
+                Text("No remote nodes selected")
+            }, text = {
+                Text("There are no remote nodes added to your wallet settings. Are you sure you want to start an offline wallet?")
+            }, confirmButton = {
+                TextButton(onClick = {
+                    showOffLineConfirmationDialog = false
+                    onCreateClick()
+                }) {
+                    Text("Continue")
+                }
+            }, dismissButton = {
+                TextButton(onClick = {
+                    showOffLineConfirmationDialog = false
+                }) {
+                    Text("Cancel")
+                }
+            })
         }
     }
 }
