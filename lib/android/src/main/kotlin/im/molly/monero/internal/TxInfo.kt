@@ -14,9 +14,10 @@ import im.molly.monero.PublicKey
 import im.molly.monero.TimeLocked
 import im.molly.monero.Transaction
 import im.molly.monero.TxState
-import im.molly.monero.internal.constants.CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE
-import im.molly.monero.max
+import im.molly.monero.UnlockTime
+import im.molly.monero.isBlockHeightInRange
 import kotlinx.parcelize.Parcelize
+import java.time.Instant
 
 /**
  * TxInfo represents transaction information in a compact and easily serializable format.
@@ -81,15 +82,11 @@ internal fun List<TxInfo>.consolidateTransactions(
 
         // If transaction isn't failed, calculate unlock time and save enotes
         if (tx.state !is TxState.Failed) {
-            val maxUnlockTime = tx.blockHeight?.let { height ->
-                val defaultUnlockTime = BlockchainTime.Block(
-                    height = height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE - 1,
-                    referencePoint = blockchainContext,
-                )
-                max(defaultUnlockTime, tx.timeLock ?: BlockchainTime.Genesis)
+            val unlockTime = tx.blockHeight?.let { height ->
+                blockchainContext.effectiveUnlockTime(height, tx.timeLock)
             }
             val lockedEnotesToAdd = tx.received.map { enote ->
-                TimeLocked(enote, maxUnlockTime)
+                TimeLocked(enote, unlockTime)
             }
             validEnotes.addAll(lockedEnotesToAdd)
         }
@@ -114,7 +111,8 @@ private fun List<TxInfo>.createTransaction(
     val change = maxOf { it.change }
 
     val timeLock = maxOf { it.unlockTime }.let { unlockTime ->
-        if (unlockTime == 0L) null else blockchainContext.resolveUnlockTime(unlockTime)
+        if (unlockTime == 0L) null
+        else blockchainContext.resolveUnlockTime(unlockTime)
     }
 
     val receivedEnotes = enoteByTxId.getOrDefault(txHash, emptyList()).toSet()
@@ -129,6 +127,7 @@ private fun List<TxInfo>.createTransaction(
     return Transaction(
         hash = HashDigest(txHash),
         state = determineTxState(),
+        network = blockchainContext.network,
         timeLock = timeLock,
         sent = sentEnotes,
         received = receivedEnotes,
@@ -176,4 +175,20 @@ private fun TxInfo.toPaymentDetail(): PaymentDetail? {
         amount = MoneroAmount(atomicUnits = amount),
         recipient = recipient,
     )
+}
+
+private fun BlockchainTime.resolveUnlockTime(heightOrTimestamp: Long): UnlockTime {
+    return if (isBlockHeightInRange(heightOrTimestamp)) {
+        val height = heightOrTimestamp.toInt()
+        UnlockTime.Block(
+            BlockchainTime(height, estimateTimestamp(height), network)
+        )
+    } else {
+        val clampedTs = if (heightOrTimestamp in network.epoch..Instant.MAX.epochSecond) {
+            Instant.ofEpochSecond(heightOrTimestamp)
+        } else Instant.MAX
+        UnlockTime.Timestamp(
+            BlockchainTime(estimateHeight(clampedTs), clampedTs, network)
+        )
+    }
 }

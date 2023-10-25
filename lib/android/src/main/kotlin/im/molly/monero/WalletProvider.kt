@@ -69,9 +69,12 @@ class WalletProvider private constructor(
         dataStore: WalletDataStore? = null,
         client: RemoteNodeClient? = null,
         secretSpendKey: SecretKey,
-        restorePoint: BlockchainTime,
+        restorePoint: RestorePoint,
     ): MoneroWallet {
         require(client == null || client.network == network)
+        if (restorePoint is BlockchainTime) {
+            require(restorePoint.network == network)
+        }
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.restoreWallet(

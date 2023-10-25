@@ -23,8 +23,10 @@ import im.molly.monero.MoneroAmount
 import im.molly.monero.Balance
 import im.molly.monero.BlockchainTime
 import im.molly.monero.MoneroCurrency
+import im.molly.monero.MoneroNetwork
 import im.molly.monero.TimeLocked
 import im.molly.monero.demo.ui.theme.AppTheme
+import im.molly.monero.genesisTime
 import im.molly.monero.xmr
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
@@ -63,8 +65,10 @@ fun WalletBalanceView(
         Divider()
         BalanceRow("Total", balance.totalAmount)
 
-        BalanceRow("Unlocked", balance.unlockedAmountAt(blockchainTime.height, now))
-        balance.lockedAmountsAt(blockchainTime.height, now).forEach { (timeSpan, amount) ->
+        val currentTime = blockchainTime.copy(timestamp = now)
+
+        BalanceRow("Unlocked", balance.unlockedAmountAt(currentTime))
+        balance.lockedAmountsAt(currentTime).forEach { (timeSpan, amount) ->
             LockedBalanceRow("Locked", amount, timeSpan.blocks, timeSpan.timeRemaining)
         }
     }
@@ -117,12 +121,12 @@ fun WalletBalanceDetailsPreview() {
             balance = Balance(
                 pendingAmount = 5.xmr,
                 timeLockedAmounts = listOf(
-                    TimeLocked(10.xmr, BlockchainTime.Genesis),
-                    TimeLocked(BigDecimal("0.000000000001").xmr, BlockchainTime.Block(10)),
-                    TimeLocked(30.xmr, BlockchainTime.Block(500)),
+                    TimeLocked(10.xmr, null),
+                    TimeLocked(BigDecimal("0.000000000001").xmr, null),
+                    TimeLocked(30.xmr, null)
                 ),
             ),
-            blockchainTime = BlockchainTime.Genesis,
+            blockchainTime = MoneroNetwork.Mainnet.genesisTime,
         )
     }
 }

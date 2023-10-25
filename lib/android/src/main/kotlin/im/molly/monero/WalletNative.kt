@@ -3,7 +3,6 @@ package im.molly.monero
 import android.os.ParcelFileDescriptor
 import androidx.annotation.GuardedBy
 import im.molly.monero.internal.TxInfo
-import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.*
 import java.io.Closeable
 import java.time.Instant
@@ -13,7 +12,7 @@ import kotlin.concurrent.withLock
 import kotlin.coroutines.CoroutineContext
 
 class WalletNative private constructor(
-    networkId: Int,
+    private val network: MoneroNetwork,
     private val storageAdapter: IStorageAdapter,
     private val remoteNodeClient: IRemoteNodeClient?,
     private val scope: CoroutineScope,
@@ -31,7 +30,7 @@ class WalletNative private constructor(
             coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         ) = WalletNative(
-            networkId = networkId,
+            network = MoneroNetwork.fromId(networkId),
             storageAdapter = storageAdapter,
             remoteNodeClient = remoteNodeClient,
             scope = CoroutineScope(coroutineContext),
@@ -59,7 +58,7 @@ class WalletNative private constructor(
         MoneroJni.loadLibrary(logger = logger)
     }
 
-    private val handle: Long = nativeCreate(networkId)
+    private val handle: Long = nativeCreate(network.id)
 
     private suspend fun tryWriteState(): Boolean {
         return withContext(ioDispatcher) {
@@ -104,16 +103,17 @@ class WalletNative private constructor(
 
     override fun getAccountPrimaryAddress() = nativeGetAccountPrimaryAddress(handle)
 
-    private fun createBlockchainTime(height: Int, epochSeconds: Long): BlockchainTime {
-        return if (epochSeconds == 0L) {
-            BlockchainTime.Block(height)
-        } else {
-            BlockchainTime(height, Instant.ofEpochSecond(epochSeconds))
+    private fun MoneroNetwork.blockchainTime(height: Int, epochSecond: Long): BlockchainTime {
+        // Block timestamp could be zero during a fast refresh.
+        val timestamp = when (epochSecond) {
+            0L -> estimateTimestamp(height)
+            else -> Instant.ofEpochSecond(epochSecond)
         }
+        return BlockchainTime(height = height, timestamp = timestamp, network = this)
     }
 
     val currentBlockchainTime: BlockchainTime
-        get() = createBlockchainTime(
+        get() = network.blockchainTime(
             nativeGetCurrentBlockchainHeight(handle),
             nativeGetCurrentBlockchainTimestamp(handle),
         )
@@ -191,7 +191,7 @@ class WalletNative private constructor(
         balanceListenersLock.withLock {
             if (balanceListeners.isNotEmpty()) {
                 val call = fun(listener: IBalanceListener) {
-                    val blockchainTime = createBlockchainTime(height, timestamp)
+                    val blockchainTime = network.blockchainTime(height, timestamp)
                     if (balanceChanged) {
                         listener.onBalanceChanged(txHistorySnapshot(), blockchainTime)
                     } else {

@@ -1,6 +1,7 @@
 package im.molly.monero
 
 import im.molly.monero.internal.constants.CRYPTONOTE_MAX_BLOCK_NUMBER
+import java.time.Instant
 
 data class Block(
     // TODO: val hash: HashDigest,
@@ -15,6 +16,9 @@ data class BlockHeader(
     val height: Int,
     val epochSecond: Long,
 ) {
+    val timestamp: Instant
+        get() = Instant.ofEpochSecond(epochSecond)
+
     companion object {
         const val MAX_HEIGHT = CRYPTONOTE_MAX_BLOCK_NUMBER - 1
     }
@@ -23,3 +27,5 @@ data class BlockHeader(
 fun isBlockHeightInRange(height: Long) = !(height < 0 || height > BlockHeader.MAX_HEIGHT)
 
 fun isBlockHeightInRange(height: Int) = isBlockHeightInRange(height.toLong())
+
+fun isBlockEpochInRange(epochSecond: Long) = epochSecond > BlockHeader.MAX_HEIGHT

@@ -9,19 +9,13 @@ data class Balance(
     val confirmedAmount: MoneroAmount = timeLockedAmounts.sumOf { it.value }
     val totalAmount: MoneroAmount = confirmedAmount + pendingAmount
 
-    fun unlockedAmountAt(
-        blockHeight: Int,
-        currentInstant: Instant = Instant.now(),
-    ): MoneroAmount {
-        val targetTime = BlockchainTime(blockHeight, currentInstant)
-        return timeLockedAmounts.filter { it.isUnlocked(targetTime) }.sumOf { it.value }
+    fun unlockedAmountAt(targetTime: BlockchainTime): MoneroAmount {
+        return timeLockedAmounts
+            .filter { it.isUnlocked(targetTime) }
+            .sumOf { it.value }
     }
 
-    fun lockedAmountsAt(
-        blockHeight: Int,
-        currentInstant: Instant = Instant.now(),
-    ): Map<BlockchainTimeSpan, MoneroAmount> {
-        val targetTime = BlockchainTime(blockHeight, currentInstant)
+    fun lockedAmountsAt(targetTime: BlockchainTime): Map<BlockchainTimeSpan, MoneroAmount> {
         return timeLockedAmounts
             .filter { it.isLocked(targetTime) }
             .groupBy({ it.timeUntilUnlock(targetTime) }, { it.value })

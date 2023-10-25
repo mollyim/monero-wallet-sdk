@@ -84,7 +84,7 @@ class WalletRepository(
         name: String,
         remoteNodeIds: List<Long>,
         secretSpendKey: SecretKey,
-        restorePoint: BlockchainTime,
+        restorePoint: RestorePoint,
     ): Pair<Long, MoneroWallet> {
         val uniqueFilename = UUID.randomUUID().toString()
         val wallet = moneroSdkClient.restoreWallet(

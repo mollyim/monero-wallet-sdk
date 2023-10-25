@@ -44,7 +44,7 @@ fun TransactionCardExpanded(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = modifier.fillMaxWidth(),
             ) {
-                val timestamp = transaction.timestamp?.let {
+                val timestamp = transaction.blockTimestamp?.let {
                     val localDateTime = it.atZone(ZoneId.systemDefault()).toLocalDateTime()
                     localDateTime.format(formatter)
                 }
