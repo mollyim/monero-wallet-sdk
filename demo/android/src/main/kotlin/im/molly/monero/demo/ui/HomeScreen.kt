@@ -1,7 +1,9 @@
 package im.molly.monero.demo.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -12,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import im.molly.monero.demo.ui.component.LoadingWheel
 import im.molly.monero.demo.ui.component.Toolbar
 
 @Composable
@@ -66,10 +69,16 @@ private fun HomeScreen(
 private fun LazyListScope.walletCards(
     walletListUiState: WalletListUiState,
     onWalletClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     when (walletListUiState) {
         WalletListUiState.Loading -> item {
-            Text(text = "Loading wallet list...") // TODO
+            LoadingWheel(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .wrapContentSize(),
+                contentDesc = "Loading wallets",
+            )
         }
 
         is WalletListUiState.Loaded -> {
