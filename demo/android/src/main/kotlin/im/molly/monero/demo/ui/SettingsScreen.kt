@@ -126,7 +126,6 @@ private fun SettingsSectionTitle(title: String) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditTextSettingsItem(
     title: String,
@@ -140,8 +139,8 @@ private fun EditTextSettingsItem(
     var showDialog by remember { mutableStateOf(false) }
 
     ListItem(
-        headlineText = { Text(title) },
-        supportingText = { Text(summary) },
+        headlineContent = { Text(title) },
+        supportingContent = { Text(summary) },
         trailingContent = { Text(value) },
         modifier = Modifier
             .clickable(onClick = { showDialog = true }),

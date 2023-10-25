@@ -9,7 +9,6 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import im.molly.monero.demo.ui.navigation.*
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DemoApp(
     appState: DemoAppState = rememberDemoAppState(),

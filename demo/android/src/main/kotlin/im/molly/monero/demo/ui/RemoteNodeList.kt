@@ -57,7 +57,6 @@ fun RemoteNodeEditableList(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RemoteNodeItem(
     remoteNode: RemoteNode,
@@ -69,8 +68,8 @@ private fun RemoteNodeItem(
     onDeleteClick: (RemoteNode) -> Unit = {},
 ) {
     ListItem(
-        headlineText = { Text(remoteNode.uri.toString()) },
-        overlineText = { Text(remoteNode.network.name.uppercase()) },
+        headlineContent = { Text(remoteNode.uri.toString()) },
+        overlineContent = { Text(remoteNode.network.name.uppercase()) },
         trailingContent = {
             if (showCheckbox) {
                 Checkbox(

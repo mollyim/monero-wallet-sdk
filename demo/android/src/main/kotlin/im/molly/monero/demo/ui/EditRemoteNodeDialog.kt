@@ -47,7 +47,6 @@ fun EditRemoteNodeRoute(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditRemoteNodeDialog(
     remoteNode: RemoteNode,
