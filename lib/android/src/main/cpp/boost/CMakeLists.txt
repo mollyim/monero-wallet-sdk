@@ -42,7 +42,6 @@ ExternalProject_Add(
       --with-date_time
       --with-filesystem
       --with-iostreams
-      --with-program_options
       --with-regex
       --with-serialization
       --with-system
@@ -53,7 +52,6 @@ ExternalProject_Add(
       "<INSTALL_DIR>/lib/libboost_date_time.a"
       "<INSTALL_DIR>/lib/libboost_filesystem.a"
       "<INSTALL_DIR>/lib/libboost_iostreams.a"
-      "<INSTALL_DIR>/lib/libboost_program_options.a"
       "<INSTALL_DIR>/lib/libboost_regex.a"
       "<INSTALL_DIR>/lib/libboost_serialization.a"
       "<INSTALL_DIR>/lib/libboost_system.a"
@@ -88,7 +86,6 @@ link_boost_library(chrono)
 link_boost_library(date_time)
 link_boost_library(filesystem system)
 link_boost_library(iostreams)
-link_boost_library(program_options)
 link_boost_library(regex)
 link_boost_library(serialization)
 link_boost_library(system)

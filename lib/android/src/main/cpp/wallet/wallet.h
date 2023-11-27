@@ -1,10 +1,11 @@
-#ifndef WALLET_H_
-#define WALLET_H_
+#ifndef WALLET_WALLET_H_
+#define WALLET_WALLET_H_
 
 #include <ostream>
 
+#include "common/jvm.h"
+
 #include "http_client.h"
-#include "jvm.h"
 
 #include "wallet2.h"
 
@@ -187,4 +188,4 @@ class Wallet : tools::i_wallet2_callback {
 
 }  // namespace monero
 
-#endif  // WALLET_H_
+#endif  // WALLET_WALLET_H_

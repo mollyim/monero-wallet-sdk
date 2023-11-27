@@ -1,5 +1,5 @@
-#ifndef FD_H_
-#define FD_H_
+#ifndef WALLET_FD_H_
+#define WALLET_FD_H_
 
 #include <unistd.h>
 
@@ -8,8 +8,9 @@
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/stream.hpp>
 
+#include "common/jvm.h"
+
 #include "jni_cache.h"
-#include "jvm.h"
 
 namespace monero {
 
@@ -27,8 +28,7 @@ class ScopedFd {
 
   ScopedFd(JNIEnv* env, const JvmRef<jobject>& parcel_file_descriptor) : m_fd(-1) {
     if (!parcel_file_descriptor.is_null()) {
-      m_fd = parcel_file_descriptor.callIntMethod(env,
-                                                  ParcelFileDescriptor_detachFd);
+      m_fd = parcel_file_descriptor.callIntMethod(env, ParcelFileDescriptor_detachFd);
     }
   }
 
@@ -67,4 +67,4 @@ class ScopedFd {
 
 }  // namespace monero
 
-#endif  // FD_H_
+#endif  // WALLET_FD_H_

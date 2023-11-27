@@ -1,5 +1,5 @@
-#ifndef JVM_H_
-#define JVM_H_
+#ifndef COMMON_JVM_H_
+#define COMMON_JVM_H_
 
 #include <jni.h>
 
@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "common.h"
+#include "common/debug.h"
 
 namespace monero {
 
@@ -323,4 +323,4 @@ std::vector<char> jvmToNativeByteArray(JNIEnv* env,
 
 }  // namespace monero
 
-#endif  // JVM_H_
+#endif  // COMMON_JVM_H_

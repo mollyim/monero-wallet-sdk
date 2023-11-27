@@ -31,7 +31,7 @@ internal class WalletServiceImpl(
         if (isIsolated) {
             setLoggingAdapter(this)
         }
-        MoneroJni.loadLibrary(logger = logger)
+        NativeLoader.loadWalletLibrary(logger = logger)
     }
 
     private var listener: IWalletServiceListener? = null

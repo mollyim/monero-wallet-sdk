@@ -48,26 +48,45 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN true)
 
-# Project library
-add_library(${PROJECT_NAME} SHARED)
+### Project libraries
 
-target_sources(
-    ${PROJECT_NAME}
-    PUBLIC
-      http_client.cc
-      jni_cache.cc
-      jni_loader.cc
-      jvm.cc
-      logging.cc
-      wallet.cc
+set(COMMON_SOURCES
+    common/jvm.cc
 )
 
+set(WALLET_SOURCES
+    wallet/http_client.cc
+    wallet/jni_cache.cc
+    wallet/jni_loader.cc
+    wallet/logging.cc
+    wallet/wallet.cc
+)
+
+add_library(monero_wallet SHARED ${COMMON_SOURCES} ${WALLET_SOURCES})
+
 target_link_libraries(
-    ${PROJECT_NAME}
+    monero_wallet
     PRIVATE
-      Monero::wallet_api
+      Monero::wallet2
       log
 )
 
+set(MNEMONICS_SOURCES
+    mnemonics/jni_loader.cc
+)
+
+add_library(monero_mnemonics SHARED ${COMMON_SOURCES} ${MNEMONICS_SOURCES})
+
+target_link_libraries(
+    monero_mnemonics
+    PRIVATE
+      Monero::electrum_words
+      log
+)
+
+target_include_directories(monero_wallet PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(monero_mnemonics PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+
 # Hide symbols from statically-linked dependencies
-set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
+set_target_properties(monero_wallet PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
+set_target_properties(monero_mnemonics PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")

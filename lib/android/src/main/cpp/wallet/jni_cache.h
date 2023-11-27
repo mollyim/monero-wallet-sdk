@@ -1,7 +1,7 @@
-#ifndef JNI_CACHE_H_
-#define JNI_CACHE_H_
+#ifndef WALLET_JNI_CACHE_H__
+#define WALLET_JNI_CACHE_H__
 
-#include "jvm.h"
+#include "common/jvm.h"
 
 namespace monero {
 
@@ -24,4 +24,4 @@ extern jmethodID ParcelFileDescriptor_detachFd;
 
 }  // namespace monero
 
-#endif  // JNI_CACHE_H_
+#endif  // WALLET_JNI_CACHE_H__

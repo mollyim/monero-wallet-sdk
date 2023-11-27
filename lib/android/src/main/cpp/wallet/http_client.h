@@ -1,7 +1,8 @@
-#ifndef HTTP_CLIENT_H_
-#define HTTP_CLIENT_H_
+#ifndef WALLET_HTTP_CLIENT_H_
+#define WALLET_HTTP_CLIENT_H_
 
-#include "jvm.h"
+#include "common/jvm.h"
+
 #include "fd.h"
 
 #include "net/abstract_http_client.h"
@@ -77,4 +78,4 @@ class RemoteNodeClientFactory : public HttpClientFactory {
 
 }  // namespace monero
 
-#endif  // HTTP_CLIENT_H_
+#endif  // WALLET_HTTP_CLIENT_H_

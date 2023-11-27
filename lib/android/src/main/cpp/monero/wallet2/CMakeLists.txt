@@ -1,4 +1,4 @@
-set(WALLET_API_SOURCES
+set(WALLET2_SOURCES
     contrib/epee/src/abstract_http_client.cpp
     contrib/epee/src/byte_slice.cpp
     contrib/epee/src/byte_stream.cpp
@@ -92,20 +92,20 @@ set(WALLET_API_SOURCES
 )
 
 if(ANDROID_ABI STREQUAL "x86_64")
-  list(APPEND WALLET_API_SOURCES src/crypto/CryptonightR_template.S)
+  list(APPEND WALLET2_SOURCES src/crypto/CryptonightR_template.S)
 endif()
 
-set(WALLET_API_OVERRIDES
+set(WALLET2_OVERRIDES
     mlog_override.cc
     i18n_override.cc
     perf_timer_override.cc
 )
 
-set(WALLET_API_PRECOMPILED_HEADERS
+set(WALLET2_PRECOMPILED_HEADERS
     boringssl_compat.h
 )
 
-set(WALLET_API_INCLUDES
+set(WALLET2_INCLUDES
     contrib/epee/include
     external
     external/rapidjson/include
@@ -117,8 +117,8 @@ set(WALLET_API_INCLUDES
     src/wallet/api
 )
 
-list(TRANSFORM WALLET_API_SOURCES  PREPEND "${MONERO_DIR}/")
-list(TRANSFORM WALLET_API_INCLUDES PREPEND "${MONERO_DIR}/")
+list(TRANSFORM WALLET2_SOURCES  PREPEND "${MONERO_DIR}/")
+list(TRANSFORM WALLET2_INCLUDES PREPEND "${MONERO_DIR}/")
 
 set(GENERATED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated_include")
 
@@ -129,26 +129,26 @@ configure_file("${MONERO_DIR}/src/crypto/wallet/empty.h.in" "${GENERATED_HEADERS
 add_definitions(-DFORCE_USE_HEAP=1)
 
 add_library(
-    wallet_api STATIC ${WALLET_API_SOURCES} ${WALLET_API_OVERRIDES}
+    wallet2 STATIC ${WALLET2_SOURCES} ${WALLET2_OVERRIDES}
 )
 
 target_precompile_headers(
-    wallet_api
+    wallet2
     PRIVATE
-      "${WALLET_API_PRECOMPILED_HEADERS}"
+      "${WALLET2_PRECOMPILED_HEADERS}"
 )
 
 target_include_directories(
-    wallet_api
+    wallet2
     PUBLIC
-      "${WALLET_API_INCLUDES}"
+      "${WALLET2_INCLUDES}"
       "${GENERATED_HEADERS_DIR}"
 )
 
 # Include external project header directories here.  Workaround for:
 # https://gitlab.kitware.com/cmake/cmake/issues/15052
 target_include_directories(
-    wallet_api
+    wallet2
     SYSTEM PUBLIC
       "${BOOST_INCLUDE_DIR}"
       "${LIBSODIUM_INCLUDE_DIR}"
@@ -157,21 +157,19 @@ target_include_directories(
 )
 
 target_link_libraries(
-    wallet_api
+    wallet2
     PUBLIC
       Monero::easylogging
     PRIVATE
       Monero::lmdb
       Monero::randomx
       OpenSSL::SSL
-#      Boost::chrono
       Boost::filesystem
       Boost::iostreams
-#      Boost::program_options
       Boost::serialization
       Boost::thread
       Libsodium::libsodium
       Unbound::unbound
 )
 
-add_library(Monero::wallet_api ALIAS wallet_api)
+add_library(Monero::wallet2 ALIAS wallet2)

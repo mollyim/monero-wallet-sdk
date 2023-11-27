@@ -55,7 +55,7 @@ class WalletNative private constructor(
     private val logger = loggerFor<WalletNative>()
 
     init {
-        MoneroJni.loadLibrary(logger = logger)
+        NativeLoader.loadWalletLibrary(logger = logger)
     }
 
     private val handle: Long = nativeCreate(network.id)

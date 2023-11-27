@@ -1,7 +1,6 @@
 #include "http_client.h"
 
 #include "jni_cache.h"
-#include "fd.h"
 
 namespace monero {
 

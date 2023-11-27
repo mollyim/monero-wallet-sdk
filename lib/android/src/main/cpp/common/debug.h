@@ -1,5 +1,5 @@
-#ifndef COMMON_H_
-#define COMMON_H_
+#ifndef COMMON_DEBUG_H_
+#define COMMON_DEBUG_H_
 
 #include <stddef.h>
 #include <android/log.h>
@@ -47,10 +47,4 @@
 #define __print_assert(cond, tag, fmt...) \
     __android_log_assert(cond, tag, __second(0, ## fmt, NULL) __rest(fmt))
 
-// The arraysize(arr) macro returns the # of elements in an array arr.
-template <typename T, size_t N>
-char (&ArraySizeHelper(T (&array)[N]))[N];
-
-#define arraysize(array) (sizeof(ArraySizeHelper(array)))
-
-#endif  // COMMON_H_
+#endif  // COMMON_DEBUG_H_

@@ -1,11 +1,11 @@
-#ifndef LOGGING_H_
-#define LOGGING_H_
+#ifndef WALLET_LOGGING_H_
+#define WALLET_LOGGING_H_
 
 #include <android/log.h>
 
 #include <string>
 
-#include "jvm.h"
+#include "common/jvm.h"
 
 namespace monero {
 
@@ -47,4 +47,4 @@ class JvmLogSink {
 
 }  // namespace monero
 
-#endif  // LOGGING_H_
+#endif  // WALLET_LOGGING_H_

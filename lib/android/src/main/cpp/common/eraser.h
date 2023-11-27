@@ -1,5 +1,5 @@
-#ifndef ERASER_H_
-#define ERASER_H_
+#ifndef COMMON_ERASER_H_
+#define COMMON_ERASER_H_
 
 #include <openssl/crypto.h>
 
@@ -35,4 +35,4 @@ class Eraser {
 
 }  // namespace monero
 
-#endif  // ERASER_H_
+#endif  // COMMON_ERASER_H_

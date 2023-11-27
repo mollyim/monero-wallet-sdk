@@ -6,9 +6,10 @@
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/stream.hpp>
 
-#include "common.h"
+#include "common/debug.h"
+#include "common/eraser.h"
+
 #include "jni_cache.h"
-#include "eraser.h"
 #include "fd.h"
 
 #include "string_tools.h"
