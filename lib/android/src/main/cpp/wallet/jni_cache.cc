@@ -34,7 +34,9 @@ void initializeJniCache(JNIEnv* env) {
   Logger_logFromNative = logger
       .getMethodId(env, "logFromNative", "(ILjava/lang/String;Ljava/lang/String;)V");
   TxInfo_ctor = txInfoClass
-      .getMethodId(env, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;JIIJJJJZZ)V");
+      .getMethodId(env,
+                   "<init>",
+                   "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;JIIJJJJZZ)V");
   WalletNative_callRemoteNode = walletNative
       .getMethodId(env,
                    "callRemoteNode",

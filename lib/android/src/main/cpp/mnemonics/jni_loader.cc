@@ -1,3 +1,5 @@
+#include "jni_cache.h"
+
 #include "common/jvm.h"
 
 namespace monero {
@@ -9,6 +11,8 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
   if (env == nullptr) {
     return JNI_ERR;
   }
+
+  initializeJniCache(env);
 
   return JNI_VERSION_1_6;
 }

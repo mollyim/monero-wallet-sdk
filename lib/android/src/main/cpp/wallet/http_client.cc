@@ -55,7 +55,7 @@ bool RemoteNodeClient::invoke(const boost::string_ref uri,
     header << p.first << ": " << p.second << "\r\n";
   }
   try {
-    ScopedJvmLocalRef<jobject> j_response = {
+    ScopedJvmLocalRef<jobject> j_response(
         env, m_wallet_native.callObjectMethod(
             env, WalletNative_callRemoteNode,
             nativeToJvmString(env, method.data()).obj(),
@@ -63,7 +63,7 @@ bool RemoteNodeClient::invoke(const boost::string_ref uri,
             nativeToJvmString(env, header.str()).obj(),
             nativeToJvmByteArray(env, body.data(), body.length()).obj()
         )
-    };
+    );
     m_response_info.clear();
     if (j_response.is_null()) {
       return false;

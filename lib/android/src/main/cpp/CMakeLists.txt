@@ -72,15 +72,20 @@ target_link_libraries(
 )
 
 set(MNEMONICS_SOURCES
+    mnemonics/jni_cache.cc
     mnemonics/jni_loader.cc
+    mnemonics/mnemonics.cc
 )
 
 add_library(monero_mnemonics SHARED ${COMMON_SOURCES} ${MNEMONICS_SOURCES})
 
 target_link_libraries(
     monero_mnemonics
+    PUBLIC
+      Monero::easylogging
     PRIVATE
       Monero::electrum_words
+      OpenSSL::SSL
       log
 )
 

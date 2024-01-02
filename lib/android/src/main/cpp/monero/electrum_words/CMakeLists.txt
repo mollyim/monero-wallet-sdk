@@ -1,4 +1,7 @@
 set(ELECTRUM_WORDS_SOURCES
+    contrib/epee/src/memwipe.c
+    contrib/epee/src/mlocker.cpp
+    contrib/epee/src/wipeable_string.cpp
     src/mnemonics/electrum-words.cpp
 )
 
@@ -20,6 +23,9 @@ set(EASYLOGGING_SOURCE_DIR "${MONERO_DIR}/external/easylogging++")
 add_library(
     electrum_words STATIC ${ELECTRUM_WORDS_SOURCES} ${ELECTRUM_WORDS_OVERRIDES}
 )
+
+# Disable Easylogging++ logging
+add_definitions(-DELPP_DISABLE_LOGS)
 
 target_include_directories(
     electrum_words
