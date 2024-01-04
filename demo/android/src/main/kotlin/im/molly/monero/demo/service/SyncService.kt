@@ -1,10 +1,15 @@
 package im.molly.monero.demo.service
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import im.molly.monero.demo.AppModule
@@ -15,6 +20,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.seconds
 
 const val TAG = "SyncService"
+
+const val NOTIFICATION_CHANNEL_ID = "SyncService"
 
 class SyncService(
     private val walletRepository: WalletRepository = AppModule.walletRepository,
@@ -82,6 +89,8 @@ class SyncService(
         Log.d(TAG, "onCreate")
         super.onCreate()
 
+        startForeground()
+
         lifecycleScope.launch(ioDispatcher) {
             doSync()
         }
@@ -95,7 +104,31 @@ class SyncService(
     companion object {
         fun start(context: Context) {
             val intent = Intent(context, SyncService::class.java)
-            context.startService(intent)
+            context.startForegroundService(intent)
         }
+    }
+
+    private fun startForeground() {
+        ensureNotificationChannel()
+
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(100, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(100, notification)
+        }
+    }
+
+    private fun ensureNotificationChannel() {
+        val notificationManager = getSystemService(NotificationManager::class.java)!!
+
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Wallet Foreground Service",
+                NotificationManager.IMPORTANCE_LOW,
+            )
+        )
     }
 }

@@ -261,7 +261,7 @@ private fun SecondStepScreen(
             AlertDialog(onDismissRequest = { showOffLineConfirmationDialog = false }, title = {
                 Text("No remote nodes selected")
             }, text = {
-                Text("There are no remote nodes added to your wallet settings. Are you sure you want to start an offline wallet?")
+                Text("There are no remote nodes added to your wallet settings. Are you sure you want to create an offline wallet?")
             }, confirmButton = {
                 TextButton(onClick = {
                     showOffLineConfirmationDialog = false
