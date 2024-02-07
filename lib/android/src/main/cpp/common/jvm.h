@@ -270,13 +270,9 @@ ScopedJvmLocalRef<jclass> findClass(JNIEnv* env, const char* name);
 // Methods for converting native types to Java types.
 ScopedJvmLocalRef<jstring> nativeToJvmString(JNIEnv* env, const char* str);
 ScopedJvmLocalRef<jstring> nativeToJvmString(JNIEnv* env, const std::string& str);
-ScopedJvmLocalRef<jbyteArray> nativeToJvmByteArray(
-    JNIEnv* env,
-    const char* bytes,
-    size_t len);
-ScopedJvmLocalRef<jbyteArray> nativeToJvmByteArray(
-    JNIEnv* env,
-    const std::vector<char>& bytes);
+ScopedJvmLocalRef<jbyteArray> nativeToJvmByteArray(JNIEnv* env, const char* bytes, size_t len);
+ScopedJvmLocalRef<jlongArray> nativeToJvmLongArray(JNIEnv* env, const int64_t* longs, size_t len);
+ScopedJvmLocalRef<jlongArray> nativeToJvmLongArray(JNIEnv* env, const uint64_t* longs, size_t len);
 jlong nativeToJvmPointer(void* ptr);
 
 // Helper function for converting std::vector<T> into a Java array.

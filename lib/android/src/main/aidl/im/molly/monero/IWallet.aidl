@@ -11,5 +11,6 @@ interface IWallet {
     oneway void cancelRefresh();
     oneway void setRefreshSince(long heightOrTimestamp);
     oneway void commit(in IWalletCallbacks callback);
+    oneway void requestFees(in IWalletCallbacks callback);
     void close();
 }

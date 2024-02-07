@@ -168,6 +168,13 @@ class WalletNative private constructor(
         }
     }
 
+    override fun requestFees(callback: IWalletCallbacks?) {
+        scope.launch(ioDispatcher) {
+            val fees = nativeFetchBaseFeeEstimate(handle)
+            callback?.onFeesReceived(fees)
+        }
+    }
+
     /**
      * Also replays the last known balance whenever a new listener registers.
      */
@@ -281,6 +288,7 @@ class WalletNative private constructor(
     private external fun nativeGetTxHistory(handle: Long): Array<TxInfo>
     private external fun nativeGetAccountPrimaryAddress(handle: Long): String
 //    private external fun nativeGetAccountSubAddress(handle: Long, accountIndex: Int, subAddressIndex: Int): String
+    private external fun nativeFetchBaseFeeEstimate(handle: Long): LongArray
     private external fun nativeLoad(handle: Long, fd: Int): Boolean
     private external fun nativeNonReentrantRefresh(handle: Long, skipCoinbase: Boolean): Int
     private external fun nativeRestoreAccount(

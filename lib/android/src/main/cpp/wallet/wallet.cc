@@ -21,11 +21,17 @@ namespace monero {
 using namespace std::chrono_literals;
 using namespace epee::string_tools;
 
-static_assert(COIN == 1e12, "Monero atomic unit must be 1e-12 XMR");
+// Ensure constant values match the expected values in Kotlin.
+static_assert(COIN == 1e12,
+              "Monero atomic unit must be 1e-12 XMR");
 static_assert(CRYPTONOTE_MAX_BLOCK_NUMBER == 500000000,
               "Min timestamp must be higher than max block height");
-static_assert(CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE == 10, ""); // TODO
-static_assert(DIFFICULTY_TARGET_V2 == 120, "");
+static_assert(CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE == 10,
+              "CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE mismatch");
+static_assert(DIFFICULTY_TARGET_V2 == 120,
+              "DIFFICULTY_TARGET_V2 mismatch");
+static_assert(PER_KB_FEE_QUANTIZATION_DECIMALS == 8,
+              "PER_KB_FEE_QUANTIZATION_DECIMALS mismatch");
 
 Wallet::Wallet(
     JNIEnv* env,
@@ -109,7 +115,7 @@ bool Wallet::parseFrom(std::istream& input) {
 
 bool Wallet::writeTo(std::ostream& output) {
   return suspendRefreshAndRunLocked([&]() -> bool {
-    binary_archive < true > ar(output);
+    binary_archive<true> ar(output);
     if (!serialization::serialize_noeof(ar, *this))
       return false;
     if (!serialization::serialize_noeof(ar, require_account()))
@@ -124,6 +130,10 @@ template<typename Consumer>
 void Wallet::withTxHistory(Consumer consumer) {
   std::lock_guard<std::mutex> lock(m_tx_history_mutex);
   consumer(m_tx_history);
+}
+
+std::vector<uint64_t> Wallet::fetchBaseFeeEstimate() {
+  return m_wallet.get_dynamic_base_fee_scaling_estimate();
 }
 
 std::string Wallet::public_address() const {
@@ -191,7 +201,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     snapshot.emplace_back(td.m_txid, TxInfo::INCOMING);
     TxInfo& recv = snapshot.back();
     recv.m_public_key = td.get_public_key();
-    recv.m_public_key_known =  true;
+    recv.m_public_key_known = true;
     recv.m_key_image = td.m_key_image;
     recv.m_key_image_known = td.m_key_image_known;
     recv.m_subaddress_major = td.m_subaddr_index.major;
@@ -235,7 +245,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       spent.m_state = TxInfo::ON_CHAIN;
     }
 
-    for (const auto& ring : tx.m_rings) {
+    for (const auto& ring: tx.m_rings) {
       snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
       TxInfo& spent = snapshot.back();
       spent.m_key_image = ring.first;
@@ -254,8 +264,8 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     const auto& utx = pair.second;
     uint64_t fee = utx.m_amount_in - utx.m_amount_out;
     auto state = (utx.m_state == unconfirmed_transfer_details::pending)
-                    ? TxInfo::PENDING
-                    : TxInfo::FAILED;
+                 ? TxInfo::PENDING
+                 : TxInfo::FAILED;
 
     for (const auto& dest: utx.m_dests) {
       if (const auto dest_subaddr_idx = m_wallet.get_subaddress_index(dest.addr)) {
@@ -297,7 +307,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       change.m_state = state;
     }
 
-    for (const auto& ring : utx.m_rings) {
+    for (const auto& ring: utx.m_rings) {
       snapshot.emplace_back(pair.first, TxInfo::OUTGOING);
       TxInfo& spent = snapshot.back();
       spent.m_key_image = ring.first;
@@ -634,6 +644,17 @@ Java_im_molly_monero_WalletNative_nativeGetTxHistory(
                                      &nativeToJvmTxInfo);
   });
   return j_array.Release();
+}
+
+extern "C"
+JNIEXPORT jlongArray JNICALL
+Java_im_molly_monero_WalletNative_nativeFetchBaseFeeEstimate(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  std::vector<uint64_t> fees = wallet->fetchBaseFeeEstimate();
+  return nativeToJvmLongArray(env, fees.data(), fees.size()).Release();
 }
 
 }  // namespace monero

@@ -47,7 +47,7 @@ struct TxInfo {
     ON_CHAIN = 3,
   } m_state;
 
-  TxInfo(crypto::hash tx_hash, TxType type):
+  TxInfo(crypto::hash tx_hash, TxType type) :
       m_tx_hash(tx_hash),
       m_public_key(crypto::public_key{}),
       m_key_image(crypto::key_image{}),
@@ -95,6 +95,8 @@ class Wallet : tools::i_wallet2_callback {
 
   template<typename Consumer>
   void withTxHistory(Consumer consumer);
+
+  std::vector<uint64_t> fetchBaseFeeEstimate();
 
   std::string public_address() const;
 

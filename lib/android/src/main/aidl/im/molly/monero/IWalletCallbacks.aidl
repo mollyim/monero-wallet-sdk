@@ -5,4 +5,5 @@ import im.molly.monero.BlockchainTime;
 oneway interface IWalletCallbacks {
     void onRefreshResult(in BlockchainTime blockchainTime, int status);
     void onCommitResult(boolean success);
+    void onFeesReceived(in long[] fees);
 }

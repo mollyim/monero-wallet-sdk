@@ -213,10 +213,22 @@ ScopedJvmLocalRef<jbyteArray> nativeToJvmByteArray(JNIEnv* env,
   return {env, j_array};
 }
 
-ScopedJvmLocalRef<jbyteArray> nativeToJvmByteArray(
-    JNIEnv* env,
-    const std::vector<char>& bytes) {
-  return nativeToJvmByteArray(env, bytes.data(), bytes.size());
+ScopedJvmLocalRef<jlongArray> nativeToJvmLongArray(JNIEnv* env,
+                                                   const int64_t* longs,
+                                                   size_t len) {
+  LOG_FATAL_IF(len > INT_MAX);
+  auto j_len = (jsize) len;
+  jlongArray j_array = env->NewLongArray(j_len);
+  LOG_FATAL_IF(checkException(env));
+  env->SetLongArrayRegion(j_array, 0, j_len, longs);
+  LOG_FATAL_IF(checkException(env));
+  return {env, j_array};
+}
+
+ScopedJvmLocalRef<jlongArray> nativeToJvmLongArray(JNIEnv* env,
+                                                   const uint64_t* longs,
+                                                   size_t len) {
+  return nativeToJvmLongArray(env, reinterpret_cast<const int64_t*>(longs), len);
 }
 
 jlong nativeToJvmPointer(void* ptr) {
@@ -225,7 +237,7 @@ jlong nativeToJvmPointer(void* ptr) {
 }
 
 std::string jvmToStdString(JNIEnv* env, const JvmRef<jstring>& j_string) {
-  const char* chars = env->GetStringUTFChars(j_string.obj(), nullptr);
+  const char* chars = env->GetStringUTFChars(j_string.obj(), /*isCopy=*/nullptr);
   LOG_FATAL_IF(checkException(env));
   const jsize len = env->GetStringUTFLength(j_string.obj());
   LOG_FATAL_IF(checkException(env));
@@ -249,7 +261,5 @@ std::vector<char> jvmToNativeByteArray(JNIEnv* env,
   LOG_FATAL_IF(checkException(env));
   return v;
 }
-
-
 
 }  // namespace monero

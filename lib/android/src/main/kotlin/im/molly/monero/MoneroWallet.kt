@@ -5,10 +5,12 @@ import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.time.Instant
+import kotlin.time.Duration.Companion.seconds
 
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
@@ -74,6 +76,40 @@ class MoneroWallet internal constructor(
         })
     }
 
+    fun dynamicFeeRate(): Flow<DynamicFeeRate> = flow {
+        while (true) {
+            val fees = requestFees() ?: emptyList()
+            val feePerByte = when (fees.size) {
+                1 -> mapOf(FeePriority.MEDIUM to fees[0])
+                4 -> mapOf(
+                    FeePriority.LOW to fees[0],
+                    FeePriority.MEDIUM to fees[1],
+                    FeePriority.HIGH to fees[2],
+                    FeePriority.URGENT to fees[3],
+                )
+
+                else -> {
+                    logger.e("Unexpected number of fees received: ${fees.size}")
+                    null
+                }
+            }
+            feePerByte?.let { emit(DynamicFeeRate(it)) }
+            // RPC client caches fees for 30 secs, wait before re-requesting fees
+            delay(30.seconds)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun requestFees(): List<MoneroAmount>? =
+        suspendCancellableCoroutine { continuation ->
+            wallet.requestFees(object : BaseWalletCallbacks() {
+                override fun onFeesReceived(fees: LongArray?) {
+                    val feeAmounts = fees?.map { MoneroAmount(atomicUnits = it) }
+                    continuation.resume(feeAmounts) {}
+                }
+            })
+        }
+
     override fun close() = wallet.close()
 }
 
@@ -81,6 +117,8 @@ private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
     override fun onRefreshResult(blockchainTime: BlockchainTime, status: Int) = Unit
 
     override fun onCommitResult(success: Boolean) = Unit
+
+    override fun onFeesReceived(fees: LongArray?) = Unit
 }
 
 class RefreshResult(val blockchainTime: BlockchainTime, private val status: Int) {
