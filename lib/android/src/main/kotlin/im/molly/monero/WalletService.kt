@@ -41,8 +41,8 @@ internal class WalletServiceImpl(
     }
 
     override fun createWallet(
-        config: WalletConfig?,
-        storage: IStorageAdapter?,
+        config: WalletConfig,
+        storage: IStorageAdapter,
         client: IRemoteNodeClient?,
         callback: IWalletServiceCallbacks?,
     ) {
@@ -56,11 +56,11 @@ internal class WalletServiceImpl(
     }
 
     override fun restoreWallet(
-        config: WalletConfig?,
-        storage: IStorageAdapter?,
+        config: WalletConfig,
+        storage: IStorageAdapter,
         client: IRemoteNodeClient?,
         callback: IWalletServiceCallbacks?,
-        secretSpendKey: SecretKey?,
+        secretSpendKey: SecretKey,
         restorePoint: Long,
     ) {
         serviceScope.launch {
@@ -72,13 +72,11 @@ internal class WalletServiceImpl(
     }
 
     override fun openWallet(
-        config: WalletConfig?,
-        storage: IStorageAdapter?,
+        config: WalletConfig,
+        storage: IStorageAdapter,
         client: IRemoteNodeClient?,
         callback: IWalletServiceCallbacks?,
     ) {
-        requireNotNull(config)
-        requireNotNull(storage)
         serviceScope.launch {
             val wallet = WalletNative.fullNode(
                 networkId = config.networkId,
@@ -91,15 +89,12 @@ internal class WalletServiceImpl(
     }
 
     private suspend fun createOrRestoreWallet(
-        config: WalletConfig?,
-        storage: IStorageAdapter?,
+        config: WalletConfig,
+        storage: IStorageAdapter,
         client: IRemoteNodeClient?,
-        secretSpendKey: SecretKey?,
+        secretSpendKey: SecretKey,
         restorePoint: Long? = null,
     ): IWallet {
-        requireNotNull(config)
-        requireNotNull(storage)
-        requireNotNull(secretSpendKey)
         return WalletNative.fullNode(
             networkId = config.networkId,
             storageAdapter = storage,

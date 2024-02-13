@@ -14,8 +14,7 @@ internal class StorageAdapter(var dataStore: WalletDataStore?) : IStorageAdapter
 
     private val mutex = Mutex()
 
-    override fun writeAsync(pfd: ParcelFileDescriptor?): Boolean {
-        requireNotNull(pfd)
+    override fun writeAsync(pfd: ParcelFileDescriptor): Boolean {
         val localDataStore = dataStore
         return if (localDataStore != null) {
             val inputStream = ParcelFileDescriptor.AutoCloseInputStream(pfd)
@@ -33,8 +32,7 @@ internal class StorageAdapter(var dataStore: WalletDataStore?) : IStorageAdapter
         }
     }
 
-    override fun readAsync(pfd: ParcelFileDescriptor?) {
-        requireNotNull(pfd)
+    override fun readAsync(pfd: ParcelFileDescriptor) {
         val outputStream = ParcelFileDescriptor.AutoCloseOutputStream(pfd)
         ioStorageScope.launch {
             val localDataStore =

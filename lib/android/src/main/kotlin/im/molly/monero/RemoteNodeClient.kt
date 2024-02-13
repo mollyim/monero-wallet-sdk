@@ -56,15 +56,12 @@ class RemoteNodeClient private constructor(
 
     override fun requestAsync(
         requestId: Int,
-        method: String?,
-        path: String?,
+        method: String,
+        path: String,
         header: String?,
         body: ByteArray?,
         callback: IHttpRequestCallback?,
     ) {
-        requireNotNull(path)
-        requireNotNull(method)
-
         logger.d("HTTP: $method $path, header_len=${header?.length}, body_size=${body?.size}")
 
         val requestJob = requestsScope.launch {

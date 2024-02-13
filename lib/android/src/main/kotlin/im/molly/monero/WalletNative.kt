@@ -178,16 +178,14 @@ class WalletNative private constructor(
     /**
      * Also replays the last known balance whenever a new listener registers.
      */
-    override fun addBalanceListener(listener: IBalanceListener?) {
-        requireNotNull(listener)
+    override fun addBalanceListener(listener: IBalanceListener) {
         balanceListenersLock.withLock {
             balanceListeners.add(listener)
             listener.onBalanceChanged(txHistorySnapshot(), currentBlockchainTime)
         }
     }
 
-    override fun removeBalanceListener(listener: IBalanceListener?) {
-        requireNotNull(listener)
+    override fun removeBalanceListener(listener: IBalanceListener) {
         balanceListenersLock.withLock {
             balanceListeners.remove(listener)
         }
