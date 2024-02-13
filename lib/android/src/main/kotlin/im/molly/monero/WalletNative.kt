@@ -133,13 +133,13 @@ class WalletNative private constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun resumeRefresh(
-        skipCoinbaseOutputs: Boolean,
+        skipCoinbase: Boolean,
         callback: IWalletCallbacks?,
     ) {
         scope.launch {
             val status = suspendCancellableCoroutine { continuation ->
                 launch(singleThreadedDispatcher) {
-                    continuation.resume(nativeNonReentrantRefresh(handle, skipCoinbaseOutputs)) {}
+                    continuation.resume(nativeNonReentrantRefresh(handle, skipCoinbase)) {}
                 }
                 continuation.invokeOnCancellation {
                     nativeCancelRefresh(handle)

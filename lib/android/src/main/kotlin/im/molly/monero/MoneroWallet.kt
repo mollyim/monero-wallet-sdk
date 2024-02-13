@@ -55,9 +55,9 @@ class MoneroWallet internal constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun awaitRefresh(
-        skipCoinbaseOutputs: Boolean = false,
+        ignoreMiningRewards: Boolean = true,
     ): RefreshResult = suspendCancellableCoroutine { continuation ->
-        wallet.resumeRefresh(skipCoinbaseOutputs, object : BaseWalletCallbacks() {
+        wallet.resumeRefresh(ignoreMiningRewards, object : BaseWalletCallbacks() {
             override fun onRefreshResult(blockchainTime: BlockchainTime, status: Int) {
                 val result = RefreshResult(blockchainTime, status)
                 continuation.resume(result) {}
