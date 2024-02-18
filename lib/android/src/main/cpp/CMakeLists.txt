@@ -52,6 +52,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN true)
 
 set(COMMON_SOURCES
     common/jvm.cc
+    common/java_native.cc
 )
 
 set(WALLET_SOURCES

@@ -3,19 +3,18 @@
 namespace monero {
 
 // im.molly.monero.mnemonics
-ScopedJvmGlobalRef<jclass> MoneroMnemonicClass;
-jmethodID MoneroMnemonic_buildMnemonicFromNative;
+jmethodID MoneroMnemonic_buildMnemonicFromJNI;
+ScopedJavaGlobalRef<jclass> MoneroMnemonicClass;
 
-void initializeJniCache(JNIEnv* env) {
-  // im.molly.monero.mnemonics
-  auto moneroMnemonicClass = findClass(env, "im/molly/monero/mnemonics/MoneroMnemonic");
+void InitializeJniCache(JNIEnv* env) {
+  jclass moneroMnemonic = GetClass(env, "im/molly/monero/mnemonics/MoneroMnemonic");
 
-  MoneroMnemonic_buildMnemonicFromNative = moneroMnemonicClass
-      .getStaticMethodId(env,
-                         "buildMnemonicFromNative",
-                         "([B[BLjava/lang/String;)Lim/molly/monero/mnemonics/MnemonicCode;");
+  MoneroMnemonic_buildMnemonicFromJNI = GetStaticMethodId(
+      env, moneroMnemonic,
+      "buildMnemonicFromJNI",
+      "([B[BLjava/lang/String;)Lim/molly/monero/mnemonics/MnemonicCode;");
 
-  MoneroMnemonicClass = moneroMnemonicClass;
+  MoneroMnemonicClass = ScopedJavaLocalRef<jclass>(env, moneroMnemonic);
 }
 
 }  // namespace monero

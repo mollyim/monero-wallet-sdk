@@ -36,7 +36,7 @@ static_assert(PER_KB_FEE_QUANTIZATION_DECIMALS == 8,
 Wallet::Wallet(
     JNIEnv* env,
     int network_id,
-    const JvmRef<jobject>& wallet_native)
+    const JavaRef<jobject>& wallet_native)
     : m_wallet(static_cast<cryptonote::network_type>(network_id),
                0,    /* kdf_rounds */
                true, /* unattended */
@@ -57,7 +57,7 @@ Wallet::Wallet(
 
 // Generate keypairs deterministically.  Account creation time will be set
 // to Monero epoch.
-void generateAccountKeys(cryptonote::account_base& account,
+void GenerateAccountKeys(cryptonote::account_base& account,
                          const std::vector<char>& secret_scalar) {
   crypto::secret_key secret_key;
   LOG_FATAL_IF(secret_scalar.size() != sizeof(secret_key.data),
@@ -71,7 +71,7 @@ void Wallet::restoreAccount(const std::vector<char>& secret_scalar, uint64_t res
   LOG_FATAL_IF(m_account_ready, "Account should not be reinitialized");
   std::lock_guard<std::mutex> lock(m_wallet_mutex);
   auto& account = m_wallet.get_account();
-  generateAccountKeys(account, secret_scalar);
+  GenerateAccountKeys(account, secret_scalar);
   if (restore_point < CRYPTONOTE_MAX_BLOCK_NUMBER) {
     m_restore_height = restore_point;
     m_last_block_timestamp = 0;
@@ -384,8 +384,8 @@ void Wallet::notifyRefreshState(bool debounce) {
     last_time = std::chrono::steady_clock::now();
   }
   if (!debounce) {
-    m_callback.callVoidMethod(getJniEnv(), WalletNative_onRefresh,
-                              height, ts, m_balance_changed);
+    CallVoidMethod(GetJniEnv(), m_callback.obj(), WalletNative_onRefresh,
+                   height, ts, m_balance_changed);
   }
 }
 
@@ -429,18 +429,20 @@ template<typename T>
 auto Wallet::suspendRefreshAndRunLocked(T block) -> decltype(block()) {
   std::unique_lock<std::mutex> wallet_lock(m_wallet_mutex, std::try_to_lock);
   if (!wallet_lock.owns_lock()) {
-    JNIEnv* env = getJniEnv();
+    JNIEnv* env = GetJniEnv();
     for (;;) {
       if (!m_wallet.stopped()) {
         m_wallet.stop();
-        m_callback.callVoidMethod(env, WalletNative_onSuspendRefresh, true);
+        CallVoidMethod(env, m_callback.obj(),
+                       WalletNative_onSuspendRefresh, true);
       }
       if (wallet_lock.try_lock()) {
         break;
       }
       std::this_thread::yield();
     }
-    m_callback.callVoidMethod(env, WalletNative_onSuspendRefresh, false);
+    CallVoidMethod(env, m_callback.obj(),
+                   WalletNative_onSuspendRefresh, false);
     m_refresh_cond.notify_one();
   }
   // Call the lambda and release the mutex upon completion.
@@ -469,8 +471,8 @@ Java_im_molly_monero_WalletNative_nativeCreate(
     JNIEnv* env,
     jobject thiz,
     jint network_id) {
-  auto wallet = new Wallet(env, network_id, JvmParamRef<jobject>(thiz));
-  return nativeToJvmPointer(wallet);
+  auto* wallet = new Wallet(env, network_id, JavaParamRef<jobject>(thiz));
+  return NativeToJavaPointer(wallet);
 }
 
 extern "C"
@@ -480,7 +482,7 @@ Java_im_molly_monero_WalletNative_nativeDispose(
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  free(wallet);
+  delete wallet;
 }
 
 extern "C"
@@ -489,11 +491,10 @@ Java_im_molly_monero_WalletNative_nativeRestoreAccount(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
-    jbyteArray p_secret_scalar,
+    jbyteArray j_secret_scalar,
     jlong restore_point) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  std::vector<char> secret_scalar = jvmToNativeByteArray(
-      env, JvmParamRef<jbyteArray>(p_secret_scalar));
+  std::vector<char> secret_scalar = JavaToNativeByteArray(env, j_secret_scalar);
   Eraser secret_eraser(secret_scalar);
   wallet->restoreAccount(secret_scalar, restore_point);
 }
@@ -582,7 +583,7 @@ Java_im_molly_monero_WalletNative_nativeGetAccountPrimaryAddress(
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  return nativeToJvmString(env, wallet->public_address()).Release();
+  return NativeToJavaString(env, wallet->public_address());
 }
 
 extern "C"
@@ -605,18 +606,27 @@ Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainTimestamp(
   return wallet->current_blockchain_timestamp();
 }
 
-ScopedJvmLocalRef<jobject> nativeToJvmTxInfo(JNIEnv* env,
-                                             const TxInfo& tx) {
-  LOG_FATAL_IF(tx.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER, "Blockchain max height reached");
+ScopedJavaLocalRef<jobject> NativeToJavaTxInfo(JNIEnv* env,
+                                               const TxInfo& tx) {
+  LOG_FATAL_IF(tx.m_height >= CRYPTONOTE_MAX_BLOCK_NUMBER,
+               "Blockchain max height reached");
   // TODO: Check amount overflow
-  return {env, TxInfoClass.newObject(
-      env, TxInfo_ctor,
-      nativeToJvmString(env, pod_to_hex(tx.m_tx_hash)).obj(),
-      tx.m_public_key_known ? nativeToJvmString(env, pod_to_hex(tx.m_public_key)).obj() : nullptr,
-      tx.m_key_image_known ? nativeToJvmString(env, pod_to_hex(tx.m_key_image)).obj() : nullptr,
+  return {env, NewObject(
+      env,
+      TxInfoClass.obj(), TxInfo_ctor,
+      ScopedJavaLocalRef<jstring>(
+          env, NativeToJavaString(env, pod_to_hex(tx.m_tx_hash))).obj(),
+      tx.m_public_key_known ? ScopedJavaLocalRef<jstring>(
+          env, NativeToJavaString(env, pod_to_hex(tx.m_public_key))).obj()
+                            : nullptr,
+      tx.m_key_image_known ? ScopedJavaLocalRef<jstring>(
+          env, NativeToJavaString(env, pod_to_hex(tx.m_key_image))).obj()
+                           : nullptr,
       tx.m_subaddress_major,
       tx.m_subaddress_minor,
-      (!tx.m_recipient.empty()) ? nativeToJvmString(env, tx.m_recipient).obj() : nullptr,
+      (!tx.m_recipient.empty()) ? ScopedJavaLocalRef<jstring>(
+          env, NativeToJavaString(env, tx.m_recipient)).obj()
+                                : nullptr,
       tx.m_amount,
       static_cast<jint>(tx.m_height),
       tx.m_state,
@@ -636,14 +646,14 @@ Java_im_molly_monero_WalletNative_nativeGetTxHistory(
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  ScopedJvmLocalRef<jobjectArray> j_array;
+  jobjectArray j_array;
   wallet->withTxHistory([env, &j_array](std::vector<TxInfo> const& txs) {
-    j_array = nativeToJvmObjectArray(env,
-                                     txs,
-                                     TxInfoClass.getClass(),
-                                     &nativeToJvmTxInfo);
+    j_array = NativeToJavaObjectArray<TxInfo>(env,
+                                              txs,
+                                              TxInfoClass.obj(),
+                                              &NativeToJavaTxInfo);
   });
-  return j_array.Release();
+  return j_array;
 }
 
 extern "C"
@@ -654,7 +664,7 @@ Java_im_molly_monero_WalletNative_nativeFetchBaseFeeEstimate(
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   std::vector<uint64_t> fees = wallet->fetchBaseFeeEstimate();
-  return nativeToJvmLongArray(env, fees.data(), fees.size()).Release();
+  return NativeToJavaLongArray(env, fees.data(), fees.size());
 }
 
 }  // namespace monero

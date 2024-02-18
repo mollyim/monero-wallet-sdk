@@ -1,16 +1,16 @@
 #ifndef MNEMONICS_JNI_CACHE_H__
 #define MNEMONICS_JNI_CACHE_H__
 
-#include "common/jvm.h"
+#include "common/java_native.h"
 
 namespace monero {
 
 // Initialize various classes and method pointers cached for use in JNI.
-void initializeJniCache(JNIEnv* env);
+void InitializeJniCache(JNIEnv* env);
 
 // im.molly.monero.mnemonics
-extern ScopedJvmGlobalRef<jclass> MoneroMnemonicClass;
-extern jmethodID MoneroMnemonic_buildMnemonicFromNative;
+extern jmethodID MoneroMnemonic_buildMnemonicFromJNI;
+extern ScopedJavaGlobalRef<jclass> MoneroMnemonicClass;
 
 }  // namespace monero
 

@@ -26,9 +26,12 @@ class ScopedFd {
     other.m_fd = -1;
   }
 
-  ScopedFd(JNIEnv* env, const JvmRef<jobject>& parcel_file_descriptor) : m_fd(-1) {
+  ScopedFd(JNIEnv* env, const JavaRef<jobject>& parcel_file_descriptor) {
     if (!parcel_file_descriptor.is_null()) {
-      m_fd = parcel_file_descriptor.callIntMethod(env, ParcelFileDescriptor_detachFd);
+      m_fd = CallIntMethod(env, parcel_file_descriptor.obj(),
+                           ParcelFd_detachFd);
+    } else {
+      m_fd = -1;
     }
   }
 

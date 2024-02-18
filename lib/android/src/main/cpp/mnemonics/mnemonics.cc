@@ -13,31 +13,27 @@ Java_im_molly_monero_mnemonics_MoneroMnemonicKt_nativeElectrumWordsGenerateMnemo
     jclass clazz,
     jbyteArray j_entropy,
     jstring j_language) {
-  std::vector<char> entropy = jvmToNativeByteArray(env, JvmParamRef<jbyteArray>(j_entropy));
+  std::vector<char> entropy = JavaToNativeByteArray(env, j_entropy);
   Eraser entropy_eraser(entropy);
 
-  std::string language = jvmToStdString(env, j_language);
-  epee::wipeable_string words;
+  std::string language = JavaToNativeString(env, j_language);
 
+  epee::wipeable_string words;
   bool success =
-      crypto::ElectrumWords::bytes_to_words(entropy.data(),
-                                            entropy.size(),
-                                            words,
-                                            language);
+      crypto::ElectrumWords::bytes_to_words(entropy.data(), entropy.size(),
+                                            words, language);
   if (!success) {
     return nullptr;
   }
 
-  ScopedJvmLocalRef<jobject> j_mnemonic_code(
-      env, MoneroMnemonicClass.callStaticObjectMethod(
-          env, MoneroMnemonic_buildMnemonicFromNative,
-          j_entropy,
-          nativeToJvmByteArray(env, words.data(), words.size()).obj(),
-          j_language
-      )
-  );
+  jobject j_mnemonic_code = CallStaticObjectMethod(
+      env, MoneroMnemonicClass.obj(),
+      MoneroMnemonic_buildMnemonicFromJNI,
+      j_entropy,
+      NativeToJavaByteArray(env, words.data(), words.size()),
+      j_language);
 
-  return j_mnemonic_code.Release();
+  return j_mnemonic_code;
 }
 
 extern "C"
@@ -47,32 +43,29 @@ Java_im_molly_monero_mnemonics_MoneroMnemonicKt_nativeElectrumWordsRecoverEntrop
     jclass clazz,
     jbyteArray j_source
 ) {
-  std::vector<char> words = jvmToNativeByteArray(env, JvmParamRef<jbyteArray>(j_source));
+  std::vector<char> words = JavaToNativeByteArray(env, j_source);
   Eraser words_eraser(words);
 
-  std::string language;
   epee::wipeable_string entropy, w_words(words.data(), words.size());
-
+  std::string language;
   bool success =
       crypto::ElectrumWords::words_to_bytes(w_words,
                                             entropy,
-                                            0 /* len */,
-                                            true /* duplicate */,
+                                            0,    /* len */
+                                            true, /* duplicate */
                                             language);
   if (!success) {
     return nullptr;
   }
 
-  ScopedJvmLocalRef<jobject> j_mnemonic_code(
-      env, MoneroMnemonicClass.callStaticObjectMethod(
-          env, MoneroMnemonic_buildMnemonicFromNative,
-          nativeToJvmByteArray(env, entropy.data(), entropy.size()).obj(),
-          j_source,
-          nativeToJvmString(env, language).obj()
-      )
-  );
+  jobject j_mnemonic_code = CallStaticObjectMethod(
+      env, MoneroMnemonicClass.obj(),
+      MoneroMnemonic_buildMnemonicFromJNI,
+      NativeToJavaByteArray(env, entropy.data(), entropy.size()),
+      j_source,
+      NativeToJavaString(env, language));
 
-  return j_mnemonic_code.Release();
+  return j_mnemonic_code;
 }
 
 }  // namespace monero

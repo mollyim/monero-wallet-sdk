@@ -9,13 +9,13 @@ namespace monero {
 extern "C"
 JNIEXPORT jint
 JNI_OnLoad(JavaVM* vm, void* reserved) {
-  JNIEnv* env = initializeJvm(vm, JNI_VERSION_1_6);
+  JNIEnv* env = InitializeJvm(vm, JNI_VERSION_1_6);
   if (env == nullptr) {
     return JNI_ERR;
   }
 
-  initializeJniCache(env);
-  initializeEasyLogging();
+  InitializeJniCache(env);
+  InitializeEasyLogging();
 
   return JNI_VERSION_1_6;
 }

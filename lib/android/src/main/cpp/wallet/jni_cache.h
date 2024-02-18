@@ -2,14 +2,14 @@
 #define WALLET_JNI_CACHE_H__
 
 #include "common/jvm.h"
+#include "common/java_native.h"
 
 namespace monero {
 
 // Initialize various classes and method pointers cached for use in JNI.
-void initializeJniCache(JNIEnv* env);
+void InitializeJniCache(JNIEnv* env);
 
 // im.molly.monero
-extern ScopedJvmGlobalRef<jclass> TxInfoClass;
 extern jmethodID HttpResponse_getBody;
 extern jmethodID HttpResponse_getCode;
 extern jmethodID HttpResponse_getContentType;
@@ -18,9 +18,13 @@ extern jmethodID TxInfo_ctor;
 extern jmethodID WalletNative_callRemoteNode;
 extern jmethodID WalletNative_onRefresh;
 extern jmethodID WalletNative_onSuspendRefresh;
+extern ScopedJavaGlobalRef<jclass> TxInfoClass;
 
 // android.os
-extern jmethodID ParcelFileDescriptor_detachFd;
+extern jmethodID ParcelFd_detachFd;
+
+// java.lang
+extern ScopedJavaGlobalRef<jclass> StringClass;
 
 }  // namespace monero
 

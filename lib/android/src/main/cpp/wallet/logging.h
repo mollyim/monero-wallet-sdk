@@ -5,7 +5,7 @@
 
 #include <string>
 
-#include "common/jvm.h"
+#include "common/scoped_java_ref.h"
 
 namespace monero {
 
@@ -20,7 +20,7 @@ enum LoggingLevel {
 };
 
 // Register easylogging++ post dispatcher and configure log format.
-void initializeEasyLogging();
+void InitializeEasyLogging();
 
 // Log sink to send logs to JVM via Logging.kt API.
 class JvmLogSink {
@@ -36,13 +36,13 @@ class JvmLogSink {
   // This is called when a log message is dispatched by easylogging++.
   void write(const std::string& tag, LoggingLevel priority, const std::string& msg);
 
-  void set_logger(JNIEnv* env, const JvmRef<jobject>& logger);
+  void set_logger(JNIEnv* env, const JavaRef<jobject>& logger);
 
  protected:
   JvmLogSink() = default;
 
  private:
-  ScopedJvmGlobalRef<jobject> m_logger;
+  ScopedJavaGlobalRef<jobject> m_logger;
 };
 
 }  // namespace monero

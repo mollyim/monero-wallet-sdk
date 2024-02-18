@@ -63,7 +63,7 @@ object MoneroMnemonic {
 
     @CalledByNative("mnemonics/mnemonics.cc")
     @JvmStatic
-    private fun buildMnemonicFromNative(
+    private fun buildMnemonicFromJNI(
         entropy: ByteArray,
         wordsBytes: ByteArray,
         language: String,

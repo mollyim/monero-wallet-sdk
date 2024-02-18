@@ -1,5 +1,7 @@
 #include "logging.h"
 
+#include "common/debug.h"
+
 #include "jni_cache.h"
 
 #include "easylogging++.h"
@@ -41,7 +43,7 @@ class JvmEasyLoggingDispatcher : public el::LogDispatchCallback {
 #define EL_BASE_FORMAT "%msg"
 #define EL_TRACE_FORMAT "[%fbase:%line] " EL_BASE_FORMAT
 
-void initializeEasyLogging() {
+void InitializeEasyLogging() {
   el::Configurations c;
   c.setGlobally(el::ConfigurationType::ToFile, "false");
   c.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
@@ -69,14 +71,15 @@ void JvmLogSink::write(const std::string& tag,
                        const std::string& msg) {
   LOG_FATAL_IF(m_logger.is_null(), "Logger not set");
   const int pri_idx = static_cast<int>(priority);
-  JNIEnv* env = getJniEnv();
-  ScopedJvmLocalRef<jstring> j_tag = nativeToJvmString(env, tag);
-  ScopedJvmLocalRef<jstring> j_msg = nativeToJvmString(env, msg);
-  m_logger.callVoidMethod(env, Logger_logFromNative,
-                          pri_idx, j_tag.obj(), j_msg.obj());
+  JNIEnv* env = GetJniEnv();
+  ScopedJavaLocalRef<jstring> j_tag(env, NativeToJavaString(env, tag));
+  ScopedJavaLocalRef<jstring> j_msg(env, NativeToJavaString(env, msg));
+
+  CallVoidMethod(env, m_logger.obj(), Logger_logFromNative,
+                 pri_idx, j_tag.obj(), j_msg.obj());
 }
 
-void JvmLogSink::set_logger(JNIEnv* env, const JvmRef<jobject>& logger) {
+void JvmLogSink::set_logger(JNIEnv* env, const JavaRef<jobject>& logger) {
   m_logger = logger;
 }
 
@@ -86,7 +89,7 @@ Java_im_molly_monero_NativeLoaderKt_nativeSetLogger(
     JNIEnv* env,
     jclass clazz,
     jobject j_logger) {
-  JvmLogSink::instance()->set_logger(env, JvmParamRef<jobject>(j_logger));
+  JvmLogSink::instance()->set_logger(env, JavaParamRef<jobject>(j_logger));
 }
 
 }  // namespace monero

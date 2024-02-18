@@ -79,9 +79,10 @@ class Wallet : tools::i_wallet2_callback {
     REFRESH_ERROR = 3,
   };
 
+ public:
   Wallet(JNIEnv* env,
          int network_id,
-         const JvmRef<jobject>& wallet_native);
+         const JavaRef<jobject>& wallet_native);
 
   void restoreAccount(const std::vector<char>& secret_scalar, uint64_t restore_point);
   uint64_t estimateRestoreHeight(uint64_t timestamp);
@@ -130,7 +131,7 @@ class Wallet : tools::i_wallet2_callback {
   std::mutex m_refresh_mutex;
 
   // Reference to Kotlin wallet instance.
-  const ScopedJvmGlobalRef<jobject> m_callback;
+  const ScopedJavaGlobalRef<jobject> m_callback;
 
   std::condition_variable m_refresh_cond;
   std::atomic<bool> m_refresh_running;

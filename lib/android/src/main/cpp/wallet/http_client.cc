@@ -1,5 +1,7 @@
 #include "http_client.h"
 
+#include "common/debug.h"
+
 #include "jni_cache.h"
 
 namespace monero {
@@ -32,15 +34,15 @@ bool RemoteNodeClient::is_connected(bool* ssl) {
   return false;
 }
 
-RemoteNodeClient::HttpResponse jvmToHttpResponse(JNIEnv* env, JvmRef<jobject>& j_http_response) {
-  jint code = j_http_response.callIntMethod(env, HttpResponse_getCode);
-  jstring mime_type = j_http_response.callStringMethod(env, HttpResponse_getContentType);
-  jobject body = j_http_response.callObjectMethod(env, HttpResponse_getBody);
-  return {
-      code,
-      (mime_type != nullptr) ? jvmToStdString(env, mime_type) : "",
-      ScopedFd(env, ScopedJvmLocalRef<jobject>(env, body))
-  };
+RemoteNodeClient::HttpResponse JavaToHttpResponse(JNIEnv* env, jobject obj) {
+  jint code = CallIntMethod(env, obj, HttpResponse_getCode);
+  ScopedJavaLocalRef<jstring>
+      j_mime_type(env, CallStringMethod(env, obj, HttpResponse_getContentType));
+  ScopedJavaLocalRef<jobject>
+      j_body(env, CallObjectMethod(env, obj, HttpResponse_getBody));
+  return {code, j_mime_type.is_null() ? ""
+                                      : JavaToNativeString(env, j_mime_type.obj()),
+          ScopedFd(env, j_body)};
 }
 
 bool RemoteNodeClient::invoke(const boost::string_ref uri,
@@ -49,26 +51,30 @@ bool RemoteNodeClient::invoke(const boost::string_ref uri,
                               std::chrono::milliseconds timeout,
                               const epee::net_utils::http::http_response_info** ppresponse_info,
                               const epee::net_utils::http::fields_list& additional_params) {
-  JNIEnv* env = getJniEnv();
   std::ostringstream header;
   for (const auto& p: additional_params) {
     header << p.first << ": " << p.second << "\r\n";
   }
+  JNIEnv* env = GetJniEnv();
   try {
-    ScopedJvmLocalRef<jobject> j_response(
-        env, m_wallet_native.callObjectMethod(
-            env, WalletNative_callRemoteNode,
-            nativeToJvmString(env, method.data()).obj(),
-            nativeToJvmString(env, uri.data()).obj(),
-            nativeToJvmString(env, header.str()).obj(),
-            nativeToJvmByteArray(env, body.data(), body.length()).obj()
-        )
-    );
+    ScopedJavaLocalRef<jstring> j_method(env, NativeToJavaString(env, method.data()));
+    ScopedJavaLocalRef<jstring> j_uri(env, NativeToJavaString(env, uri.data()));
+    ScopedJavaLocalRef<jstring> j_hdr(env, NativeToJavaString(env, header.str()));
+    ScopedJavaLocalRef<jbyteArray>
+        j_body(env, NativeToJavaByteArray(env, body.data(), body.length()));
+    ScopedJavaLocalRef<jobject>
+        j_response = {env, CallObjectMethod(env,
+                                            m_wallet_native.obj(),
+                                            WalletNative_callRemoteNode,
+                                            j_method.obj(),
+                                            j_uri.obj(),
+                                            j_hdr.obj(),
+                                            j_body.obj())};
     m_response_info.clear();
     if (j_response.is_null()) {
       return false;
     }
-    HttpResponse http_response = jvmToHttpResponse(env, j_response);
+    HttpResponse http_response = JavaToHttpResponse(env, j_response.obj());
     if (http_response.code == 401) {
       // Handle HTTP unauthorized in the same way as http_simple_client_template.
       return false;
