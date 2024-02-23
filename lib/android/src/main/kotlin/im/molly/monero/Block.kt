@@ -15,6 +15,7 @@ data class Block(
 data class BlockHeader(
     val height: Int,
     val epochSecond: Long,
+//    val version: ProtocolInfo,
 ) {
     val timestamp: Instant
         get() = Instant.ofEpochSecond(epochSecond)

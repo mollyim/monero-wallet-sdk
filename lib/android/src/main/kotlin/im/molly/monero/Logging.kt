@@ -71,7 +71,7 @@ internal open class Logger(val tag: String) : LogAdapter {
     /**
      * Log method called from native code.
      */
-    @CalledByNative("logging.cc")
+    @CalledByNative
     fun logFromNative(priority: Int, tag: String, msg: String?) {
         val pri = if (priority in Log.VERBOSE.rangeTo(Log.ASSERT)) priority else Log.ASSERT
         val jniTag = "MoneroJNI.$tag"

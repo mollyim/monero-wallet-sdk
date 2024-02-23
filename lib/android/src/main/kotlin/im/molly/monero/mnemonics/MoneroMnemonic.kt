@@ -61,7 +61,7 @@ object MoneroMnemonic {
         }
     }
 
-    @CalledByNative("mnemonics/mnemonics.cc")
+    @CalledByNative
     @JvmStatic
     private fun buildMnemonicFromJNI(
         entropy: ByteArray,

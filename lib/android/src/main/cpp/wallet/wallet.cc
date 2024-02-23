@@ -132,6 +132,44 @@ void Wallet::withTxHistory(Consumer consumer) {
   consumer(m_tx_history);
 }
 
+std::unique_ptr<PendingTransfer> Wallet::createPayment(
+    const std::vector<std::string>& addresses,
+    const std::vector<uint64_t>& amounts,
+    uint64_t time_lock,
+    int priority,
+    uint32_t account_index,
+    const std::set<uint32_t>& subaddr_indexes) {
+  std::vector<cryptonote::tx_destination_entry> dsts;
+  dsts.reserve(addresses.size());
+
+  for (size_t i = 0; i < addresses.size(); ++i) {
+    const std::string& address = addresses[i];
+    cryptonote::address_parse_info info;
+    if (!cryptonote::get_account_address_from_str(info, m_wallet.nettype(), address)) {
+      LOG_FATAL("Failed to parse recipient address: %s", address.c_str());
+    }
+    LOG_FATAL_IF(info.has_payment_id);
+    cryptonote::tx_destination_entry de;
+    de.original = address;
+    de.addr = info.address;
+    de.amount = amounts.at(i);
+    de.is_subaddress = info.is_subaddress;
+    de.is_integrated = false;
+    dsts.push_back(de);
+  }
+
+  auto ptxs = m_wallet.create_transactions_2(
+      dsts,
+      m_wallet.default_mixin(),
+      time_lock,
+      priority,
+      {}, /* extra */
+      account_index,
+      subaddr_indexes);
+
+  return std::make_unique<PendingTransfer>(ptxs);
+}
+
 std::vector<uint64_t> Wallet::fetchBaseFeeEstimate() {
   return m_wallet.get_dynamic_base_fee_scaling_estimate();
 }
@@ -146,8 +184,8 @@ cryptonote::account_base& Wallet::require_account() {
   return m_wallet.get_account();
 }
 
-const payment_details* find_payment_by_txid(
-    const std::list<std::pair<crypto::hash, payment_details>>& pds,
+const wallet2::payment_details* Find_payment_by_txid(
+    const std::list<std::pair<crypto::hash, wallet2::payment_details>>& pds,
     const crypto::hash& txid) {
   if (txid == crypto::null_hash) {
     return nullptr;
@@ -161,8 +199,8 @@ const payment_details* find_payment_by_txid(
   return nullptr;
 }
 
-const confirmed_transfer_details* find_transfer_by_txid(
-    const std::list<std::pair<crypto::hash, confirmed_transfer_details>>& txs,
+const wallet2::confirmed_transfer_details* Find_transfer_by_txid(
+    const std::list<std::pair<crypto::hash, wallet2::confirmed_transfer_details>>& txs,
     const crypto::hash& txid) {
   if (txid == crypto::null_hash) {
     return nullptr;
@@ -182,15 +220,15 @@ const confirmed_transfer_details* find_transfer_by_txid(
 void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   snapshot.clear();
 
-  std::vector<transfer_details> tds;
+  std::vector<wallet2::transfer_details> tds;
   m_wallet.get_transfers(tds);
 
   uint64_t min_height = 0;
 
-  std::list<std::pair<crypto::hash, payment_details>> pds;
-  std::list<std::pair<crypto::hash, pool_payment_details>> upds;
-  std::list<std::pair<crypto::hash, confirmed_transfer_details>> txs;
-  std::list<std::pair<crypto::hash, unconfirmed_transfer_details>> utxs;
+  std::list<std::pair<crypto::hash, wallet2::payment_details>> pds;
+  std::list<std::pair<crypto::hash, wallet2::pool_payment_details>> upds;
+  std::list<std::pair<crypto::hash, wallet2::confirmed_transfer_details>> txs;
+  std::list<std::pair<crypto::hash, wallet2::unconfirmed_transfer_details>> utxs;
   m_wallet.get_payments(pds, min_height);
   m_wallet.get_unconfirmed_payments(upds, min_height);
   m_wallet.get_payments_out(txs, min_height);
@@ -211,13 +249,13 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     recv.m_unlock_time = td.m_tx.unlock_time;
 
     // Check if the payment or transfer exists and update metadata if found.
-    if (const auto* pd = find_payment_by_txid(pds, td.m_txid)) {
+    if (const auto* pd = Find_payment_by_txid(pds, td.m_txid)) {
       recv.m_height = pd->m_block_height;
       recv.m_timestamp = pd->m_timestamp;
       recv.m_fee = pd->m_fee;
       recv.m_coinbase = pd->m_coinbase;
       recv.m_state = TxInfo::ON_CHAIN;
-    } else if (const auto* tx = find_transfer_by_txid(txs, td.m_txid)) {
+    } else if (const auto* tx = Find_transfer_by_txid(txs, td.m_txid)) {
       recv.m_height = tx->m_block_height;
       recv.m_timestamp = tx->m_timestamp;
       recv.m_fee = tx->m_amount_in - tx->m_amount_out;
@@ -263,7 +301,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   for (const auto& pair: utxs) {
     const auto& utx = pair.second;
     uint64_t fee = utx.m_amount_in - utx.m_amount_out;
-    auto state = (utx.m_state == unconfirmed_transfer_details::pending)
+    auto state = (utx.m_state == wallet2::unconfirmed_transfer_details::pending)
                  ? TxInfo::PENDING
                  : TxInfo::FAILED;
 
@@ -394,8 +432,8 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
                "Refresh should not be called concurrently");
   Status ret;
   std::unique_lock<std::mutex> wallet_lock(m_wallet_mutex);
-  m_wallet.set_refresh_type(skip_coinbase ? tools::wallet2::RefreshType::RefreshNoCoinbase
-                                          : tools::wallet2::RefreshType::RefreshDefault);
+  m_wallet.set_refresh_type(skip_coinbase ? wallet2::RefreshType::RefreshNoCoinbase
+                                          : wallet2::RefreshType::RefreshDefault);
   while (!m_refresh_canceled) {
     m_wallet.set_refresh_from_block_height(m_restore_height);
     try {
@@ -406,10 +444,10 @@ Wallet::Status Wallet::nonReentrantRefresh(bool skip_coinbase) {
         ret = Status::OK;
         break;
       }
-    } catch (const tools::error::no_connection_to_daemon&) {
+    } catch (const error::no_connection_to_daemon&) {
       ret = Status::NO_NETWORK_CONNECTIVITY;
       break;
-    } catch (const tools::error::refresh_error&) {
+    } catch (const error::refresh_error&) {
       ret = Status::REFRESH_ERROR;
       break;
     }
@@ -481,8 +519,16 @@ Java_im_molly_monero_WalletNative_nativeDispose(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
-  auto* wallet = reinterpret_cast<Wallet*>(handle);
-  delete wallet;
+  delete reinterpret_cast<Wallet*>(handle);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_im_molly_monero_WalletNative_nativeDisposePendingTransfer(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  delete reinterpret_cast<PendingTransfer*>(handle);
 }
 
 extern "C"
@@ -654,6 +700,66 @@ Java_im_molly_monero_WalletNative_nativeGetTxHistory(
                                               &NativeToJavaTxInfo);
   });
   return j_array;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_im_molly_monero_WalletNative_nativeCreatePayment(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle,
+    jobjectArray j_addresses,
+    jlongArray j_amounts,
+    jlong time_lock,
+    jint priority,
+    jint account_index,
+    jintArray j_subaddr_indexes,
+    jobject j_callback) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+
+  const auto& addresses = JavaToNativeVector<std::string, jstring>(
+      env, j_addresses, &JavaToNativeString);
+  const auto& amounts = JavaToNativeLongArray(env, j_amounts);
+  const auto& subaddr_indexes = JavaToNativeIntArray(env, j_subaddr_indexes);
+
+  std::unique_ptr<PendingTransfer> pendingTransfer;
+
+  try {
+    pendingTransfer = wallet->createPayment(
+        addresses,
+        {amounts.begin(), amounts.end()},
+        time_lock, priority,
+        account_index,
+        {subaddr_indexes.begin(), subaddr_indexes.end()});
+//  } catch (error::daemon_busy& e) {
+//  } catch (error::no_connection_to_daemon& e) {
+//  } catch (error::wallet_rpc_error& e) {
+//  } catch (error::get_outs_error& e) {
+//  } catch (error::not_enough_unlocked_money& e) {
+//  } catch (error::not_enough_money& e) {
+//  } catch (error::tx_not_possible& e) {
+//  } catch (error::not_enough_outs_to_mix& e) {
+//  } catch (error::tx_not_constructed& e) {
+//  } catch (error::tx_rejected& e) {
+//  } catch (error::tx_sum_overflow& e) {
+//  } catch (error::zero_amount& e) {
+//  } catch (error::zero_destination& e) {
+//  } catch (error::tx_too_big& e) {
+//  } catch (error::transfer_error& e) {
+//  } catch (error::wallet_internal_error& e) {
+//  } catch (error::wallet_logic_error& e) {
+//  } catch (const std::exception& e) {
+  } catch (...) {
+    LOG_FATAL("Caught unknown exception");
+  }
+
+  jobject j_pending_transfer = CallObjectMethod(
+      env, thiz, WalletNative_createPendingTransfer,
+      NativeToJavaPointer(pendingTransfer.get()));
+
+  CallVoidMethod(env, j_callback,
+                 ITransferRequestCb_onTransferCreated,
+                 j_pending_transfer);
 }
 
 extern "C"

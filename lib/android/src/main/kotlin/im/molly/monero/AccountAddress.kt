@@ -1,5 +1,8 @@
 package im.molly.monero
 
+import android.os.Parcel
+import android.os.Parcelable
+
 data class AccountAddress(
     val publicAddress: PublicAddress,
     val accountIndex: Int = 0,
@@ -12,11 +15,13 @@ data class AccountAddress(
     init {
         when (publicAddress) {
             is StandardAddress -> require(isPrimaryAddress) {
-                "Standard addresses must have subaddress indices set to zero"
+                "Only the primary address is a standard address"
             }
+
             is SubAddress -> require(accountIndex != -1 && subAddressIndex != -1) {
                 "Invalid subaddress indices"
             }
+
             else -> throw IllegalArgumentException("Unsupported address type")
         }
     }

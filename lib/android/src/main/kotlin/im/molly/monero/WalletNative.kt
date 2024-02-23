@@ -7,11 +7,12 @@ import kotlinx.coroutines.*
 import java.io.Closeable
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.coroutines.CoroutineContext
 
-class WalletNative private constructor(
+internal class WalletNative private constructor(
     private val network: MoneroNetwork,
     private val storageAdapter: IStorageAdapter,
     private val remoteNodeClient: IRemoteNodeClient?,
@@ -168,6 +169,45 @@ class WalletNative private constructor(
         }
     }
 
+    override fun createPayment(request: PaymentRequest, callback: ITransferRequestCallback) {
+        val (amounts, addresses) = request.paymentDetails.map {
+            it.amount.atomicUnits to it.recipientAddress.address
+        }.unzip()
+
+        nativeCreatePayment(
+            handle = handle,
+            addresses = addresses.toTypedArray(),
+            amounts = amounts.toLongArray(),
+            timeLock = request.timeLock?.blockchainTime?.toLong() ?: 0,
+            priority = request.feePriority?.priority ?: 0,
+            accountIndex = 0,
+            subAddressIndexes = IntArray(0),
+            callback = callback,
+        )
+    }
+
+    override fun createSweep(request: SweepRequest, callback: ITransferRequestCallback) {
+        TODO()
+    }
+
+    @CalledByNative
+    private fun createPendingTransfer(handle: Long) = NativePendingTransfer(handle)
+
+    inner class NativePendingTransfer(private val handle: Long) : Closeable,
+        IPendingTransfer.Stub() {
+
+        private val closed = AtomicBoolean()
+
+        override fun close() {
+            if (closed.getAndSet(true)) return
+            nativeDisposePendingTransfer(handle)
+        }
+
+        protected fun finalize() {
+            nativeDisposePendingTransfer(handle)
+        }
+    }
+
     override fun requestFees(callback: IWalletCallbacks?) {
         scope.launch(ioDispatcher) {
             val fees = nativeFetchBaseFeeEstimate(handle)
@@ -191,7 +231,7 @@ class WalletNative private constructor(
         }
     }
 
-    @CalledByNative("wallet.cc")
+    @CalledByNative
     private fun onRefresh(height: Int, timestamp: Long, balanceChanged: Boolean) {
         balanceListenersLock.withLock {
             if (balanceListeners.isNotEmpty()) {
@@ -208,7 +248,7 @@ class WalletNative private constructor(
         }
     }
 
-    @CalledByNative("wallet.cc")
+    @CalledByNative
     private fun onSuspendRefresh(suspending: Boolean) {
         if (suspending) {
             pendingRequestLock.withLock {
@@ -232,7 +272,7 @@ class WalletNative private constructor(
      *
      * Caller must close [HttpResponse.body] upon completion of processing the response.
      */
-    @CalledByNative("http_client.cc")
+    @CalledByNative
     private fun callRemoteNode(
         method: String?,
         path: String?,
@@ -280,12 +320,25 @@ class WalletNative private constructor(
 
     private external fun nativeCancelRefresh(handle: Long)
     private external fun nativeCreate(networkId: Int): Long
+    private external fun nativeCreatePayment(
+        handle: Long,
+        addresses: Array<String>,
+        amounts: LongArray,
+        timeLock: Long,
+        priority: Int,
+        accountIndex: Int,
+        subAddressIndexes: IntArray,
+        callback: ITransferRequestCallback,
+    )
+
     private external fun nativeDispose(handle: Long)
+    private external fun nativeDisposePendingTransfer(handle: Long)
     private external fun nativeGetCurrentBlockchainHeight(handle: Long): Int
     private external fun nativeGetCurrentBlockchainTimestamp(handle: Long): Long
     private external fun nativeGetTxHistory(handle: Long): Array<TxInfo>
     private external fun nativeGetAccountPrimaryAddress(handle: Long): String
-//    private external fun nativeGetAccountSubAddress(handle: Long, accountIndex: Int, subAddressIndex: Int): String
+
+    // private external fun nativeGetAccountSubAddress(handle: Long, accountIndex: Int, subAddressIndex: Int): String
     private external fun nativeFetchBaseFeeEstimate(handle: Long): LongArray
     private external fun nativeLoad(handle: Long, fd: Int): Boolean
     private external fun nativeNonReentrantRefresh(handle: Long, skipCoinbase: Boolean): Int

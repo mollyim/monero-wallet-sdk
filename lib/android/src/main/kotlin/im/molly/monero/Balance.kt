@@ -1,7 +1,5 @@
 package im.molly.monero
 
-import java.time.Instant
-
 data class Balance(
     val pendingAmount: MoneroAmount,
     val timeLockedAmounts: List<TimeLocked<MoneroAmount>>,

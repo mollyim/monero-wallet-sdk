@@ -56,9 +56,7 @@ class SecretKey : Destroyable, Closeable, Parcelable {
         parcel.writeByteArray(secret)
     }
 
-    override fun describeContents(): Int {
-        return 0
-    }
+    override fun describeContents(): Int = 0
 
     companion object CREATOR : Parcelable.Creator<SecretKey> {
         override fun createFromParcel(parcel: Parcel): SecretKey {

@@ -7,7 +7,7 @@ data class DynamicFeeRate(val feePerByte: Map<FeePriority, MoneroAmount>) {
 
     val quantizationMask: MoneroAmount = BigDecimal.TEN.pow(PER_KB_FEE_QUANTIZATION_DECIMALS).xmr
 
-    fun estimateFee(tx: PendingTransaction): Map<FeePriority, MoneroAmount> {
+    fun estimateFee(pendingTransfer: PendingTransfer): Map<FeePriority, MoneroAmount> {
         TODO()
     }
 }

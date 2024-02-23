@@ -15,7 +15,7 @@ enum class MoneroNetwork(val id: Int, val epoch: Long, val epochV2: Pair<Int, Lo
     Stagenet(2, 1518932025, (32000 to 1520937818));
 
     companion object {
-        fun fromId(value: Int) = values().first { it.id == value }
+        fun fromId(value: Int) = entries.first { it.id == value }
 
         fun of(publicAddress: String) = PublicAddress.parse(publicAddress).network
     }

@@ -6,4 +6,4 @@ package im.molly.monero
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
 @Retention(AnnotationRetention.SOURCE)
 @MustBeDocumented
-annotation class CalledByNative(val fileName: String)
+annotation class CalledByNative

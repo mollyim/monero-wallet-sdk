@@ -69,6 +69,8 @@ set(WALLET2_SOURCES
     src/hardforks/hardforks.cpp
     src/mnemonics/electrum-words.cpp
     src/multisig/multisig.cpp
+    src/multisig/multisig_clsag_context.cpp
+    src/multisig/multisig_tx_builder_ringct.cpp
     src/net/error.cpp
     src/net/http.cpp
     src/net/i2p_address.cpp
@@ -77,6 +79,7 @@ set(WALLET2_SOURCES
     src/net/socks_connect.cpp
     src/net/tor_address.cpp
     src/ringct/bulletproofs.cc
+    src/ringct/bulletproofs_plus.cc
     src/ringct/multiexp.cc
     src/ringct/rctCryptoOps.c
     src/ringct/rctOps.cpp

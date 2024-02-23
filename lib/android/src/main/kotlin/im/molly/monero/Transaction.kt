@@ -2,7 +2,6 @@ package im.molly.monero
 
 data class Transaction(
     val hash: HashDigest,
-    // TODO: val version: ProtocolInfo,
     val state: TxState,
     val network: MoneroNetwork,
     val timeLock: UnlockTime?,
@@ -37,7 +36,3 @@ sealed interface TxState {
     data object OffChain : TxState
 }
 
-data class PaymentDetail(
-    val amount: MoneroAmount,
-    val recipient: PublicAddress,
-)

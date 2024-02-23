@@ -5,17 +5,17 @@
 
 #include "common/jvm.h"
 
+#include "transfer.h"
 #include "http_client.h"
 
 #include "wallet2.h"
 
 namespace monero {
 
-using transfer_details = tools::wallet2::transfer_details;
-using payment_details = tools::wallet2::payment_details;
-using pool_payment_details = tools::wallet2::pool_payment_details;
-using confirmed_transfer_details = tools::wallet2::confirmed_transfer_details;
-using unconfirmed_transfer_details = tools::wallet2::unconfirmed_transfer_details;
+namespace error = tools::error;
+
+using wallet2 = tools::wallet2;
+using i_wallet2_callback = tools::i_wallet2_callback;
 
 // Basic structure combining transaction details with input or output info.
 struct TxInfo {
@@ -70,7 +70,7 @@ struct TxInfo {
 };
 
 // Wrapper for wallet2.h core API.
-class Wallet : tools::i_wallet2_callback {
+class Wallet : i_wallet2_callback {
  public:
   enum Status : int {
     OK = 0,
@@ -97,6 +97,14 @@ class Wallet : tools::i_wallet2_callback {
   template<typename Consumer>
   void withTxHistory(Consumer consumer);
 
+  std::unique_ptr<PendingTransfer> createPayment(
+      const std::vector<std::string>& addresses,
+      const std::vector<uint64_t>& amounts,
+      uint64_t time_lock,
+      int priority,
+      uint32_t account_index,
+      const std::set<uint32_t>& subaddr_indexes);
+
   std::vector<uint64_t> fetchBaseFeeEstimate();
 
   std::string public_address() const;
@@ -115,7 +123,7 @@ class Wallet : tools::i_wallet2_callback {
  private:
   cryptonote::account_base& require_account();
 
-  tools::wallet2 m_wallet;
+  wallet2 m_wallet;
 
   bool m_account_ready;
   uint64_t m_restore_height;

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.time.Duration.Companion.seconds
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
     private val storageAdapter: StorageAdapter,
@@ -53,7 +54,6 @@ class MoneroWallet internal constructor(
         awaitClose { wallet.removeBalanceListener(listener) }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun awaitRefresh(
         ignoreMiningRewards: Boolean = true,
     ): RefreshResult = suspendCancellableCoroutine { continuation ->
@@ -67,7 +67,6 @@ class MoneroWallet internal constructor(
         continuation.invokeOnCancellation { wallet.cancelRefresh() }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun commit(): Boolean = suspendCancellableCoroutine { continuation ->
         wallet.commit(object : BaseWalletCallbacks() {
             override fun onCommitResult(success: Boolean) {
@@ -75,6 +74,21 @@ class MoneroWallet internal constructor(
             }
         })
     }
+
+    suspend fun createTransfer(transferRequest: TransferRequest): PendingTransfer =
+        suspendCancellableCoroutine { continuation ->
+            val callback = object : ITransferRequestCallback.Stub() {
+                override fun onTransferCreated(pendingTransfer: IPendingTransfer) {
+                    continuation.resume(PendingTransfer(pendingTransfer)) {
+                        pendingTransfer.close()
+                    }
+                }
+            }
+            when (transferRequest) {
+                is PaymentRequest -> wallet.createPayment(transferRequest, callback)
+                is SweepRequest -> wallet.createSweep(transferRequest, callback)
+            }
+        }
 
     fun dynamicFeeRate(): Flow<DynamicFeeRate> = flow {
         while (true) {
@@ -99,7 +113,6 @@ class MoneroWallet internal constructor(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun requestFees(): List<MoneroAmount>? =
         suspendCancellableCoroutine { continuation ->
             wallet.requestFees(object : BaseWalletCallbacks() {

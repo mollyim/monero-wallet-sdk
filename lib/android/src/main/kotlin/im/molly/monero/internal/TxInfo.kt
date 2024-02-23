@@ -27,8 +27,7 @@ import java.time.Instant
  * transaction history data.
  */
 @Parcelize
-internal data class TxInfo
-@CalledByNative("wallet.cc") constructor(
+internal data class TxInfo @CalledByNative constructor(
     val txHash: String,
     val publicKey: String?,
     val keyImage: String?,
@@ -170,10 +169,10 @@ private fun TxInfo.toEnote(blockchainHeight: Int): Enote {
 }
 
 private fun TxInfo.toPaymentDetail(): PaymentDetail? {
-    val recipient = PublicAddress.parse(recipient ?: return null)
+    val recipientAddress = PublicAddress.parse(recipient ?: return null)
     return PaymentDetail(
         amount = MoneroAmount(atomicUnits = amount),
-        recipient = recipient,
+        recipientAddress = recipientAddress,
     )
 }
 

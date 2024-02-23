@@ -1,13 +1,16 @@
 package im.molly.monero
 
+import android.os.Parcelable
 import im.molly.monero.util.decodeBase58
+import kotlinx.parcelize.Parcelize
 
-sealed interface PublicAddress {
+sealed interface PublicAddress : Parcelable {
     val address: String
     val network: MoneroNetwork
-    val subAddress: Boolean
     // viewPublicKey: ByteArray
     // spendPublicKey: ByteArray
+
+    fun isSubAddress(): Boolean
 
     companion object {
         fun parse(publicAddress: String): PublicAddress {
@@ -38,11 +41,11 @@ sealed interface PublicAddress {
 
 class InvalidAddress(message: String, cause: Throwable? = null) : Exception(message, cause)
 
+@Parcelize
 data class StandardAddress(
     override val address: String,
     override val network: MoneroNetwork,
 ) : PublicAddress {
-    override val subAddress = false
 
     companion object {
         val prefixes = mapOf(
@@ -52,14 +55,16 @@ data class StandardAddress(
         )
     }
 
+    override fun isSubAddress() = false
+
     override fun toString(): String = address
 }
 
+@Parcelize
 data class SubAddress(
     override val address: String,
     override val network: MoneroNetwork,
 ) : PublicAddress {
-    override val subAddress = true
 
     companion object {
         val prefixes = mapOf(
@@ -69,15 +74,17 @@ data class SubAddress(
         )
     }
 
+    override fun isSubAddress() = true
+
     override fun toString(): String = address
 }
 
+@Parcelize
 data class IntegratedAddress(
     override val address: String,
     override val network: MoneroNetwork,
     val paymentId: Long,
 ) : PublicAddress {
-    override val subAddress = false
 
     companion object {
         val prefixes = mapOf(
@@ -86,6 +93,8 @@ data class IntegratedAddress(
             25L to MoneroNetwork.Stagenet,
         )
     }
+
+    override fun isSubAddress() = false
 
     override fun toString(): String = address
 }
