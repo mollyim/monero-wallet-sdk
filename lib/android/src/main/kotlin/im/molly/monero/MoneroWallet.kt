@@ -21,9 +21,58 @@ class MoneroWallet internal constructor(
 
     private val logger = loggerFor<MoneroWallet>()
 
-    val primaryAddress: PublicAddress = PublicAddress.parse(wallet.accountPrimaryAddress)
+    val publicAddress: PublicAddress = PublicAddress.parse(wallet.publicAddress)
 
     var dataStore by storageAdapter::dataStore
+
+    suspend fun getOrCreateAddress(accountIndex: Int, subAddressIndex: Int): AccountAddress =
+        suspendCancellableCoroutine { continuation ->
+            wallet.getOrCreateAddress(
+                accountIndex,
+                subAddressIndex,
+                object : BaseWalletCallbacks() {
+                    override fun onAddressReady(subAddresses: Array<String>) {
+                        val accountAddress = AccountAddress.parseWithIndexes(subAddresses[0])
+                        continuation.resume(accountAddress) {}
+                    }
+                })
+        }
+
+    suspend fun createAccount(): AccountAddress =
+        suspendCancellableCoroutine { continuation ->
+            wallet.createAccount(object : BaseWalletCallbacks() {
+                override fun onAddressReady(subAddresses: Array<String>) {
+                    val accountAddress = AccountAddress.parseWithIndexes(subAddresses[0])
+                    continuation.resume(accountAddress) {}
+                }
+            })
+        }
+
+    suspend fun createSubAddressForAccount(accountIndex: Int = 0): AccountAddress =
+        suspendCancellableCoroutine { continuation ->
+            wallet.createSubAddressForAccount(accountIndex, object : BaseWalletCallbacks() {
+                override fun onAddressReady(subAddresses: Array<String>) {
+                    if (subAddresses.isEmpty()) {
+                        throw NoSuchAccountException(accountIndex)
+                    }
+                    val accountAddress = AccountAddress.parseWithIndexes(subAddresses[0])
+                    continuation.resume(accountAddress) {}
+                }
+            })
+        }
+
+    suspend fun getAllAddresses(): Set<AccountAddress> =
+        suspendCancellableCoroutine { continuation ->
+            wallet.getAllAddresses(object : BaseWalletCallbacks() {
+                override fun onAddressReady(subAddresses: Array<String>) {
+                    continuation.resume(subAddresses.toAccountAddresses()) {}
+                }
+            })
+        }
+
+    private fun Array<String>.toAccountAddresses(): Set<AccountAddress> {
+        return map { AccountAddress.parseWithIndexes(it) }.toSet()
+    }
 
     /**
      * A [Flow] of ledger changes.
@@ -32,14 +81,36 @@ class MoneroWallet internal constructor(
         val listener = object : IBalanceListener.Stub() {
             lateinit var lastKnownLedger: Ledger
 
-            override fun onBalanceChanged(txHistory: List<TxInfo>, blockchainTime: BlockchainTime) {
-                val (txs, spendableEnotes) = txHistory.consolidateTransactions(blockchainTime)
-                lastKnownLedger = Ledger(primaryAddress, txs, spendableEnotes, blockchainTime)
+            override fun onBalanceChanged(
+                txHistory: MutableList<TxInfo>,
+                subAddresses: Array<String>,
+                blockchainTime: BlockchainTime,
+            ) {
+                val accountAddresses = subAddresses.toAccountAddresses()
+                val (txById, enotes) = txHistory.consolidateTransactions(
+                    accountAddresses = accountAddresses,
+                    blockchainContext = blockchainTime,
+                )
+                lastKnownLedger = Ledger(
+                    publicAddress = publicAddress,
+                    accountAddresses = accountAddresses,
+                    transactions = txById,
+                    enotes = enotes,
+                    checkedAt = blockchainTime,
+                )
                 sendLedger(lastKnownLedger)
             }
 
             override fun onRefresh(blockchainTime: BlockchainTime) {
                 sendLedger(lastKnownLedger.copy(checkedAt = blockchainTime))
+            }
+
+            override fun onAddressCreated(subAddress: String) {
+                val addressSet = lastKnownLedger.accountAddresses.toMutableSet()
+                val accountAddress = AccountAddress.parseWithIndexes(subAddress)
+                if (addressSet.add(accountAddress)) {
+                    sendLedger(lastKnownLedger.copy(accountAddresses = addressSet))
+                }
             }
 
             private fun sendLedger(ledger: Ledger) {
@@ -126,7 +197,14 @@ class MoneroWallet internal constructor(
     override fun close() = wallet.close()
 }
 
+class NoSuchAccountException(private val accountIndex: Int) : NoSuchElementException() {
+    override val message: String
+        get() = "No account was found with the specified index: $accountIndex"
+}
+
 private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
+    override fun onAddressReady(subAddresses: Array<String>) = Unit
+
     override fun onRefreshResult(blockchainTime: BlockchainTime, status: Int) = Unit
 
     override fun onCommitResult(success: Boolean) = Unit

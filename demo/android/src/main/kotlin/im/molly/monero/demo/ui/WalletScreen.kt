@@ -21,7 +21,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroCurrency
-import im.molly.monero.PublicAddress
 import im.molly.monero.demo.data.model.WalletConfig
 import im.molly.monero.demo.ui.component.CopyableText
 import im.molly.monero.demo.ui.component.Toolbar
@@ -279,12 +278,12 @@ private fun WalletScreenPopulated(
             uiState = WalletUiState.Loaded(
                 config = WalletConfig(
                     id = 0,
-                    publicAddress = ledger.primaryAddress.address,
+                    publicAddress = ledger.publicAddress.address,
                     filename = "",
                     name = "Personal",
                     remoteNodes = emptySet(),
                 ),
-                network = ledger.primaryAddress.network,
+                network = ledger.publicAddress.network,
                 balance = ledger.balance,
                 blockchainTime = ledger.checkedAt,
                 transactions = emptyList(),

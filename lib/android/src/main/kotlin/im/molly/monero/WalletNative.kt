@@ -102,7 +102,7 @@ internal class WalletNative private constructor(
         }
     }
 
-    override fun getAccountPrimaryAddress() = nativeGetAccountPrimaryAddress(handle)
+    override fun getPublicAddress() = nativeGetPublicAddress(handle)
 
     private fun MoneroNetwork.blockchainTime(height: Int, epochSecond: Long): BlockchainTime {
         // Block timestamp could be zero during a fast refresh.
@@ -121,6 +121,9 @@ internal class WalletNative private constructor(
 
     val currentBalance: Balance
         get() = TODO() // txHistorySnapshot().consolidateTransactions().second.balance()
+
+    val subAddresses: Array<String>
+        get() = nativeGetSubAddresses(handle)
 
     private fun txHistorySnapshot(): List<TxInfo> = nativeGetTxHistory(handle).toList()
 
@@ -170,20 +173,22 @@ internal class WalletNative private constructor(
     }
 
     override fun createPayment(request: PaymentRequest, callback: ITransferRequestCallback) {
-        val (amounts, addresses) = request.paymentDetails.map {
-            it.amount.atomicUnits to it.recipientAddress.address
-        }.unzip()
+        scope.launch(singleThreadedDispatcher) {
+            val (amounts, addresses) = request.paymentDetails.map {
+                it.amount.atomicUnits to it.recipientAddress.address
+            }.unzip()
 
-        nativeCreatePayment(
-            handle = handle,
-            addresses = addresses.toTypedArray(),
-            amounts = amounts.toLongArray(),
-            timeLock = request.timeLock?.blockchainTime?.toLong() ?: 0,
-            priority = request.feePriority?.priority ?: 0,
-            accountIndex = 0,
-            subAddressIndexes = IntArray(0),
-            callback = callback,
-        )
+            nativeCreatePayment(
+                handle = handle,
+                addresses = addresses.toTypedArray(),
+                amounts = amounts.toLongArray(),
+                timeLock = request.timeLock?.blockchainTime?.toLong() ?: 0,
+                priority = request.feePriority?.priority ?: 0,
+                accountIndex = 0,
+                subAddressIndexes = IntArray(0),
+                callback = callback,
+            )
+        }
     }
 
     override fun createSweep(request: SweepRequest, callback: ITransferRequestCallback) {
@@ -221,7 +226,7 @@ internal class WalletNative private constructor(
     override fun addBalanceListener(listener: IBalanceListener) {
         balanceListenersLock.withLock {
             balanceListeners.add(listener)
-            listener.onBalanceChanged(txHistorySnapshot(), currentBlockchainTime)
+            listener.onBalanceChanged(txHistorySnapshot(), subAddresses, currentBlockchainTime)
         }
     }
 
@@ -231,15 +236,62 @@ internal class WalletNative private constructor(
         }
     }
 
+    override fun getOrCreateAddress(
+        accountIndex: Int,
+        subAddressIndex: Int,
+        callback: IWalletCallbacks?,
+    ) {
+        scope.launch(ioDispatcher) {
+            val subAddress = nativeAddSubAddress(handle, accountIndex, subAddressIndex)
+            notifyAddressCreation(subAddress, callback)
+        }
+    }
+
+    override fun createAccount(callback: IWalletCallbacks?) {
+        scope.launch(ioDispatcher) {
+            val subAddress = nativeCreateSubAddressAccount(handle)
+            notifyAddressCreation(subAddress, callback)
+        }
+    }
+
+    override fun createSubAddressForAccount(accountIndex: Int, callback: IWalletCallbacks?) {
+        scope.launch(ioDispatcher) {
+            val subAddress = nativeCreateSubAddress(handle, accountIndex)
+            if (subAddress != null) {
+                notifyAddressCreation(subAddress, callback)
+            } else {
+                callback?.onAddressReady(emptyArray())
+            }
+        }
+    }
+
+    private fun notifyAddressCreation(subAddress: String, callback: IWalletCallbacks?) {
+        balanceListenersLock.withLock {
+            balanceListeners.forEach { listener ->
+                listener.onAddressCreated(subAddress)
+            }
+        }
+        callback?.onAddressReady(arrayOf(subAddress))
+    }
+
+    override fun getAllAddresses(callback: IWalletCallbacks) {
+        scope.launch(ioDispatcher) {
+            callback.onAddressReady(subAddresses)
+        }
+    }
+
     @CalledByNative
     private fun onRefresh(height: Int, timestamp: Long, balanceChanged: Boolean) {
         balanceListenersLock.withLock {
             if (balanceListeners.isNotEmpty()) {
-                val call = fun(listener: IBalanceListener) {
-                    val blockchainTime = network.blockchainTime(height, timestamp)
-                    if (balanceChanged) {
-                        listener.onBalanceChanged(txHistorySnapshot(), blockchainTime)
-                    } else {
+                val blockchainTime = network.blockchainTime(height, timestamp)
+                val call = if (balanceChanged) {
+                    val txHistory = txHistorySnapshot()
+                    fun(listener: IBalanceListener) {
+                        listener.onBalanceChanged(txHistory, subAddresses, blockchainTime)
+                    }
+                } else {
+                    fun(listener: IBalanceListener) {
                         listener.onRefresh(blockchainTime)
                     }
                 }
@@ -318,6 +370,12 @@ internal class WalletNative private constructor(
         const val REFRESH_ERROR: Int = 3
     }
 
+    private external fun nativeAddSubAddress(
+        handle: Long,
+        subAddressMajor: Int,
+        subAddressMinor: Int,
+    ): String
+
     private external fun nativeCancelRefresh(handle: Long)
     private external fun nativeCreate(networkId: Int): Long
     private external fun nativeCreatePayment(
@@ -331,14 +389,15 @@ internal class WalletNative private constructor(
         callback: ITransferRequestCallback,
     )
 
+    private external fun nativeCreateSubAddressAccount(handle: Long): String
+    private external fun nativeCreateSubAddress(handle: Long, subAddressMajor: Int): String?
     private external fun nativeDispose(handle: Long)
     private external fun nativeDisposePendingTransfer(handle: Long)
+    private external fun nativeGetPublicAddress(handle: Long): String
     private external fun nativeGetCurrentBlockchainHeight(handle: Long): Int
     private external fun nativeGetCurrentBlockchainTimestamp(handle: Long): Long
+    private external fun nativeGetSubAddresses(handle: Long): Array<String>
     private external fun nativeGetTxHistory(handle: Long): Array<TxInfo>
-    private external fun nativeGetAccountPrimaryAddress(handle: Long): String
-
-    // private external fun nativeGetAccountSubAddress(handle: Long, accountIndex: Int, subAddressIndex: Int): String
     private external fun nativeFetchBaseFeeEstimate(handle: Long): LongArray
     private external fun nativeLoad(handle: Long, fd: Int): Boolean
     private external fun nativeNonReentrantRefresh(handle: Long, skipCoinbase: Boolean): Int

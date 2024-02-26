@@ -67,7 +67,7 @@ private fun walletUiState(
                     ledger.transactions
                         .map { WalletTransaction(config.id, it.value) }
                         .sortedByDescending { it.transaction.blockTimestamp ?: Instant.MAX }
-                val network = ledger.primaryAddress.network
+                val network = ledger.publicAddress.network
                 WalletUiState.Loaded(config, network, blockchainTime, balance, transactions)
             }
 

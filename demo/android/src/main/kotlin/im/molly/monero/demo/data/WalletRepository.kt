@@ -41,7 +41,7 @@ class WalletRepository(
                     },
                     httpClient = httpClient,
                 )
-                check(config.publicAddress == wallet.primaryAddress.address) {
+                check(config.publicAddress == wallet.publicAddress.address) {
                     "primary address mismatch"
                 }
                 wallet
@@ -71,7 +71,7 @@ class WalletRepository(
         val uniqueFilename = UUID.randomUUID().toString()
         val wallet = moneroSdkClient.createWallet(moneroNetwork, uniqueFilename)
         val walletId = walletDataSource.createWalletConfig(
-            publicAddress = wallet.primaryAddress.address,
+            publicAddress = wallet.publicAddress.address,
             filename = uniqueFilename,
             name = name,
             remoteNodeIds = remoteNodeIds,
@@ -94,7 +94,7 @@ class WalletRepository(
             restorePoint,
         )
         val walletId = walletDataSource.createWalletConfig(
-            publicAddress = wallet.primaryAddress.address,
+            publicAddress = wallet.publicAddress.address,
             filename = uniqueFilename,
             name = name,
             remoteNodeIds = remoteNodeIds,

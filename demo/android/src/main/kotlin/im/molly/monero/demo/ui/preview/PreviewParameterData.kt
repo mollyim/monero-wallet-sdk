@@ -27,7 +27,9 @@ object PreviewParameterData {
             hash = HashDigest("e7a60483591378d536792d070f2bf6ccb7d0666df03b57f485ddaf66899a294b"),
             state = TxState.OnChain(blockHeader),
             network = network,
-            timeLock = UnlockTime.Block(BlockchainTime(2999850, Instant.ofEpochSecond(1697792826), network)),
+            timeLock = UnlockTime.Block(
+                BlockchainTime(2999850, Instant.ofEpochSecond(1697792826), network)
+            ),
             sent = emptySet(),
             received = emptySet(),
             payments = listOf(PaymentDetail((0.10).xmr, recipients.first())),
@@ -37,9 +39,10 @@ object PreviewParameterData {
     )
 
     val ledger = Ledger(
-        primaryAddress = PublicAddress.parse("4AYjQM9HoAFNUeC3cvSfgeAN89oMMpMqiByvunzSzhn97cj726rJj3x8hCbH58UnMqQJShczCxbpWRiCJQ3HCUDHLiKuo4T"),
-        checkedAt = BlockchainTime(blockHeader = blockHeader, network = network),
-        enotes = emptySet(),
+        publicAddress = PublicAddress.parse("4AYjQM9HoAFNUeC3cvSfgeAN89oMMpMqiByvunzSzhn97cj726rJj3x8hCbH58UnMqQJShczCxbpWRiCJQ3HCUDHLiKuo4T"),
+        accountAddresses = emptySet(),
         transactions = transactions.associateBy { it.txId },
+        enotes = emptySet(),
+        checkedAt = BlockchainTime(blockHeader = blockHeader, network = network),
     )
 }

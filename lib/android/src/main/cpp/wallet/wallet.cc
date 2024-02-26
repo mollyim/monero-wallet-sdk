@@ -108,6 +108,7 @@ bool Wallet::parseFrom(std::istream& input) {
     return false;
   if (!serialization::serialize(ar, m_wallet))
     return false;
+  updateSubaddressMap(m_subaddresses);
   captureTxHistorySnapshot(m_tx_history);
   m_account_ready = true;
   return true;
@@ -126,10 +127,42 @@ bool Wallet::writeTo(std::ostream& output) {
   });
 }
 
-template<typename Consumer>
-void Wallet::withTxHistory(Consumer consumer) {
-  std::lock_guard<std::mutex> lock(m_tx_history_mutex);
-  consumer(m_tx_history);
+std::string FormatAccountAddress(
+    const std::pair<cryptonote::subaddress_index, std::string>& pair) {
+  std::stringstream ss;
+  ss << pair.first.major << "/" << pair.first.minor << "/" << pair.second;
+  return ss.str();
+}
+
+std::string Wallet::createSubAddressAccount() {
+  return suspendRefreshAndRunLocked([&]() {
+    uint32_t index_major = m_wallet.get_num_subaddress_accounts();
+    m_wallet.add_subaddress_account("");
+    return addSubaddressInternal({index_major, 0});
+  });
+}
+
+std::string Wallet::createSubAddress(uint32_t index_major) {
+  return suspendRefreshAndRunLocked([&]() {
+    uint32_t index_minor = m_wallet.get_num_subaddresses(index_major);
+    m_wallet.add_subaddress(index_major, "");
+    return addSubaddressInternal({index_major, index_minor});
+  });
+}
+
+std::string Wallet::addSubAddress(uint32_t index_major, uint32_t index_minor) {
+  return suspendRefreshAndRunLocked([&]() {
+    cryptonote::subaddress_index index = {index_major, index_minor};
+    m_wallet.create_one_off_subaddress(index);
+    return addSubaddressInternal(index);
+  });
+}
+
+std::string Wallet::addSubaddressInternal(const cryptonote::subaddress_index& index) {
+  std::string subaddress = m_wallet.get_subaddress_as_str(index);
+  std::unique_lock<std::mutex> lock(m_subaddresses_mutex);
+  auto ret = m_subaddresses.insert({index, subaddress});
+  return FormatAccountAddress(*ret.first);
 }
 
 std::unique_ptr<PendingTransfer> Wallet::createPayment(
@@ -139,6 +172,8 @@ std::unique_ptr<PendingTransfer> Wallet::createPayment(
     int priority,
     uint32_t account_index,
     const std::set<uint32_t>& subaddr_indexes) {
+  std::unique_lock<std::mutex> wallet_lock(m_wallet_mutex);
+
   std::vector<cryptonote::tx_destination_entry> dsts;
   dsts.reserve(addresses.size());
 
@@ -170,6 +205,12 @@ std::unique_ptr<PendingTransfer> Wallet::createPayment(
   return std::make_unique<PendingTransfer>(ptxs);
 }
 
+template<typename Consumer>
+void Wallet::withTxHistory(Consumer consumer) {
+  std::lock_guard<std::mutex> lock(m_tx_history_mutex);
+  consumer(m_tx_history);
+}
+
 std::vector<uint64_t> Wallet::fetchBaseFeeEstimate() {
   return m_wallet.get_dynamic_base_fee_scaling_estimate();
 }
@@ -177,6 +218,19 @@ std::vector<uint64_t> Wallet::fetchBaseFeeEstimate() {
 std::string Wallet::public_address() const {
   auto account = const_cast<Wallet*>(this)->require_account();
   return account.get_public_address_str(m_wallet.nettype());
+}
+
+std::vector<std::string> Wallet::formatted_subaddresses() {
+  std::lock_guard<std::mutex> lock(m_subaddresses_mutex);
+
+  std::vector<std::string> ret;
+  ret.reserve(m_subaddresses.size());
+
+  for (const auto& entry: m_subaddresses) {
+    ret.push_back(FormatAccountAddress(entry));
+  }
+
+  return ret;
 }
 
 cryptonote::account_base& Wallet::require_account() {
@@ -244,7 +298,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     recv.m_key_image_known = td.m_key_image_known;
     recv.m_subaddress_major = td.m_subaddr_index.major;
     recv.m_subaddress_minor = td.m_subaddr_index.minor;
-    recv.m_recipient = m_wallet.get_subaddress_as_str(td.m_subaddr_index);
     recv.m_amount = td.m_amount;
     recv.m_unlock_time = td.m_tx.unlock_time;
 
@@ -310,7 +363,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
         // Add pending transfers to our own wallet.
         snapshot.emplace_back(pair.first, TxInfo::INCOMING);
         TxInfo& recv = snapshot.back();
-        recv.m_recipient = m_wallet.get_subaddress_as_str(*dest_subaddr_idx);
         recv.m_subaddress_major = (*dest_subaddr_idx).major;
         recv.m_subaddress_minor = (*dest_subaddr_idx).minor;
         recv.m_amount = dest.amount;
@@ -335,7 +387,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     if (utx.m_change > 0) {
       snapshot.emplace_back(pair.first, TxInfo::INCOMING);
       TxInfo& change = snapshot.back();
-      change.m_recipient = m_wallet.get_subaddress_as_str({utx.m_subaddr_account, 0});
       change.m_subaddress_major = utx.m_subaddr_account;
       change.m_subaddress_minor = 0;  // All changes go to 0-th subaddress
       change.m_amount = utx.m_change;
@@ -365,7 +416,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
     for (uint64_t amount: upd.m_amounts) {
       snapshot.emplace_back(upd.m_tx_hash, TxInfo::INCOMING);
       TxInfo& recv = snapshot.back();
-      recv.m_recipient = m_wallet.get_subaddress_as_str(upd.m_subaddr_index);
       recv.m_subaddress_major = upd.m_subaddr_index.major;
       recv.m_subaddress_minor = upd.m_subaddr_index.minor;
       recv.m_amount = amount;
@@ -375,6 +425,23 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       recv.m_fee = upd.m_fee;
       recv.m_coinbase = upd.m_coinbase;
       recv.m_state = TxInfo::PENDING;
+    }
+  }
+}
+
+// Only call this function from the callback thread or during initialization.
+void Wallet::updateSubaddressMap(std::map<cryptonote::subaddress_index, std::string>& map) {
+  uint32_t num_accounts = m_wallet.get_num_subaddress_accounts();
+
+  for (uint32_t index_major = 0; index_major < num_accounts; ++index_major) {
+    uint32_t num_subaddresses = m_wallet.get_num_subaddresses(index_major);
+
+    for (uint32_t index_minor = 0; index_minor < num_subaddresses; ++index_minor) {
+      cryptonote::subaddress_index index = {index_major, index_minor};
+
+      if (map.find(index) == map.end()) {
+        map[index] = m_wallet.get_subaddress_as_str(index);
+      }
     }
   }
 }
@@ -396,6 +463,9 @@ void Wallet::handleMoneyEvent(uint64_t at_block_height) {
 
 void Wallet::processBalanceChanges(bool refresh_running) {
   if (m_balance_changed) {
+    m_subaddresses_mutex.lock();
+    updateSubaddressMap(m_subaddresses);
+    m_subaddresses_mutex.unlock();
     m_tx_history_mutex.lock();
     captureTxHistorySnapshot(m_tx_history);
     m_tx_history_mutex.unlock();
@@ -624,12 +694,60 @@ Java_im_molly_monero_WalletNative_nativeSetRefreshSince(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeGetAccountPrimaryAddress(
+Java_im_molly_monero_WalletNative_nativeGetPublicAddress(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   return NativeToJavaString(env, wallet->public_address());
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_im_molly_monero_WalletNative_nativeAddSubAddress(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle,
+    jint sub_address_major,
+    jint sub_address_minor) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  return NativeToJavaString(
+      env, wallet->addSubAddress(sub_address_major, sub_address_minor));
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_im_molly_monero_WalletNative_nativeCreateSubAddressAccount(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  return NativeToJavaString(env, wallet->createSubAddressAccount());
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_im_molly_monero_WalletNative_nativeCreateSubAddress(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle,
+    jint sub_address_major) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  try {
+    return NativeToJavaString(env, wallet->createSubAddress(sub_address_major));
+  } catch (error::account_index_outofbound& e) {
+    return nullptr;
+  }
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL
+Java_im_molly_monero_WalletNative_nativeGetSubAddresses(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  return NativeToJavaStringArray(env, wallet->formatted_subaddresses());
 }
 
 extern "C"

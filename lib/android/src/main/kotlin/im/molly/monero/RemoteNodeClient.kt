@@ -16,7 +16,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-// TODO: Hide IRemoteNodeClient methods and rename to HttpRpcClient
+// TODO: Hide IRemoteNodeClient methods and rename to HttpRpcClient or MoneroNodeClient
 class RemoteNodeClient private constructor(
     val network: MoneroNetwork,
     private val loadBalancer: LoadBalancer,

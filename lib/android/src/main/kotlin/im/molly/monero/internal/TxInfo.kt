@@ -15,6 +15,7 @@ import im.molly.monero.TimeLocked
 import im.molly.monero.Transaction
 import im.molly.monero.TxState
 import im.molly.monero.UnlockTime
+import im.molly.monero.findByIndexes
 import im.molly.monero.isBlockHeightInRange
 import kotlinx.parcelize.Parcelize
 import java.time.Instant
@@ -61,10 +62,12 @@ internal data class TxInfo @CalledByNative constructor(
 }
 
 internal fun List<TxInfo>.consolidateTransactions(
+    accountAddresses: Set<AccountAddress>,
     blockchainContext: BlockchainTime,
 ): Pair<Map<String, Transaction>, Set<TimeLocked<Enote>>> {
     // Extract enotes from incoming transactions
-    val allEnotes = filter { it.incoming }.map { it.toEnote(blockchainContext.height) }
+    val allEnotes =
+        filter { it.incoming }.map { it.toEnote(blockchainContext.height, accountAddresses) }
 
     val enoteByTxId = allEnotes.groupBy { enote -> enote.sourceTxId!! }
 
@@ -149,13 +152,9 @@ private fun List<TxInfo>.determineTxState(): TxState {
     }
 }
 
-private fun TxInfo.toEnote(blockchainHeight: Int): Enote {
-    val ownerAddress = AccountAddress(
-        publicAddress = PublicAddress.parse(recipient!!),
-        accountIndex = subAddressMajor,
-        subAddressIndex = subAddressMinor
-    )
-
+private fun TxInfo.toEnote(blockchainHeight: Int, accountAddresses: Set<AccountAddress>): Enote {
+    val ownerAddress = accountAddresses.findByIndexes(subAddressMajor, subAddressMinor)
+        ?: error("Failed to find account address for: $subAddressMajor/$subAddressMinor")
     val calculatedAge = if (height > 0) (blockchainHeight - height + 1) else 0
 
     return Enote(

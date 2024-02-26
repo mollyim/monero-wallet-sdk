@@ -30,24 +30,24 @@ class LoadBalancer(
     }
 }
 
-sealed interface RemoteNodeState {
+sealed interface ConnectionState {
     /**
      * The remote node is currently online and able to handle requests.
      */
-    data class Online(val responseTime: Duration) : RemoteNodeState
+    data class Online(val responseTime: Duration) : ConnectionState
 
     /**
      * The client's request has timed out and no response has been received.
      */
-    data class Timeout(val cause: Throwable?)
+    data class Timeout(val cause: Throwable?) : ConnectionState
 
     /**
      * Indicates that an error occurred while processing the client's request to the remote node.
      */
-//    open data class Error(val message: String?) : RemoteNodeState {
+    sealed class Error(val message: String?) : ConnectionState
 
     /**
      * Indicates that the client is unauthorized to access the remote node, i.e. the client's credentials were invalid.
      */
-//    data class Unauthorized(override val message: String?) : Error
+    data object Unauthorized : Error("Unauthorized")
 }

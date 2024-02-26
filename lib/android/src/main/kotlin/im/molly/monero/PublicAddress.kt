@@ -13,9 +13,9 @@ sealed interface PublicAddress : Parcelable {
     fun isSubAddress(): Boolean
 
     companion object {
-        fun parse(publicAddress: String): PublicAddress {
+        fun parse(addressString: String): PublicAddress {
             val decoded = try {
-                publicAddress.decodeBase58()
+                addressString.decodeBase58()
             } catch (t: IllegalArgumentException) {
                 throw InvalidAddress("Base58 decoding error", t)
             }
@@ -25,10 +25,10 @@ sealed interface PublicAddress : Parcelable {
 
             return when (val prefix = decoded[0].toLong()) {
                 in StandardAddress.prefixes -> {
-                    StandardAddress(publicAddress, StandardAddress.prefixes[prefix]!!)
+                    StandardAddress(addressString, StandardAddress.prefixes[prefix]!!)
                 }
                 in SubAddress.prefixes -> {
-                    SubAddress(publicAddress, SubAddress.prefixes[prefix]!!)
+                    SubAddress(addressString, SubAddress.prefixes[prefix]!!)
                 }
                 in IntegratedAddress.prefixes -> {
                     TODO()

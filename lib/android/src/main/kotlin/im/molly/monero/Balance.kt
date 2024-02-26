@@ -24,9 +24,9 @@ data class Balance(
 }
 
 fun Iterable<TimeLocked<Enote>>.calculateBalance(): Balance {
-    var pendingAmount = MoneroAmount.ZERO
-
     val lockedAmounts = mutableListOf<TimeLocked<MoneroAmount>>()
+
+    var pendingAmount = MoneroAmount.ZERO
 
     for (timeLocked in filter { !it.value.spent }) {
         if (timeLocked.value.age == 0) {

@@ -94,8 +94,9 @@ class Wallet : i_wallet2_callback {
   void cancelRefresh();
   void setRefreshSince(long height_or_timestamp);
 
-  template<typename Consumer>
-  void withTxHistory(Consumer consumer);
+  std::string createSubAddressAccount();
+  std::string createSubAddress(uint32_t index_major);
+  std::string addSubAddress(uint32_t index_major, uint32_t index_minor);
 
   std::unique_ptr<PendingTransfer> createPayment(
       const std::vector<std::string>& addresses,
@@ -105,9 +106,13 @@ class Wallet : i_wallet2_callback {
       uint32_t account_index,
       const std::set<uint32_t>& subaddr_indexes);
 
+  template<typename Consumer>
+  void withTxHistory(Consumer consumer);
+
   std::vector<uint64_t> fetchBaseFeeEstimate();
 
   std::string public_address() const;
+  std::vector<std::string> formatted_subaddresses();
 
   uint32_t current_blockchain_height() const { return static_cast<uint32_t>(m_last_block_height); }
   uint64_t current_blockchain_timestamp() const { return m_last_block_timestamp; }
@@ -130,13 +135,15 @@ class Wallet : i_wallet2_callback {
   uint64_t m_last_block_height;
   uint64_t m_last_block_timestamp;
 
+  std::map<cryptonote::subaddress_index, std::string> m_subaddresses;
+
   // Saved transaction history.
   std::vector<TxInfo> m_tx_history;
 
   // Protects access to m_wallet instance and state fields.
   std::mutex m_wallet_mutex;
   std::mutex m_tx_history_mutex;
-  std::mutex m_refresh_mutex;
+  std::mutex m_subaddresses_mutex;
 
   // Reference to Kotlin wallet instance.
   const ScopedJavaGlobalRef<jobject> m_callback;
@@ -153,7 +160,9 @@ class Wallet : i_wallet2_callback {
   auto suspendRefreshAndRunLocked(T block) -> decltype(block());
 
   void captureTxHistorySnapshot(std::vector<TxInfo>& snapshot);
-  void handleNewBlock(uint64_t height, uint64_t timestmap);
+  void updateSubaddressMap(std::map<cryptonote::subaddress_index, std::string>& map);
+  std::string addSubaddressInternal(const cryptonote::subaddress_index& index);
+  void handleNewBlock(uint64_t height, uint64_t timestamp);
   void handleReorgEvent(uint64_t at_block_height);
   void handleMoneyEvent(uint64_t at_block_height);
 
