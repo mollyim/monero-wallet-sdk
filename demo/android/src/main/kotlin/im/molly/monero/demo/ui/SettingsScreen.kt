@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -17,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.data.model.UserSettings
 import im.molly.monero.demo.data.model.toSocketAddress
+import im.molly.monero.demo.ui.component.Toolbar
 import im.molly.monero.demo.ui.theme.AppIcons
 import im.molly.monero.demo.ui.theme.AppTheme
 
@@ -39,6 +41,7 @@ fun SettingsRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(
     settingsUiState: SettingsUiState,
@@ -49,46 +52,60 @@ private fun SettingsScreen(
     onChangeSocksProxy: (String) -> Unit = {},
     onValidateSocksProxy: (String) -> Boolean = { true },
 ) {
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-    ) {
-        when (settingsUiState) {
-            SettingsUiState.Loading -> {
-                // TODO: Add loading wheel
-            }
-            is SettingsUiState.Success -> {
-                SettingsSection(
-                    header = {
-                        SettingsSectionTitle("Remote nodes")
-                        IconButton(onClick = onAddRemoteNode) {
-                            Icon(
-                                imageVector = AppIcons.AddRemoteWallet,
-                                contentDescription = "Add remote node",
-                            )
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            Toolbar(
+                title = "Settings",
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            when (settingsUiState) {
+                SettingsUiState.Loading -> {
+                    // TODO: Add loading wheel
+                }
+
+                is SettingsUiState.Success -> {
+                    SettingsSection(
+                        header = {
+                            SettingsSectionTitle("Remote nodes")
+                            IconButton(onClick = onAddRemoteNode) {
+                                Icon(
+                                    imageVector = AppIcons.AddRemoteWallet,
+                                    contentDescription = "Add remote node",
+                                )
+                            }
                         }
-                    }
-                )
-                RemoteNodeEditableList(
-                    remoteNodes = settingsUiState.remoteNodes,
-                    onEditRemoteNode = onEditRemoteNode,
-                    onDeleteRemoteNode = onDeleteRemoteNode,
-                    modifier = Modifier.padding(start = 24.dp),
-                )
-                SettingsSection(
-                    header = {
-                        SettingsSectionTitle("Network")
-                    }
-                ) {
-                    EditTextSettingsItem(
-                        title = "SOCKS proxy server",
-                        summary = "Connect via proxy.",
-                        value = settingsUiState.socksProxyAddress,
-                        onValueChange = onChangeSocksProxy,
-                        inputHeading = "Provide proxy address or leave it blank for no proxy.",
-                        inputLabel = "host:port",
-                        inputChecker = onValidateSocksProxy,
                     )
+                    RemoteNodeEditableList(
+                        remoteNodes = settingsUiState.remoteNodes,
+                        onEditRemoteNode = onEditRemoteNode,
+                        onDeleteRemoteNode = onDeleteRemoteNode,
+                        modifier = Modifier.padding(start = 24.dp, bottom = 16.dp),
+                    )
+                    SettingsSection(
+                        header = {
+                            SettingsSectionTitle("Network")
+                        }
+                    ) {
+                        EditTextSettingsItem(
+                            title = "SOCKS proxy server",
+                            summary = "Connect via proxy.",
+                            value = settingsUiState.socksProxyAddress,
+                            onValueChange = onChangeSocksProxy,
+                            inputHeading = "Provide proxy address or leave it blank for no proxy.",
+                            inputLabel = "host:port",
+                            inputChecker = onValidateSocksProxy,
+                        )
+                    }
                 }
             }
         }
@@ -104,7 +121,7 @@ private fun SettingsSection(
     Column(
         modifier = modifier.padding(horizontal = 24.dp),
     ) {
-        Divider(Modifier.padding(bottom = 24.dp))
+        HorizontalDivider(Modifier.padding(bottom = 16.dp))
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
