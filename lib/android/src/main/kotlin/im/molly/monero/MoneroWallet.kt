@@ -96,7 +96,7 @@ class MoneroWallet internal constructor(
                 val ledger = Ledger(
                     publicAddress = publicAddress,
                     accountAddresses = accountAddresses,
-                    transactions = txById,
+                    transactionById = txById,
                     enotes = enotes,
                     checkedAt = blockchainTime,
                 )

@@ -79,13 +79,13 @@ private fun walletUiState(
                         group.sortedBy { it.subAddressIndex }.mapIndexed { index, address ->
                             WalletAddress(
                                 address = address,
-                                used = address.isAddressUsed(ledger.transactions.values),
+                                used = address.isAddressUsed(ledger.transactions),
                                 isLastForAccount = index == group.size - 1,
                             )
                         }
                     }
                 val transactions =
-                    ledger.transactions.map { WalletTransaction(config.id, it.value) }
+                    ledger.transactions.map { WalletTransaction(config.id, it) }
                         .sortedByDescending { it.transaction.blockTimestamp ?: Instant.MAX }
                 WalletUiState.Loaded(
                     config = config,

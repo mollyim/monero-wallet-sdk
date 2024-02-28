@@ -61,7 +61,7 @@ class WalletRepository(
     }
 
     fun getTransaction(walletId: Long, txId: String): Flow<Transaction?> =
-        getLedger(walletId).map { it.transactions[txId] }
+        getLedger(walletId).map { it.transactionById[txId] }
 
     suspend fun addWallet(
         moneroNetwork: MoneroNetwork,

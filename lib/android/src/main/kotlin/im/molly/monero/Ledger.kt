@@ -5,10 +5,12 @@ package im.molly.monero
 data class Ledger(
     val publicAddress: PublicAddress,
     val accountAddresses: Set<AccountAddress>,
-    val transactions: Map<String, Transaction>,
+    val transactionById: Map<String, Transaction>,
     val enotes: Set<TimeLocked<Enote>>,
     val checkedAt: BlockchainTime,
 ) {
+    val transactions get() = transactionById.values
+
     val balance: Balance = enotes.calculateBalance()
 
 //    companion object {

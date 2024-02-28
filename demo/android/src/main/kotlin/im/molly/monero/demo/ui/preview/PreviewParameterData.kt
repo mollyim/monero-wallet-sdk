@@ -41,7 +41,7 @@ object PreviewParameterData {
     val ledger = Ledger(
         publicAddress = PublicAddress.parse("4AYjQM9HoAFNUeC3cvSfgeAN89oMMpMqiByvunzSzhn97cj726rJj3x8hCbH58UnMqQJShczCxbpWRiCJQ3HCUDHLiKuo4T"),
         accountAddresses = emptySet(),
-        transactions = transactions.associateBy { it.txId },
+        transactionById = transactions.associateBy { it.txId },
         enotes = emptySet(),
         checkedAt = BlockchainTime(blockHeader = blockHeader, network = network),
     )
