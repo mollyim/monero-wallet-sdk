@@ -5,9 +5,11 @@ import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.time.Duration.Companion.seconds
@@ -25,9 +27,9 @@ class MoneroWallet internal constructor(
 
     var dataStore by storageAdapter::dataStore
 
-    suspend fun getOrCreateAddress(accountIndex: Int, subAddressIndex: Int): AccountAddress =
+    suspend fun addDetachedSubAddress(accountIndex: Int, subAddressIndex: Int): AccountAddress =
         suspendCancellableCoroutine { continuation ->
-            wallet.getOrCreateAddress(
+            wallet.addDetachedSubAddress(
                 accountIndex,
                 subAddressIndex,
                 object : BaseWalletCallbacks() {
@@ -91,14 +93,14 @@ class MoneroWallet internal constructor(
                     accountAddresses = accountAddresses,
                     blockchainContext = blockchainTime,
                 )
-                lastKnownLedger = Ledger(
+                val ledger = Ledger(
                     publicAddress = publicAddress,
                     accountAddresses = accountAddresses,
                     transactions = txById,
                     enotes = enotes,
                     checkedAt = blockchainTime,
                 )
-                sendLedger(lastKnownLedger)
+                sendLedger(ledger)
             }
 
             override fun onRefresh(blockchainTime: BlockchainTime) {
@@ -114,16 +116,16 @@ class MoneroWallet internal constructor(
             }
 
             private fun sendLedger(ledger: Ledger) {
-                trySend(ledger).onFailure {
-                    logger.e("Too many ledger updates, channel capacity exceeded", it)
-                }
+                lastKnownLedger = ledger
+                // Shouldn't block as we conflate the flow.
+                trySendBlocking(ledger)
             }
         }
 
         wallet.addBalanceListener(listener)
 
         awaitClose { wallet.removeBalanceListener(listener) }
-    }
+    }.conflate()
 
     suspend fun awaitRefresh(
         ignoreMiningRewards: Boolean = true,

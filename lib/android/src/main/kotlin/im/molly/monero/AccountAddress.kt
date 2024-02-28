@@ -26,6 +26,16 @@ data class AccountAddress(
         }
     }
 
+    fun isAddressUsed(transactions: Iterable<Transaction>): Boolean {
+        return transactions.any { tx ->
+            tx.sent.any { enote ->
+                enote.owner == this
+            } || tx.received.any { enote ->
+                enote.owner == this
+            }
+        }
+    }
+
     companion object {
         fun parseWithIndexes(addressString: String): AccountAddress {
             val parts = addressString.split("/")

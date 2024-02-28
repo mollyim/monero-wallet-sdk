@@ -134,6 +134,14 @@ std::string FormatAccountAddress(
   return ss.str();
 }
 
+std::string Wallet::addDetachedSubAddress(uint32_t index_major, uint32_t index_minor) {
+  return suspendRefreshAndRunLocked([&]() {
+    cryptonote::subaddress_index index = {index_major, index_minor};
+    m_wallet.create_one_off_subaddress(index);
+    return addSubaddressInternal(index);
+  });
+}
+
 std::string Wallet::createSubAddressAccount() {
   return suspendRefreshAndRunLocked([&]() {
     uint32_t index_major = m_wallet.get_num_subaddress_accounts();
@@ -147,14 +155,6 @@ std::string Wallet::createSubAddress(uint32_t index_major) {
     uint32_t index_minor = m_wallet.get_num_subaddresses(index_major);
     m_wallet.add_subaddress(index_major, "");
     return addSubaddressInternal({index_major, index_minor});
-  });
-}
-
-std::string Wallet::addSubAddress(uint32_t index_major, uint32_t index_minor) {
-  return suspendRefreshAndRunLocked([&]() {
-    cryptonote::subaddress_index index = {index_major, index_minor};
-    m_wallet.create_one_off_subaddress(index);
-    return addSubaddressInternal(index);
   });
 }
 
@@ -704,7 +704,7 @@ Java_im_molly_monero_WalletNative_nativeGetPublicAddress(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeAddSubAddress(
+Java_im_molly_monero_WalletNative_nativeAddDetachedSubAddress(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -712,7 +712,7 @@ Java_im_molly_monero_WalletNative_nativeAddSubAddress(
     jint sub_address_minor) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
   return NativeToJavaString(
-      env, wallet->addSubAddress(sub_address_major, sub_address_minor));
+      env, wallet->addDetachedSubAddress(sub_address_major, sub_address_minor));
 }
 
 extern "C"

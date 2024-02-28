@@ -10,7 +10,7 @@ interface IWallet {
     String getPublicAddress();
     void addBalanceListener(in IBalanceListener listener);
     void removeBalanceListener(in IBalanceListener listener);
-    oneway void getOrCreateAddress(int accountIndex, int subAddressIndex, in IWalletCallbacks callback);
+    oneway void addDetachedSubAddress(int accountIndex, int subAddressIndex, in IWalletCallbacks callback);
     oneway void createAccount(in IWalletCallbacks callback);
     oneway void createSubAddressForAccount(int accountIndex, in IWalletCallbacks callback);
     oneway void getAllAddresses(in IWalletCallbacks callback);

@@ -44,6 +44,10 @@ fun WalletRoute(
         uiState = uiState,
         onWalletConfigChange = { config -> viewModel.updateConfig(config) },
         onTransactionClick = onTransactionClick,
+        onCreateAccountClick = { viewModel.createAccount() },
+        onCreateSubAddressClick = { accountIndex ->
+            viewModel.createSubAddress(accountIndex)
+        },
         onBackClick = onBackClick,
         modifier = modifier,
     )
@@ -54,6 +58,8 @@ private fun WalletScreen(
     uiState: WalletUiState,
     onWalletConfigChange: (WalletConfig) -> Unit,
     onTransactionClick: (String, Long) -> Unit,
+    onCreateAccountClick: () -> Unit,
+    onCreateSubAddressClick: (Int) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,6 +68,8 @@ private fun WalletScreen(
             uiState = uiState,
             onWalletConfigChange = onWalletConfigChange,
             onTransactionClick = onTransactionClick,
+            onCreateAccountClick = onCreateAccountClick,
+            onCreateSubAddressClick = onCreateSubAddressClick,
             onBackClick = onBackClick,
             modifier = modifier,
         )
@@ -77,26 +85,32 @@ private fun WalletScreenLoaded(
     uiState: WalletUiState.Loaded,
     onWalletConfigChange: (WalletConfig) -> Unit,
     onTransactionClick: (String, Long) -> Unit,
+    onCreateAccountClick: () -> Unit,
+    onCreateSubAddressClick: (Int) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showRenameDialog by remember { mutableStateOf(false) }
 
-    Scaffold(topBar = {
-        Toolbar(navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = AppIcons.ArrowBack,
-                    contentDescription = "Back",
+    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
+
+    Scaffold(
+        topBar = {
+            Toolbar(navigationIcon = {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = AppIcons.ArrowBack,
+                        contentDescription = "Back",
+                    )
+                }
+            }, actions = {
+                WalletKebabMenu(
+                    onRenameClick = { showRenameDialog = true },
+                    onDeleteClick = { },
                 )
-            }
-        }, actions = {
-            WalletKebabMenu(
-                onRenameClick = { showRenameDialog = true },
-                onDeleteClick = { },
-            )
-        })
-    }) { padding ->
+            })
+        },
+    ) { padding ->
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -107,13 +121,12 @@ private fun WalletScreenLoaded(
                 append(MoneroCurrency.SYMBOL + " ")
                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                     append(
-                        MoneroCurrency.Format(precision = 5).format(uiState.balance.confirmedAmount)
+                        MoneroCurrency.Format(precision = 5)
+                            .format(uiState.balance.confirmedAmount)
                     )
                 }
             })
             Text(text = uiState.config.name, style = MaterialTheme.typography.headlineSmall)
-
-            var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
 
             WalletHeaderTabs(
                 titles = listOf("Balance", "Send", "Receive", "History"),
@@ -132,19 +145,31 @@ private fun WalletScreenLoaded(
                 1 -> {} // TODO
 
                 2 -> {
-                    Column(
-                        modifier = modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                    val scrollState = rememberLazyListState()
+
+                    LazyColumn(
+                        state = scrollState,
                     ) {
-                        Text(
-                            text = "Primary address",
-                            style = MaterialTheme.typography.labelMedium,
+                        addressCardItems(
+                            items = uiState.addresses,
+                            onCreateSubAddressClick = onCreateSubAddressClick,
                         )
-                        CopyableText(
-                            text = uiState.config.publicAddress,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                OutlinedButton(
+                                    onClick = onCreateAccountClick,
+                                    modifier = modifier.padding(bottom = 16.dp),
+                                ) {
+                                    Text(
+                                        text = "Create new account",
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -286,15 +311,19 @@ private fun WalletScreenPopulated(
                 network = ledger.publicAddress.network,
                 balance = ledger.balance,
                 blockchainTime = ledger.checkedAt,
+                addresses = emptyList(),
                 transactions = emptyList(),
             ),
             onWalletConfigChange = {},
             onTransactionClick = { _: String, _: Long -> },
+            onCreateAccountClick = {},
+            onCreateSubAddressClick = {},
             onBackClick = {},
         )
     }
 }
 
-private class WalletScreenPreviewParameterProvider : PreviewParameterProvider<Ledger> {
+private class WalletScreenPreviewParameterProvider :
+    PreviewParameterProvider<Ledger> {
     override val values = sequenceOf(PreviewParameterData.ledger)
 }

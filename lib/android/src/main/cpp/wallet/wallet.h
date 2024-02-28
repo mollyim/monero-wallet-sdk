@@ -94,9 +94,9 @@ class Wallet : i_wallet2_callback {
   void cancelRefresh();
   void setRefreshSince(long height_or_timestamp);
 
+  std::string addDetachedSubAddress(uint32_t index_major, uint32_t index_minor);
   std::string createSubAddressAccount();
   std::string createSubAddress(uint32_t index_major);
-  std::string addSubAddress(uint32_t index_major, uint32_t index_minor);
 
   std::unique_ptr<PendingTransfer> createPayment(
       const std::vector<std::string>& addresses,

@@ -236,13 +236,13 @@ internal class WalletNative private constructor(
         }
     }
 
-    override fun getOrCreateAddress(
+    override fun addDetachedSubAddress(
         accountIndex: Int,
         subAddressIndex: Int,
         callback: IWalletCallbacks?,
     ) {
         scope.launch(ioDispatcher) {
-            val subAddress = nativeAddSubAddress(handle, accountIndex, subAddressIndex)
+            val subAddress = nativeAddDetachedSubAddress(handle, accountIndex, subAddressIndex)
             notifyAddressCreation(subAddress, callback)
         }
     }
@@ -370,7 +370,7 @@ internal class WalletNative private constructor(
         const val REFRESH_ERROR: Int = 3
     }
 
-    private external fun nativeAddSubAddress(
+    private external fun nativeAddDetachedSubAddress(
         handle: Long,
         subAddressMajor: Int,
         subAddressMinor: Int,

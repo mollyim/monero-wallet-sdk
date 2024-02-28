@@ -16,6 +16,7 @@ import androidx.compose.ui.text.TextStyle
 fun CopyableText(
     text: String,
     style: TextStyle,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -23,7 +24,7 @@ fun CopyableText(
     Text(
         text = text,
         style = style,
-        modifier = Modifier.combinedClickable(
+        modifier = modifier.combinedClickable(
             onClick = {},
             onLongClick = {
                 clipboardManager.setText(AnnotatedString(text))

@@ -9,7 +9,6 @@ import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.common.Result
 import im.molly.monero.demo.common.asResult
 import im.molly.monero.demo.data.WalletRepository
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
