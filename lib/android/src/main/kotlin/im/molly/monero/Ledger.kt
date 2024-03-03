@@ -1,29 +1,17 @@
 package im.molly.monero
 
-//import im.molly.monero.proto.LedgerProto
-
 data class Ledger(
     val publicAddress: PublicAddress,
-    val accountAddresses: Set<AccountAddress>,
+    val indexedAccounts: List<WalletAccount>,
     val transactionById: Map<String, Transaction>,
-    val enotes: Set<TimeLocked<Enote>>,
+    val enoteSet: Set<TimeLocked<Enote>>,
     val checkedAt: BlockchainTime,
 ) {
-    val transactions get() = transactionById.values
+    val transactions: Collection<Transaction>
+        get() = transactionById.values
 
-    val balance: Balance = enotes.calculateBalance()
+    fun getBalance(): Balance = enoteSet.calculateBalance()
 
-//    companion object {
-//        fun fromProto(proto: LedgerProto) = Ledger(
-//            publicAddress = PublicAddress.base58(proto.publicAddress),
-//            txOuts = proto.ownedTxOutsList.map { OwnedTxOut.fromProto(it) },
-//            checkedAtBlockHeight = proto.blockHeight,
-//        )
-//    }
-//
-//    fun proto(): LedgerProto = LedgerProto.newBuilder()
-//        .setPublicAddress(publicAddress.base58)
-//        .addAllOwnedTxOuts(txOuts.map { it.proto() })
-//        .setBlockHeight(checkedAtBlockHeight)
-//        .build()
+    fun getBalanceForAccount(accountIndex: Int): Balance =
+        enoteSet.calculateBalance { it.accountIndex == accountIndex }
 }

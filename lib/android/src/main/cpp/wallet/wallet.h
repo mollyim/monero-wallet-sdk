@@ -112,7 +112,7 @@ class Wallet : i_wallet2_callback {
   std::vector<uint64_t> fetchBaseFeeEstimate();
 
   std::string public_address() const;
-  std::vector<std::string> formatted_subaddresses();
+  std::vector<std::string> formatted_subaddresses(uint32_t index_major = -1);
 
   uint32_t current_blockchain_height() const { return static_cast<uint32_t>(m_last_block_height); }
   uint64_t current_blockchain_timestamp() const { return m_last_block_timestamp; }

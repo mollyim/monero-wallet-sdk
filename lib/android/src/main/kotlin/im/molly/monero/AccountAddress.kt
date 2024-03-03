@@ -49,10 +49,3 @@ data class AccountAddress(
 
     override fun toString(): String = "$accountIndex/$subAddressIndex/$publicAddress"
 }
-
-fun Iterable<AccountAddress>.findByIndexes(
-    accountIndex: Int,
-    subAddressIndex: Int,
-): AccountAddress? {
-    return find { it.accountIndex == accountIndex && it.subAddressIndex == subAddressIndex }
-}

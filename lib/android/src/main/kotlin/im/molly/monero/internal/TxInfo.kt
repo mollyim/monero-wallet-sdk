@@ -1,12 +1,12 @@
 package im.molly.monero.internal
 
 import android.os.Parcelable
-import im.molly.monero.AccountAddress
 import im.molly.monero.BlockHeader
 import im.molly.monero.BlockchainTime
 import im.molly.monero.CalledByNative
 import im.molly.monero.Enote
 import im.molly.monero.HashDigest
+import im.molly.monero.WalletAccount
 import im.molly.monero.MoneroAmount
 import im.molly.monero.PaymentDetail
 import im.molly.monero.PublicAddress
@@ -15,7 +15,7 @@ import im.molly.monero.TimeLocked
 import im.molly.monero.Transaction
 import im.molly.monero.TxState
 import im.molly.monero.UnlockTime
-import im.molly.monero.findByIndexes
+import im.molly.monero.findAddressByIndex
 import im.molly.monero.isBlockHeightInRange
 import kotlinx.parcelize.Parcelize
 import java.time.Instant
@@ -62,12 +62,12 @@ internal data class TxInfo @CalledByNative constructor(
 }
 
 internal fun List<TxInfo>.consolidateTransactions(
-    accountAddresses: Set<AccountAddress>,
+    accounts: List<WalletAccount>,
     blockchainContext: BlockchainTime,
 ): Pair<Map<String, Transaction>, Set<TimeLocked<Enote>>> {
     // Extract enotes from incoming transactions
     val allEnotes =
-        filter { it.incoming }.map { it.toEnote(blockchainContext.height, accountAddresses) }
+        filter { it.incoming }.map { it.toEnote(blockchainContext.height, accounts) }
 
     val enoteByTxId = allEnotes.groupBy { enote -> enote.sourceTxId!! }
 
@@ -152,9 +152,9 @@ private fun List<TxInfo>.determineTxState(): TxState {
     }
 }
 
-private fun TxInfo.toEnote(blockchainHeight: Int, accountAddresses: Set<AccountAddress>): Enote {
-    val ownerAddress = accountAddresses.findByIndexes(subAddressMajor, subAddressMinor)
-        ?: error("Failed to find account address for: $subAddressMajor/$subAddressMinor")
+private fun TxInfo.toEnote(blockchainHeight: Int, accounts: List<WalletAccount>): Enote {
+    val ownerAddress = accounts.findAddressByIndex(subAddressMajor, subAddressMinor)
+        ?: error("Failed to find subaddress: $subAddressMajor/$subAddressMinor")
     val calculatedAge = if (height > 0) (blockchainHeight - height + 1) else 0
 
     return Enote(

@@ -122,10 +122,13 @@ internal class WalletNative private constructor(
     val currentBalance: Balance
         get() = TODO() // txHistorySnapshot().consolidateTransactions().second.balance()
 
-    val subAddresses: Array<String>
-        get() = nativeGetSubAddresses(handle)
+    private fun getSubAddresses(accountIndex: Int? = null): Array<String> {
+        return nativeGetSubAddresses(accountIndex ?: -1, handle)
+    }
 
-    private fun txHistorySnapshot(): List<TxInfo> = nativeGetTxHistory(handle).toList()
+    private fun getTxHistorySnapshot(): List<TxInfo> {
+        return nativeGetTxHistory(handle).toList()
+    }
 
     @GuardedBy("listenersLock")
     private val balanceListeners = mutableSetOf<IBalanceListener>()
@@ -224,9 +227,12 @@ internal class WalletNative private constructor(
      * Also replays the last known balance whenever a new listener registers.
      */
     override fun addBalanceListener(listener: IBalanceListener) {
+        val txHistory = getTxHistorySnapshot()
+        val subAddresses = getSubAddresses()
+
         balanceListenersLock.withLock {
             balanceListeners.add(listener)
-            listener.onBalanceChanged(txHistorySnapshot(), subAddresses, currentBlockchainTime)
+            listener.onBalanceChanged(txHistory, subAddresses, currentBlockchainTime)
         }
     }
 
@@ -249,8 +255,8 @@ internal class WalletNative private constructor(
 
     override fun createAccount(callback: IWalletCallbacks?) {
         scope.launch(ioDispatcher) {
-            val subAddress = nativeCreateSubAddressAccount(handle)
-            notifyAddressCreation(subAddress, callback)
+            val primaryAddress = nativeCreateSubAddressAccount(handle)
+            notifyAddressCreation(primaryAddress, callback)
         }
     }
 
@@ -260,23 +266,37 @@ internal class WalletNative private constructor(
             if (subAddress != null) {
                 notifyAddressCreation(subAddress, callback)
             } else {
-                callback?.onAddressReady(emptyArray())
+                TODO()
             }
         }
     }
 
     private fun notifyAddressCreation(subAddress: String, callback: IWalletCallbacks?) {
         balanceListenersLock.withLock {
-            balanceListeners.forEach { listener ->
-                listener.onAddressCreated(subAddress)
+            if (balanceListeners.isNotEmpty()) {
+                val subAddresses = getSubAddresses()
+                balanceListeners.forEach { listener ->
+                    listener.onSubAddressListUpdated(subAddresses)
+                }
             }
         }
-        callback?.onAddressReady(arrayOf(subAddress))
+        callback?.onSubAddressReady(subAddress)
+    }
+
+    override fun getAddressesForAccount(accountIndex: Int, callback: IWalletCallbacks) {
+        scope.launch(ioDispatcher) {
+            val accountSubAddresses = getSubAddresses(accountIndex)
+            if (accountSubAddresses.isNotEmpty()) {
+                callback.onSubAddressListReceived(accountSubAddresses)
+            } else {
+                TODO()
+            }
+        }
     }
 
     override fun getAllAddresses(callback: IWalletCallbacks) {
         scope.launch(ioDispatcher) {
-            callback.onAddressReady(subAddresses)
+            callback.onSubAddressListReceived(getSubAddresses())
         }
     }
 
@@ -286,7 +306,8 @@ internal class WalletNative private constructor(
             if (balanceListeners.isNotEmpty()) {
                 val blockchainTime = network.blockchainTime(height, timestamp)
                 val call = if (balanceChanged) {
-                    val txHistory = txHistorySnapshot()
+                    val txHistory = getTxHistorySnapshot()
+                    val subAddresses = getSubAddresses()
                     fun(listener: IBalanceListener) {
                         listener.onBalanceChanged(txHistory, subAddresses, blockchainTime)
                     }
@@ -396,7 +417,7 @@ internal class WalletNative private constructor(
     private external fun nativeGetPublicAddress(handle: Long): String
     private external fun nativeGetCurrentBlockchainHeight(handle: Long): Int
     private external fun nativeGetCurrentBlockchainTimestamp(handle: Long): Long
-    private external fun nativeGetSubAddresses(handle: Long): Array<String>
+    private external fun nativeGetSubAddresses(subAddressMajor: Int, handle: Long): Array<String>
     private external fun nativeGetTxHistory(handle: Long): Array<TxInfo>
     private external fun nativeFetchBaseFeeEstimate(handle: Long): LongArray
     private external fun nativeLoad(handle: Long, fd: Int): Boolean

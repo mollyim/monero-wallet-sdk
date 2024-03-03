@@ -220,14 +220,16 @@ std::string Wallet::public_address() const {
   return account.get_public_address_str(m_wallet.nettype());
 }
 
-std::vector<std::string> Wallet::formatted_subaddresses() {
+std::vector<std::string> Wallet::formatted_subaddresses(uint32_t index_major) {
   std::lock_guard<std::mutex> lock(m_subaddresses_mutex);
 
   std::vector<std::string> ret;
   ret.reserve(m_subaddresses.size());
 
   for (const auto& entry: m_subaddresses) {
-    ret.push_back(FormatAccountAddress(entry));
+    if (index_major == -1 || index_major == entry.first.major) {
+      ret.push_back(FormatAccountAddress(entry));
+    }
   }
 
   return ret;
@@ -745,9 +747,15 @@ JNIEXPORT jobjectArray JNICALL
 Java_im_molly_monero_WalletNative_nativeGetSubAddresses(
     JNIEnv* env,
     jobject thiz,
+    jint sub_address_major,
     jlong handle) {
   auto* wallet = reinterpret_cast<Wallet*>(handle);
-  return NativeToJavaStringArray(env, wallet->formatted_subaddresses());
+  try {
+    auto subaddresses = wallet->formatted_subaddresses(sub_address_major);
+    return NativeToJavaStringArray(env, subaddresses);
+  } catch (error::account_index_outofbound& e) {
+    return NativeToJavaStringArray(env, {});
+  }
 }
 
 extern "C"

@@ -13,6 +13,9 @@ sealed interface PublicAddress : Parcelable {
     fun isSubAddress(): Boolean
 
     companion object {
+        /**
+         * @throws InvalidAddress
+         */
         fun parse(addressString: String): PublicAddress {
             val decoded = try {
                 addressString.decodeBase58()
@@ -39,7 +42,9 @@ sealed interface PublicAddress : Parcelable {
     }
 }
 
-class InvalidAddress(message: String, cause: Throwable? = null) : Exception(message, cause)
+// TODO: Extend ParseException
+class InvalidAddress(message: String, cause: Throwable? = null) :
+    IllegalArgumentException(message, cause)
 
 @Parcelize
 data class StandardAddress(

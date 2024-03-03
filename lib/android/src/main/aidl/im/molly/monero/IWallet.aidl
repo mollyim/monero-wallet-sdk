@@ -13,6 +13,7 @@ interface IWallet {
     oneway void addDetachedSubAddress(int accountIndex, int subAddressIndex, in IWalletCallbacks callback);
     oneway void createAccount(in IWalletCallbacks callback);
     oneway void createSubAddressForAccount(int accountIndex, in IWalletCallbacks callback);
+    oneway void getAddressesForAccount(int accountIndex, in IWalletCallbacks callback);
     oneway void getAllAddresses(in IWalletCallbacks callback);
     oneway void resumeRefresh(boolean skipCoinbase, in IWalletCallbacks callback);
     oneway void cancelRefresh();
