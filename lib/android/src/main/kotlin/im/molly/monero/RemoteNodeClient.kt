@@ -112,6 +112,23 @@ class RemoteNodeClient private constructor(
         header: String?,
         body: ByteArray?,
     ): Response {
+        val headers = parseHttpHeader(header)
+        val contentType = headers["Content-Type"]?.toMediaType()
+        // TODO: Log unsupported headers
+        val requestBuilder = with(Request.Builder()) {
+            when {
+                method.equals("GET", ignoreCase = true) -> {}
+                method.equals("POST", ignoreCase = true) -> {
+                    val content = body ?: ByteArray(0)
+                    post(content.toRequestBody(contentType))
+                }
+
+                else -> throw IllegalArgumentException("Unsupported method")
+            }
+            url("http:$path")
+            // TODO: Add authentication
+        }
+
         val attempts = mutableMapOf<Uri, Int>()
 
         while (true) {
@@ -119,7 +136,12 @@ class RemoteNodeClient private constructor(
             if (selected == null) {
                 logger.i("No remote node available")
 
-                return Response.Builder().code(499).build()
+                return Response.Builder()
+                    .request(requestBuilder.build())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(499)
+                    .message("No remote node available")
+                    .build()
             }
 
             val uri = selected.uriForPath(path)
@@ -128,14 +150,9 @@ class RemoteNodeClient private constructor(
             delay(retryBackoff.waitTime(retryCount))
 
             val response = try {
-                executeCall(
-                    method = method,
-                    uri = uri,
-                    username = selected.username,
-                    password = selected.password,
-                    header = header,
-                    body = body,
-                )
+                val request = requestBuilder.url(uri.toString()).build()
+
+                httpClient.newCall(request).await()
             } catch (e: IOException) {
                 logger.e("HTTP: Request failed", e)
                 // TODO: Notify loadBalancer
@@ -151,33 +168,6 @@ class RemoteNodeClient private constructor(
         }
     }
 
-    private suspend fun executeCall(
-        method: String?,
-        uri: Uri,
-        username: String?,
-        password: String?,
-        header: String?,
-        body: ByteArray?,
-    ): Response {
-        val headers = parseHttpHeader(header)
-        val contentType = headers["Content-Type"]?.toMediaType()
-        // TODO: Log unsupported headers
-        val request = with(Request.Builder()) {
-            when {
-                method.equals("GET", ignoreCase = true) -> {}
-                method.equals("POST", ignoreCase = true) -> {
-                    val content = body ?: ByteArray(0)
-                    post(content.toRequestBody(contentType))
-                }
-                else -> throw IllegalArgumentException("Unsupported method")
-            }
-            // TODO: Add authentication
-            url(uri.toString())
-            build()
-        }
-        return httpClient.newCall(request).await()
-    }
-
     private fun parseHttpHeader(header: String?): Headers =
         with(Headers.Builder()) {
             header?.splitToSequence("\r\n")
@@ -186,18 +176,17 @@ class RemoteNodeClient private constructor(
             build()
         }
 
-    private suspend fun Call.await() =
-        suspendCoroutine { continuation ->
-            enqueue(object : Callback {
-                override fun onResponse(call: Call, response: Response) {
-                    continuation.resume(response)
-                }
+    private suspend fun Call.await() = suspendCoroutine { continuation ->
+        enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response)
+            }
 
-                override fun onFailure(call: Call, e: IOException) {
-                    continuation.resumeWithException(e)
-                }
-            })
-        }
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resumeWithException(e)
+            }
+        })
+    }
 
 //    private val Response.roundTripMillis: Long
 //        get() = sentRequestAtMillis() - receivedResponseAtMillis()
