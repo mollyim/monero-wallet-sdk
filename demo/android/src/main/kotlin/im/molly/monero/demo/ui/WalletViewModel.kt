@@ -74,13 +74,16 @@ private fun walletUiState(
             is Result.Success -> {
                 val config = result.data.first
                 val ledger = result.data.second
+                val accountBalance = List(ledger.indexedAccounts.size) { index ->
+                    index to ledger.getBalanceForAccount(index)
+                }.toMap()
                 val addresses =
-                    ledger.accountAddresses.groupBy { it.accountIndex }.flatMap { (_, group) ->
-                        group.sortedBy { it.subAddressIndex }.mapIndexed { index, address ->
+                    ledger.indexedAccounts.flatMap { account ->
+                        account.addresses.map { address ->
                             WalletAddress(
                                 address = address,
                                 used = address.isAddressUsed(ledger.transactions),
-                                isLastForAccount = index == group.size - 1,
+                                isLastForAccount = address === account.addresses.last(),
                             )
                         }
                     }
@@ -91,7 +94,8 @@ private fun walletUiState(
                     config = config,
                     network = ledger.publicAddress.network,
                     blockchainTime = ledger.checkedAt,
-                    balance = ledger.balance,
+                    totalBalance = ledger.getBalance(),
+                    accountBalance = accountBalance,
                     addresses = addresses,
                     transactions = transactions,
                 )
@@ -113,7 +117,8 @@ sealed interface WalletUiState {
         val config: WalletConfig,
         val network: MoneroNetwork,
         val blockchainTime: BlockchainTime,
-        val balance: Balance,
+        val totalBalance: Balance,
+        val accountBalance: Map<Int, Balance>,
         val addresses: List<WalletAddress>,
         val transactions: List<WalletTransaction>,
     ) : WalletUiState

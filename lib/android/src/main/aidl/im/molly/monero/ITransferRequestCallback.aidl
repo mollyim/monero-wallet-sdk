@@ -19,5 +19,5 @@ oneway interface ITransferRequestCallback {
 //    void onTransactionTooBig();
 //    void onTransferError(String errorMessage);
 //    void onWalletInternalError(String errorMessage);
-//    void onUnexpectedError(String errorMessage);
+    void onUnexpectedError(String message);
 }

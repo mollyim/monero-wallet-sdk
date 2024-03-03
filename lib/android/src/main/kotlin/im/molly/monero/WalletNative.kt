@@ -187,7 +187,7 @@ internal class WalletNative private constructor(
                 amounts = amounts.toLongArray(),
                 timeLock = request.timeLock?.blockchainTime?.toLong() ?: 0,
                 priority = request.feePriority?.priority ?: 0,
-                accountIndex = 0,
+                accountIndex = request.spendingAccountIndex,
                 subAddressIndexes = IntArray(0),
                 callback = callback,
             )

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,17 +55,17 @@ fun WalletBalanceView(
     ) {
         Text(
             style = MaterialTheme.typography.bodyLarge,
-            text = "Balance at ${blockchainTime}",
+            text = "Balance at $blockchainTime",
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
         BalanceRow("Confirmed", balance.confirmedAmount)
         BalanceRow("Pending", balance.pendingAmount)
-        Divider()
+        HorizontalDivider()
         BalanceRow("Total", balance.totalAmount)
 
-        val currentTime = blockchainTime.copy(timestamp = now)
+        val currentTime = blockchainTime.withTimestamp(now)
 
         BalanceRow("Unlocked", balance.unlockedAmountAt(currentTime))
         balance.lockedAmountsAt(currentTime).forEach { (timeSpan, amount) ->

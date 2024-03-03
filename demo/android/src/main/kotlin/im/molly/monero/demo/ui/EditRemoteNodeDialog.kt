@@ -67,10 +67,10 @@ private fun EditRemoteNodeDialog(
                 )
                 SelectListBox(
                     label = "Network",
-                    options = MoneroNetwork.values().map { it.name },
-                    selectedOption = remoteNode.network.name,
+                    options = MoneroNetwork.entries.associateWith { it.name },
+                    selectedOption = remoteNode.network,
                     onOptionClick = {
-                        onRemoteNodeChange(remoteNode.copy(network = MoneroNetwork.valueOf(it)))
+                        onRemoteNodeChange(remoteNode.copy(network = it))
                     }
                 )
                 Column {

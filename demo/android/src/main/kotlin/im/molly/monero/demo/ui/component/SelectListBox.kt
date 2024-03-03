@@ -7,12 +7,13 @@ import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectListBox(
+fun <T>SelectListBox(
     label: String,
-    options: List<String>,
-    selectedOption: String,
-    onOptionClick: (String) -> Unit,
+    options: Map<T, String>,
+    selectedOption: T,
+    onOptionClick: (T) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -25,16 +26,19 @@ fun SelectListBox(
     ) {
         OutlinedTextField(
             readOnly = true,
-            value = selectedOption,
+            value = options.getValue(selectedOption),
             onValueChange = { },
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
             label = { Text(label) },
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(
-                    expanded = expanded
-                )
+                if (enabled) {
+                    ExposedDropdownMenuDefaults.TrailingIcon(
+                        expanded = expanded
+                    )
+                }
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
         )
@@ -45,13 +49,13 @@ fun SelectListBox(
             },
             modifier = Modifier.exposedDropdownSize(),
         ) {
-            options.forEach { selectionOption ->
+            options.forEach { (key, text) ->
                 DropdownMenuItem(
                     text = {
-                        Text(selectionOption)
+                        Text(text)
                     },
                     onClick = {
-                        onOptionClick(selectionOption)
+                        onOptionClick(key)
                         expanded = false
                     },
                 )

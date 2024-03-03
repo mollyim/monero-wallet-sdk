@@ -8,7 +8,7 @@ sealed interface TransferRequest : Parcelable
 @Parcelize
 data class PaymentRequest(
     val paymentDetails: List<PaymentDetail>,
-    val sourceAccounts: Set<AccountAddress>,
+    val spendingAccountIndex: Int,
     val feePriority: FeePriority? = null,
     val timeLock: UnlockTime? = null,
 ) : TransferRequest

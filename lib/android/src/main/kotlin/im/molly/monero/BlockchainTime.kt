@@ -30,6 +30,10 @@ data class BlockchainTime(
         }
     }
 
+    fun withTimestamp(newTimestamp: Instant): BlockchainTime {
+        return copy(timestamp = newTimestamp)
+    }
+
     fun estimateHeight(targetTimestamp: Instant): Int {
         val timeDiff = Duration.between(timestamp, targetTimestamp)
         val estHeight = timeDiff.seconds / network.avgBlockTime(height).seconds + height

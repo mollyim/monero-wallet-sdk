@@ -14,6 +14,7 @@ extern jmethodID HttpResponse_getBody;
 extern jmethodID HttpResponse_getCode;
 extern jmethodID HttpResponse_getContentType;
 extern jmethodID ITransferRequestCb_onTransferCreated;
+extern jmethodID ITransferRequestCb_onUnexpectedError;
 extern jmethodID Logger_logFromNative;
 extern jmethodID TxInfo_ctor;
 extern jmethodID WalletNative_callRemoteNode;

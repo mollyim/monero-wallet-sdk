@@ -7,6 +7,7 @@ jmethodID HttpResponse_getBody;
 jmethodID HttpResponse_getCode;
 jmethodID HttpResponse_getContentType;
 jmethodID ITransferRequestCb_onTransferCreated;
+jmethodID ITransferRequestCb_onUnexpectedError;
 jmethodID Logger_logFromNative;
 jmethodID TxInfo_ctor;
 jmethodID WalletNative_createPendingTransfer;
@@ -41,6 +42,9 @@ void InitializeJniCache(JNIEnv* env) {
   ITransferRequestCb_onTransferCreated = GetMethodId(
       env, iTransferRequestCb,
       "onTransferCreated", "(Lim/molly/monero/IPendingTransfer;)V");
+  ITransferRequestCb_onUnexpectedError = GetMethodId(
+      env, iTransferRequestCb,
+      "onUnexpectedError", "(Ljava/lang/String;)V");
   Logger_logFromNative = GetMethodId(
       env, logger,
       "logFromNative", "(ILjava/lang/String;Ljava/lang/String;)V");

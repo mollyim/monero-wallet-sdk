@@ -4,14 +4,15 @@ import im.molly.monero.internal.TxInfo
 import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -190,6 +191,12 @@ class MoneroWallet internal constructor(
                     continuation.resume(PendingTransfer(pendingTransfer)) {
                         pendingTransfer.close()
                     }
+                }
+
+                override fun onUnexpectedError(message: String) {
+                    continuation.resumeWithException(
+                        IllegalStateException(message)
+                    )
                 }
             }
             when (transferRequest) {

@@ -170,10 +170,10 @@ private fun SecondStepScreen(
             )
             SelectListBox(
                 label = "Network",
-                options = MoneroNetwork.values().map { it.name },
-                selectedOption = network.name,
+                options = MoneroNetwork.entries.associateWith { it.name },
+                selectedOption = network,
                 onOptionClick = {
-                    onNetworkChanged(MoneroNetwork.valueOf(it))
+                    onNetworkChanged(it)
                 },
                 modifier = Modifier
                     .fillMaxWidth()

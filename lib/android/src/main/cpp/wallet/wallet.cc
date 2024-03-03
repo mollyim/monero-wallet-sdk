@@ -874,9 +874,12 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
 //  } catch (error::transfer_error& e) {
 //  } catch (error::wallet_internal_error& e) {
 //  } catch (error::wallet_logic_error& e) {
-//  } catch (const std::exception& e) {
-  } catch (...) {
-    LOG_FATAL("Caught unknown exception");
+  } catch (const std::exception& e) {
+    LOGW("Caught unhandled exception: %s", e.what());
+    CallVoidMethod(env, j_callback,
+                   ITransferRequestCb_onUnexpectedError,
+                   NativeToJavaString(env, e.what()));
+    return;
   }
 
   jobject j_pending_transfer = CallObjectMethod(
