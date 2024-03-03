@@ -202,12 +202,12 @@ class MoneroWallet internal constructor(
         while (true) {
             val fees = requestFees() ?: emptyList()
             val feePerByte = when (fees.size) {
-                1 -> mapOf(FeePriority.MEDIUM to fees[0])
+                1 -> mapOf(FeePriority.Medium to fees[0])
                 4 -> mapOf(
-                    FeePriority.LOW to fees[0],
-                    FeePriority.MEDIUM to fees[1],
-                    FeePriority.HIGH to fees[2],
-                    FeePriority.URGENT to fees[3],
+                    FeePriority.Low to fees[0],
+                    FeePriority.Medium to fees[1],
+                    FeePriority.High to fees[2],
+                    FeePriority.Urgent to fees[3],
                 )
 
                 else -> {
