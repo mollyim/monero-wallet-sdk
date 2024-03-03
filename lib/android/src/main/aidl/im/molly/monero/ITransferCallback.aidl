@@ -2,8 +2,9 @@ package im.molly.monero;
 
 import im.molly.monero.IPendingTransfer;
 
-oneway interface ITransferRequestCallback {
+oneway interface ITransferCallback {
     void onTransferCreated(in IPendingTransfer pendingTransfer);
+    void onTransferCommitted();
 //    void onDaemonBusy();
 //    void onNoConnectionToDaemon();
 //    void onRPCError(String errorMessage);

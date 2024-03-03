@@ -1,8 +1,11 @@
 package im.molly.monero;
 
-//import im.molly.monero.ITransactionCallback;
+import im.molly.monero.ITransferCallback;
 
 interface IPendingTransfer {
-//    oneway void submit(in ITransactionCallback callback);
-    void close();
+    long getAmount();
+    long getFee();
+    int getTxCount();
+    oneway void commitAndClose(in ITransferCallback callback);
+    oneway void close();
 }

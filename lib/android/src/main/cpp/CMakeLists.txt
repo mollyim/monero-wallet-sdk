@@ -60,6 +60,7 @@ set(WALLET_SOURCES
     wallet/jni_cache.cc
     wallet/jni_loader.cc
     wallet/logging.cc
+    wallet/transfer.cc
     wallet/wallet.cc
 )
 

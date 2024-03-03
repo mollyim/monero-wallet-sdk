@@ -186,12 +186,14 @@ class MoneroWallet internal constructor(
 
     suspend fun createTransfer(transferRequest: TransferRequest): PendingTransfer =
         suspendCancellableCoroutine { continuation ->
-            val callback = object : ITransferRequestCallback.Stub() {
+            val callback = object : ITransferCallback.Stub() {
                 override fun onTransferCreated(pendingTransfer: IPendingTransfer) {
                     continuation.resume(PendingTransfer(pendingTransfer)) {
                         pendingTransfer.close()
                     }
                 }
+
+                override fun onTransferCommitted() = Unit
 
                 override fun onUnexpectedError(message: String) {
                     continuation.resumeWithException(

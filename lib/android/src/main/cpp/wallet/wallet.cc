@@ -195,7 +195,7 @@ std::unique_ptr<PendingTransfer> Wallet::createPayment(
 
   auto ptxs = m_wallet.create_transactions_2(
       dsts,
-      m_wallet.default_mixin(),
+      m_wallet.get_min_ring_size() - 1,
       time_lock,
       priority,
       {}, /* extra */
@@ -203,6 +203,20 @@ std::unique_ptr<PendingTransfer> Wallet::createPayment(
       subaddr_indexes);
 
   return std::make_unique<PendingTransfer>(ptxs);
+}
+
+void Wallet::commit_transfer(PendingTransfer& pending_transfer) {
+  std::unique_lock<std::mutex> wallet_lock(m_wallet_mutex);
+
+  while (!pending_transfer.m_ptxs.empty()) {
+    m_wallet.commit_tx(pending_transfer.m_ptxs.back());
+    m_balance_changed = true;
+    pending_transfer.m_ptxs.pop_back();
+  }
+
+  if (m_balance_changed) {
+    processBalanceChanges(false);
+  }
 }
 
 template<typename Consumer>
@@ -356,7 +370,7 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   for (const auto& pair: utxs) {
     const auto& utx = pair.second;
     uint64_t fee = utx.m_amount_in - utx.m_amount_out;
-    auto state = (utx.m_state == wallet2::unconfirmed_transfer_details::pending)
+    auto state = (utx.m_state != wallet2::unconfirmed_transfer_details::failed)
                  ? TxInfo::PENDING
                  : TxInfo::FAILED;
 
@@ -592,15 +606,6 @@ Java_im_molly_monero_WalletNative_nativeDispose(
     jobject thiz,
     jlong handle) {
   delete reinterpret_cast<Wallet*>(handle);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeDisposePendingTransfer(
-    JNIEnv* env,
-    jobject thiz,
-    jlong handle) {
-  delete reinterpret_cast<PendingTransfer*>(handle);
 }
 
 extern "C"
@@ -848,10 +853,10 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
   const auto& amounts = JavaToNativeLongArray(env, j_amounts);
   const auto& subaddr_indexes = JavaToNativeIntArray(env, j_subaddr_indexes);
 
-  std::unique_ptr<PendingTransfer> pendingTransfer;
+  std::unique_ptr<PendingTransfer> pending_transfer;
 
   try {
-    pendingTransfer = wallet->createPayment(
+    pending_transfer = wallet->createPayment(
         addresses,
         {amounts.begin(), amounts.end()},
         time_lock, priority,
@@ -877,18 +882,47 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
   } catch (const std::exception& e) {
     LOGW("Caught unhandled exception: %s", e.what());
     CallVoidMethod(env, j_callback,
-                   ITransferRequestCb_onUnexpectedError,
+                   ITransferCallback_onUnexpectedError,
                    NativeToJavaString(env, e.what()));
     return;
   }
 
+  PendingTransfer* ptr = pending_transfer.release();
+
   jobject j_pending_transfer = CallObjectMethod(
-      env, thiz, WalletNative_createPendingTransfer,
-      NativeToJavaPointer(pendingTransfer.get()));
+      env, thiz,
+      WalletNative_createPendingTransfer,
+      NativeToJavaPointer(ptr),
+      ptr->amount(),
+      ptr->fee(),
+      ptr->txCount());
 
   CallVoidMethod(env, j_callback,
-                 ITransferRequestCb_onTransferCreated,
-                 j_pending_transfer);
+                 ITransferCallback_onTransferCreated, j_pending_transfer);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_im_molly_monero_WalletNative_nativeCommitPendingTransfer(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle,
+    jlong transfer_handle,
+    jobject j_callback) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  auto* pending_transfer = reinterpret_cast<PendingTransfer*>(transfer_handle);
+
+  try {
+    wallet->commit_transfer(*pending_transfer);
+  } catch (const std::exception& e) {
+    LOGW("Caught unhandled exception: %s", e.what());
+    CallVoidMethod(env, j_callback,
+                   ITransferCallback_onUnexpectedError,
+                   NativeToJavaString(env, e.what()));
+    return;
+  }
+
+  CallVoidMethod(env, j_callback, ITransferCallback_onTransferCommitted);
 }
 
 extern "C"

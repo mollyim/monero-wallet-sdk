@@ -175,7 +175,7 @@ internal class WalletNative private constructor(
         }
     }
 
-    override fun createPayment(request: PaymentRequest, callback: ITransferRequestCallback) {
+    override fun createPayment(request: PaymentRequest, callback: ITransferCallback) {
         scope.launch(singleThreadedDispatcher) {
             val (amounts, addresses) = request.paymentDetails.map {
                 it.amount.atomicUnits to it.recipientAddress.address
@@ -194,26 +194,56 @@ internal class WalletNative private constructor(
         }
     }
 
-    override fun createSweep(request: SweepRequest, callback: ITransferRequestCallback) {
+    override fun createSweep(request: SweepRequest, callback: ITransferCallback) {
         TODO()
     }
 
     @CalledByNative
-    private fun createPendingTransfer(handle: Long) = NativePendingTransfer(handle)
+    private fun createPendingTransfer(
+        transferHandle: Long,
+        amount: Long,
+        fee: Long,
+        txCount: Int,
+    ): IPendingTransfer =
+        NativePendingTransfer(transferHandle, amount, fee, txCount)
 
-    inner class NativePendingTransfer(private val handle: Long) : Closeable,
+    inner class NativePendingTransfer(
+        private val transferHandle: Long,
+        private val amount: Long,
+        private val fee: Long,
+        private val txCount: Int,
+    ) : Closeable,
         IPendingTransfer.Stub() {
 
         private val closed = AtomicBoolean()
 
+        override fun getAmount() = amount
+
+        override fun getFee() = fee
+
+        override fun getTxCount() = txCount
+
+        override fun commitAndClose(callback: ITransferCallback) {
+            scope.launch(singleThreadedDispatcher) {
+                if (closed.compareAndSet(false, true)) {
+                    nativeCommitPendingTransfer(handle, transferHandle, callback)
+                    nativeDispose(transferHandle)
+                } else {
+                    callback.onUnexpectedError("PendingTransfer is closed")
+                }
+            }
+        }
+
         override fun close() {
             if (closed.getAndSet(true)) return
-            nativeDisposePendingTransfer(handle)
+            nativeDispose(transferHandle)
         }
 
         protected fun finalize() {
-            nativeDisposePendingTransfer(handle)
+            close()
         }
+
+        private external fun nativeDispose(transferHandle: Long)
     }
 
     override fun requestFees(callback: IWalletCallbacks?) {
@@ -407,17 +437,26 @@ internal class WalletNative private constructor(
         priority: Int,
         accountIndex: Int,
         subAddressIndexes: IntArray,
-        callback: ITransferRequestCallback,
+        callback: ITransferCallback,
+    )
+
+    private external fun nativeCommitPendingTransfer(
+        handle: Long,
+        transferHandle: Long,
+        callback: ITransferCallback,
     )
 
     private external fun nativeCreateSubAddressAccount(handle: Long): String
     private external fun nativeCreateSubAddress(handle: Long, subAddressMajor: Int): String?
     private external fun nativeDispose(handle: Long)
-    private external fun nativeDisposePendingTransfer(handle: Long)
     private external fun nativeGetPublicAddress(handle: Long): String
     private external fun nativeGetCurrentBlockchainHeight(handle: Long): Int
     private external fun nativeGetCurrentBlockchainTimestamp(handle: Long): Long
-    private external fun nativeGetSubAddresses(subAddressMajor: Int, handle: Long): Array<String>
+    private external fun nativeGetSubAddresses(
+        subAddressMajor: Int,
+        handle: Long,
+    ): Array<String>
+
     private external fun nativeGetTxHistory(handle: Long): Array<TxInfo>
     private external fun nativeFetchBaseFeeEstimate(handle: Long): LongArray
     private external fun nativeLoad(handle: Long, fd: Int): Boolean

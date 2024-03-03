@@ -6,8 +6,9 @@ namespace monero {
 jmethodID HttpResponse_getBody;
 jmethodID HttpResponse_getCode;
 jmethodID HttpResponse_getContentType;
-jmethodID ITransferRequestCb_onTransferCreated;
-jmethodID ITransferRequestCb_onUnexpectedError;
+jmethodID ITransferCallback_onTransferCreated;
+jmethodID ITransferCallback_onTransferCommitted;
+jmethodID ITransferCallback_onUnexpectedError;
 jmethodID Logger_logFromNative;
 jmethodID TxInfo_ctor;
 jmethodID WalletNative_createPendingTransfer;
@@ -24,7 +25,7 @@ ScopedJavaGlobalRef<jclass> StringClass;
 
 void InitializeJniCache(JNIEnv* env) {
   jclass httpResponse = GetClass(env, "im/molly/monero/HttpResponse");
-  jclass iTransferRequestCb = GetClass(env, "im/molly/monero/ITransferRequestCallback");
+  jclass iTransferCallback = GetClass(env, "im/molly/monero/ITransferCallback");
   jclass logger = GetClass(env, "im/molly/monero/Logger");
   jclass txInfo = GetClass(env, "im/molly/monero/internal/TxInfo");
   jclass walletNative = GetClass(env, "im/molly/monero/WalletNative");
@@ -39,11 +40,14 @@ void InitializeJniCache(JNIEnv* env) {
   HttpResponse_getContentType = GetMethodId(
       env, httpResponse,
       "getContentType", "()Ljava/lang/String;");
-  ITransferRequestCb_onTransferCreated = GetMethodId(
-      env, iTransferRequestCb,
+  ITransferCallback_onTransferCreated = GetMethodId(
+      env, iTransferCallback,
       "onTransferCreated", "(Lim/molly/monero/IPendingTransfer;)V");
-  ITransferRequestCb_onUnexpectedError = GetMethodId(
-      env, iTransferRequestCb,
+  ITransferCallback_onTransferCommitted = GetMethodId(
+      env, iTransferCallback,
+      "onTransferCommitted", "()V");
+  ITransferCallback_onUnexpectedError = GetMethodId(
+      env, iTransferCallback,
       "onUnexpectedError", "(Ljava/lang/String;)V");
   Logger_logFromNative = GetMethodId(
       env, logger,
@@ -55,7 +59,7 @@ void InitializeJniCache(JNIEnv* env) {
   WalletNative_createPendingTransfer = GetMethodId(
       env, walletNative,
       "createPendingTransfer",
-      "(J)Lim/molly/monero/WalletNative$NativePendingTransfer;");
+      "(JJJI)Lim/molly/monero/IPendingTransfer;");
   WalletNative_callRemoteNode = GetMethodId(
       env, walletNative,
       "callRemoteNode",

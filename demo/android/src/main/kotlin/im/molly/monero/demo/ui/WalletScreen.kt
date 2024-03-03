@@ -1,5 +1,6 @@
 package im.molly.monero.demo.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import im.molly.monero.FeePriority
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroCurrency
+import im.molly.monero.PendingTransfer
 import im.molly.monero.demo.data.model.WalletConfig
 import im.molly.monero.demo.ui.component.SelectListBox
 import im.molly.monero.demo.ui.component.Toolbar
@@ -69,6 +72,8 @@ fun WalletRoute(
         onTransferPrioritySelect = { sendTabViewModel.updatePriority(it) },
         onTransferRecipientChange = { sendTabViewModel.updateRecipients(it) },
         onTransferSendClick = { sendTabViewModel.createPayment() },
+        onTransferConfirmClick = { sendTabViewModel.confirmPendingTransfer() },
+        onTransferCancelClick = { sendTabViewModel.cancelPendingTransfer() },
         onBackClick = onBackClick,
         modifier = modifier,
     )
@@ -87,6 +92,8 @@ private fun WalletScreen(
     onTransferPrioritySelect: (FeePriority) -> Unit = {},
     onTransferRecipientChange: (List<Pair<String, String>>) -> Unit = {},
     onTransferSendClick: () -> Unit = {},
+    onTransferConfirmClick: () -> Unit = {},
+    onTransferCancelClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
 ) {
     when (walletUiState) {
@@ -101,6 +108,8 @@ private fun WalletScreen(
             onTransferPrioritySelect = onTransferPrioritySelect,
             onTransferRecipientChange = onTransferRecipientChange,
             onTransferSendClick = onTransferSendClick,
+            onTransferConfirmClick = onTransferConfirmClick,
+            onTransferCancelClick = onTransferCancelClick,
             onBackClick = onBackClick,
             modifier = modifier,
         )
@@ -138,11 +147,14 @@ private fun WalletScreenLoaded(
     onTransferPrioritySelect: (FeePriority) -> Unit,
     onTransferRecipientChange: (List<Pair<String, String>>) -> Unit,
     onTransferSendClick: () -> Unit,
+    onTransferConfirmClick: () -> Unit,
+    onTransferCancelClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showRenameDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
+    var showRenameDialog by remember { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
 
     Scaffold(
@@ -266,6 +278,26 @@ private fun WalletScreenLoaded(
                 },
             )
         }
+
+        if (sendTabUiState.status is TransferStatus.ReadyForApproval) {
+            SendConfirmationDialog(
+                spendingAccountIndex = sendTabUiState.accountIndex,
+                pendingTransfer = sendTabUiState.status.pendingTransfer,
+                onConfirmRequest = {
+                    onTransferConfirmClick()
+                },
+                onDismissRequest = {
+                    Toast.makeText(context, "Transfer canceled", Toast.LENGTH_LONG).show()
+                    onTransferCancelClick()
+                },
+            )
+        }
+
+        LaunchedEffect(sendTabUiState.status) {
+            if (sendTabUiState.status == TransferStatus.Sent) {
+                Toast.makeText(context, "Transfer submitted", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
 
@@ -336,18 +368,62 @@ private fun WalletSendTab(
             }
         }
 
-        ElevatedButton(
+        FilledTonalButton(
             modifier = Modifier.padding(vertical = 24.dp),
             onClick = onSendClick,
             enabled = !sendTabUiState.isInProgress,
         ) {
             val text = when (sendTabUiState.status) {
-                TransferStatus.Preparing -> "Preparing..."
+                TransferStatus.Preparing -> "Processing..."
+                is TransferStatus.ReadyForApproval -> "Processing..."
+                TransferStatus.Sending -> "Sending..."
                 else -> "Send"
             }
             Text(text = text)
         }
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SendConfirmationDialog(
+    spendingAccountIndex: Int,
+    pendingTransfer: PendingTransfer,
+    onConfirmRequest: () -> Unit = {},
+    onDismissRequest: () -> Unit = {},
+) {
+    val sheetState = rememberModalBottomSheetState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            PendingTransferView(
+                spendingAccountIndex = spendingAccountIndex,
+                pendingTransfer = pendingTransfer,
+            )
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Text("Cancel")
+                }
+                FilledTonalButton(
+                    onClick = onConfirmRequest,
+                ) {
+                    Text("Confirm")
+                }
+            }
+        }
     }
 }
 

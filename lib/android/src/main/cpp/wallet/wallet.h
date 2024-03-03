@@ -106,6 +106,8 @@ class Wallet : i_wallet2_callback {
       uint32_t account_index,
       const std::set<uint32_t>& subaddr_indexes);
 
+  void commit_transfer(PendingTransfer& pending_transfer);
+
   template<typename Consumer>
   void withTxHistory(Consumer consumer);
 

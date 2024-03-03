@@ -15,6 +15,7 @@ import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.data.WalletRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -107,8 +108,41 @@ class SendTabViewModel(
         }
     }
 
-    fun confirmPayment() {
-        TODO()
+    fun confirmPendingTransfer() {
+        val savedState = viewModelState.getAndUpdate {
+            it.copy(status = TransferStatus.Sending)
+        }
+        check(savedState.status is TransferStatus.ReadyForApproval)
+        viewModelScope.launch {
+            val result = runCatching {
+                savedState.status.pendingTransfer.use {
+                    it.commit()
+                }
+            }
+            viewModelState.update {
+                val updatedState = result.fold(
+                    onSuccess = { success ->
+                        it.copy(
+                            recipients = emptyList(),
+                            status = TransferStatus.Sent,
+                        )
+                    },
+                    onFailure = { error ->
+                        it.copy(status = TransferStatus.Error(error.message))
+                    },
+                )
+                updatedState
+            }
+        }
+    }
+
+    fun cancelPendingTransfer() {
+        val savedState = viewModelState.getAndUpdate {
+            it.copy(status = TransferStatus.Idle)
+        }
+        if (savedState.status is TransferStatus.ReadyForApproval) {
+            savedState.status.pendingTransfer.close()
+        }
     }
 
     companion object {
@@ -127,12 +161,16 @@ data class SendTabUiState(
     val status: TransferStatus = TransferStatus.Idle,
 ) {
     val isInProgress: Boolean
-        get() = !(status == TransferStatus.Idle || status is TransferStatus.Error)
+        get() = status == TransferStatus.Preparing ||
+                status == TransferStatus.Sending ||
+                status is TransferStatus.ReadyForApproval
 }
 
 sealed interface TransferStatus {
     data object Idle : TransferStatus
     data object Preparing : TransferStatus
+    data object Sending : TransferStatus
+    data object Sent : TransferStatus
     data class ReadyForApproval(
         val pendingTransfer: PendingTransfer
     ) : TransferStatus
