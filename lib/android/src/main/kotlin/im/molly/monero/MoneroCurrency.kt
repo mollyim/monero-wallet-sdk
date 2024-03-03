@@ -1,5 +1,6 @@
 package im.molly.monero
 
+import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
@@ -19,16 +20,20 @@ object MoneroCurrency {
             }
         }
 
-        private val numberFormat = NumberFormat.getInstance(locale).apply {
+        private val numberFormat = (DecimalFormat.getInstance(locale) as DecimalFormat).apply {
             minimumFractionDigits = precision
+            isParseBigDecimal = true
         }
 
         open fun format(amount: MoneroAmount): String {
             return numberFormat.format(amount.xmr)
         }
 
+        /**
+         * @throw ParseException
+         */
         open fun parse(source: String): MoneroAmount {
-            TODO()
+            return numberFormat.parse(source)?.xmr ?: MoneroAmount.ZERO
         }
     }
 
@@ -59,7 +64,18 @@ object MoneroCurrency {
         return outputFormat.format(amount)
     }
 
-    fun format(amount: MoneroAmount, precision: Int): String {
-        return Format(precision = precision).format(amount)
+    fun format(amount: MoneroAmount, precision: Int, appendSymbol: Boolean = false): String {
+        val formatted = Format(precision = precision).format(amount)
+        return if (appendSymbol) "$formatted $SYMBOL" else formatted
+    }
+
+    /**
+     * @throw ParseException
+     */
+    fun parse(source: String, outputFormat: Format = ExactFormat): MoneroAmount {
+        return outputFormat.parse(source)
     }
 }
+
+fun MoneroAmount.toFormattedString(precision: Int = 5, appendSymbol: Boolean = false): String =
+    MoneroCurrency.format(amount = this, precision = precision, appendSymbol = appendSymbol)

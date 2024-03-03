@@ -18,6 +18,8 @@ value class MoneroAmount(val atomicUnits: Long) : Parcelable {
     val xmr: BigDecimal
         get() = BigDecimal.valueOf(atomicUnits, ATOMIC_UNIT_SCALE)
 
+    val isZero: Boolean get() = atomicUnits == 0L
+
     override fun toString() = atomicUnits.toString()
 
     operator fun plus(other: MoneroAmount) =
@@ -38,6 +40,8 @@ inline val BigDecimal.xmr: MoneroAmount
         val atomicUnits = times(BigDecimal.TEN.pow(MoneroAmount.ATOMIC_UNIT_SCALE)).toLong()
         return MoneroAmount(atomicUnits)
     }
+
+inline val Number.xmr: MoneroAmount get() = (this as BigDecimal).xmr
 
 inline val Double.xmr: MoneroAmount get() = BigDecimal(this).xmr
 
