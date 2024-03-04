@@ -82,6 +82,7 @@ private fun walletUiState(
                         account.addresses.map { address ->
                             WalletAddress(
                                 address = address,
+                                enotes = ledger.enoteSet.filter { it.value.owner == address },
                                 used = address.isAddressUsed(ledger.transactions),
                                 isLastForAccount = address === account.addresses.last(),
                             )

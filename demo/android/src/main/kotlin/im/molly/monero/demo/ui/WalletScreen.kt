@@ -225,7 +225,7 @@ private fun WalletScreenLoaded(
                             ) {
                                 Text(
                                     text = "Create new account",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
                         }

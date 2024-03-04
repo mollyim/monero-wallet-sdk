@@ -10,8 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import im.molly.monero.calculateBalance
 import im.molly.monero.demo.data.model.WalletAddress
 import im.molly.monero.demo.ui.component.CopyableText
+import im.molly.monero.toFormattedString
 
 @Composable
 fun AddressCardExpanded(
@@ -25,29 +27,45 @@ fun AddressCardExpanded(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
+        val enotesCount = walletAddress.enotes.count()
+        val unspentCount = walletAddress.enotes.count { !it.value.spent }
+        val totalAmount = walletAddress.enotes.calculateBalance().totalAmount
+
         with(walletAddress.address) {
-            val used = walletAddress.used || isPrimaryAddress
-            if (isPrimaryAddress) {
-                Text(
-                    text = "Account #$accountIndex Primary address",
-                    style = MaterialTheme.typography.labelMedium,
-                )
+            val addressText = if (isPrimaryAddress) {
+                "Account #$accountIndex Primary address"
             } else {
-                Text(
-                    text = "Account #$accountIndex Subaddress #$subAddressIndex",
-                    style = MaterialTheme.typography.labelMedium,
-                )
+                "Account #$accountIndex Subaddress #$subAddressIndex"
             }
+
+            val markedUsed = walletAddress.used || isPrimaryAddress
+
+            Text(
+                text = addressText,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Total Balance: ${totalAmount.toFormattedString(appendSymbol = true)}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = "Total owned enotes: $enotesCount",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = "Unspent enotes: $unspentCount",
+                style = MaterialTheme.typography.bodySmall,
+            )
             CopyableText(
                 text = address,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = if (used) Modifier.alpha(0.5f) else Modifier,
+                modifier = if (markedUsed) Modifier.alpha(0.5f) else Modifier,
             )
             if (walletAddress.isLastForAccount) {
                 TextButton(onClick = onCreateSubAddressClick) {
                     Text(
                         text = "Add subaddress",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
