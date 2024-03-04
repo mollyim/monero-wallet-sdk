@@ -428,6 +428,13 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
   for (const auto& pair: upds) {
     const auto& upd = pair.second.m_pd;
     bool double_spend_seen = pair.second.m_double_spend_seen; // Unused
+    // Skip unconfirmed transfers sent to our own wallet.
+    auto it = std::find_if(
+        utxs.begin(), utxs.end(),
+        [&](const std::pair<crypto::hash, wallet2::unconfirmed_transfer_details>& utx) {
+          return utx.first == upd.m_tx_hash;
+        });
+    if (it != utxs.end()) continue;
     // Denormalize individual amounts sent to a single subaddress in a single tx.
     for (uint64_t amount: upd.m_amounts) {
       snapshot.emplace_back(upd.m_tx_hash, TxInfo::INCOMING);
@@ -435,7 +442,6 @@ void Wallet::captureTxHistorySnapshot(std::vector<TxInfo>& snapshot) {
       recv.m_subaddress_major = upd.m_subaddr_index.major;
       recv.m_subaddress_minor = upd.m_subaddr_index.minor;
       recv.m_amount = amount;
-      recv.m_height = upd.m_block_height;
       recv.m_unlock_time = upd.m_unlock_time;
       recv.m_timestamp = upd.m_timestamp;
       recv.m_fee = upd.m_fee;

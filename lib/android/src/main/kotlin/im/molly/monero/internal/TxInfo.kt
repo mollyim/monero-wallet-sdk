@@ -117,12 +117,12 @@ private fun List<TxInfo>.createTransaction(
         else blockchainContext.resolveUnlockTime(unlockTime)
     }
 
-    val receivedEnotes = enoteByTxId.getOrDefault(txHash, emptyList()).toSet()
+    val receivedEnotes = enoteByTxId.getOrDefault(txHash, emptyList())
 
     val outTxs = filter { !it.incoming }
 
     val spentKeyImages = outTxs.mapNotNull { it.keyImage }
-    val sentEnotes = enoteByKeyImage.filterKeys { ki -> ki in spentKeyImages }.values.toSet()
+    val sentEnotes = enoteByKeyImage.filterKeys { ki -> ki in spentKeyImages }.values
 
     val payments = outTxs.mapNotNull { it.toPaymentDetail() }
 
@@ -131,8 +131,8 @@ private fun List<TxInfo>.createTransaction(
         state = determineTxState(),
         network = blockchainContext.network,
         timeLock = timeLock,
-        sent = sentEnotes,
-        received = receivedEnotes,
+        sent = sentEnotes.toSet(),
+        received = receivedEnotes.toSet(),
         payments = payments,
         fee = MoneroAmount(atomicUnits = fee),
         change = MoneroAmount(atomicUnits = change),

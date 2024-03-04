@@ -176,6 +176,10 @@ internal class WalletNative private constructor(
     }
 
     override fun createPayment(request: PaymentRequest, callback: ITransferCallback) {
+        if (request.paymentDetails.any { it.recipientAddress.network != network }) {
+            callback.onUnexpectedError("Recipient address is on a different network")
+            return
+        }
         scope.launch(singleThreadedDispatcher) {
             val (amounts, addresses) = request.paymentDetails.map {
                 it.amount.atomicUnits to it.recipientAddress.address
