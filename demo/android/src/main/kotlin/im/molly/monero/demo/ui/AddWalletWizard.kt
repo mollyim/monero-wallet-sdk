@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -88,7 +89,14 @@ fun AddWalletSecondStepRoute(
 ) {
     val context = LocalContext.current
 
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val remoteNodes by viewModel.currentRemoteNodes.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState) {
+        if (uiState.walletAdded) {
+            onNavigateToHome()
+        }
+    }
 
     SecondStepScreen(
         showRestoreOptions = showRestoreOptions,
@@ -100,15 +108,10 @@ fun AddWalletSecondStepRoute(
             } else {
                 viewModel.createWallet()
             }
-            onNavigateToHome()
         },
-        walletName = viewModel.walletName,
-        network = viewModel.network,
-        secretSpendKeyHex = viewModel.secretSpendKeyHex,
+        uiState = uiState,
         secretSpendKeyHexError = !viewModel.validateSecretSpendKeyHex(),
-        creationDate = viewModel.creationDate,
         creationDateError = !viewModel.validateCreationDate(),
-        restoreHeight = viewModel.restoreHeight,
         restoreHeightError = !viewModel.validateRestoreHeight(),
         onWalletNameChanged = { name -> viewModel.updateWalletName(name) },
         onNetworkChanged = { network -> viewModel.toggleSelectedNetwork(network) },
@@ -133,14 +136,10 @@ private fun SecondStepScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onCreateClick: () -> Unit = {},
-    walletName: String,
-    secretSpendKeyHex: String,
-    secretSpendKeyHexError: Boolean,
-    creationDate: String,
-    creationDateError: Boolean,
-    restoreHeight: String,
-    restoreHeightError: Boolean,
-    network: MoneroNetwork,
+    uiState: AddWalletUiState,
+    secretSpendKeyHexError: Boolean = false,
+    creationDateError: Boolean = false,
+    restoreHeightError: Boolean = false,
     onWalletNameChanged: (String) -> Unit = {},
     onNetworkChanged: (MoneroNetwork) -> Unit = {},
     onSecretSpendKeyHexChanged: (String) -> Unit = {},
@@ -172,10 +171,11 @@ private fun SecondStepScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             OutlinedTextField(
-                value = walletName,
+                value = uiState.walletName,
                 label = { Text("Wallet name") },
                 onValueChange = onWalletNameChanged,
                 singleLine = true,
+                enabled = !uiState.isInProgress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp),
@@ -183,10 +183,11 @@ private fun SecondStepScreen(
             SelectListBox(
                 label = "Network",
                 options = MoneroNetwork.entries.associateWith { it.name },
-                selectedOption = network,
+                selectedOption = uiState.network,
                 onOptionClick = {
                     onNetworkChanged(it)
                 },
+                enabled = !uiState.isInProgress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
@@ -194,31 +195,36 @@ private fun SecondStepScreen(
             Text(
                 text = "Remote node selection",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp),
+                modifier = (if (uiState.isInProgress) Modifier.alpha(0.3f) else Modifier)
+                    .padding(16.dp),
             )
             MultiSelectRemoteNodeList(
                 remoteNodes = remoteNodes,
                 selectedIds = selectedRemoteNodeIds,
+                enabled = !uiState.isInProgress,
                 modifier = Modifier.padding(start = 16.dp),
             )
             if (showRestoreOptions) {
                 Text(
                     text = "Deterministic wallet recovery",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = (if (uiState.isInProgress) Modifier.alpha(0.3f) else Modifier)
+                        .padding(16.dp),
                 )
                 OutlinedTextField(
-                    value = secretSpendKeyHex,
+                    value = uiState.secretSpendKeyHex,
                     label = { Text("Secret spend key") },
                     onValueChange = onSecretSpendKeyHexChanged,
                     singleLine = true,
                     isError = secretSpendKeyHexError,
+                    enabled = !uiState.isInProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp),
                 )
                 TextButton(
                     onClick = { showMnemonicDialog = true },
+                    enabled = !uiState.isInProgress,
                     modifier = Modifier
                         .padding(start = 16.dp),
                 ) {
@@ -230,23 +236,23 @@ private fun SecondStepScreen(
                     modifier = Modifier.padding(16.dp),
                 )
                 OutlinedTextField(
-                    value = creationDate,
+                    value = uiState.creationDate,
                     label = { Text("Wallet creation date") },
                     onValueChange = onCreationDateChanged,
                     singleLine = true,
                     isError = creationDateError,
-                    enabled = restoreHeight.isEmpty(),
+                    enabled = uiState.restoreHeight.isEmpty() && !uiState.isInProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp),
                 )
                 OutlinedTextField(
-                    value = restoreHeight,
+                    value = uiState.restoreHeight,
                     label = { Text("Restore height") },
                     onValueChange = onRestoreHeightChanged,
                     singleLine = true,
                     isError = restoreHeightError,
-                    enabled = creationDate.isEmpty(),
+                    enabled = uiState.creationDate.isEmpty() && !uiState.isInProgress,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -268,10 +274,10 @@ private fun SecondStepScreen(
                             onCreateClick()
                         }
                     },
-                    enabled = validInput,
+                    enabled = validInput && !uiState.isInProgress,
                     modifier = Modifier.padding(16.dp),
                 ) {
-                    Text("Finish")
+                    Text(if (uiState.isInProgress) "Adding wallet..." else "Finish")
                 }
             }
         }
@@ -336,14 +342,11 @@ private fun CreateWalletScreenPreview() {
     AppTheme {
         SecondStepScreen(
             showRestoreOptions = false,
-            walletName = "Personal",
-            network = DefaultMoneroNetwork,
-            secretSpendKeyHex = "d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706",
-            secretSpendKeyHexError = false,
-            creationDate = "",
-            creationDateError = false,
-            restoreHeight = "",
-            restoreHeightError = false,
+            uiState = AddWalletUiState(
+                walletName = "Personal",
+                network = DefaultMoneroNetwork,
+                secretSpendKeyHex = "d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706",
+            ),
             remoteNodes = listOf(RemoteNode.EMPTY),
             selectedRemoteNodeIds = mutableMapOf(),
         )
@@ -356,14 +359,11 @@ private fun RestoreWalletScreenPreview() {
     AppTheme {
         SecondStepScreen(
             showRestoreOptions = true,
-            walletName = "Personal",
-            network = DefaultMoneroNetwork,
-            secretSpendKeyHex = "d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706",
-            secretSpendKeyHexError = false,
-            creationDate = "",
-            creationDateError = false,
-            restoreHeight = "",
-            restoreHeightError = false,
+            uiState = AddWalletUiState(
+                walletName = "Personal",
+                network = DefaultMoneroNetwork,
+                secretSpendKeyHex = "d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706",
+            ),
             remoteNodes = listOf(RemoteNode.EMPTY),
             selectedRemoteNodeIds = mutableMapOf(),
         )

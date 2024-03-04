@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.tooling.preview.Preview
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.ui.theme.AppIcons
@@ -14,6 +15,7 @@ fun MultiSelectRemoteNodeList(
     remoteNodes: List<RemoteNode>,
     selectedIds: MutableMap<Long?, Boolean>,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Column(
         modifier = modifier,
@@ -27,6 +29,7 @@ fun MultiSelectRemoteNodeList(
                     onCheckedChange = { checked ->
                         selectedIds[remoteNode.id] = checked
                     },
+                    enabled = enabled,
                 )
             }
         } else {
@@ -63,17 +66,29 @@ private fun RemoteNodeItem(
     checked: Boolean = false,
     showCheckbox: Boolean = false,
     showMenu: Boolean = false,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit = {},
     onEditClick: (RemoteNode) -> Unit = {},
     onDeleteClick: (RemoteNode) -> Unit = {},
 ) {
     ListItem(
-        headlineContent = { Text(remoteNode.uri.toString()) },
-        overlineContent = { Text(remoteNode.network.name.uppercase()) },
+        headlineContent = {
+            Text(
+                text = remoteNode.uri.toString(),
+                modifier = (if (enabled) Modifier else Modifier.alpha(0.3f)),
+            )
+        },
+        overlineContent = {
+            Text(
+                text = remoteNode.network.name.uppercase(),
+                modifier = (if (enabled) Modifier else Modifier.alpha(0.3f)),
+            )
+        },
         trailingContent = {
             if (showCheckbox) {
                 Checkbox(
                     checked = checked,
+                    enabled = enabled,
                     onCheckedChange = onCheckedChange,
                 )
             }

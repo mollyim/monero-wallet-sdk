@@ -49,7 +49,11 @@ fun EditableRecipientList(
                     onRecipientChange(updatedList)
                 },
                 onDeleteItemClick = {
-                    updatedList.removeAt(index)
+                    if (updatedList.size > 1) {
+                        updatedList.removeAt(index)
+                    } else {
+                        updatedList[0] = "" to ""
+                    }
                     onRecipientChange(updatedList)
                 }
             )
@@ -104,7 +108,7 @@ fun PaymentDetailItem(
         )
         IconButton(
             onClick = onDeleteItemClick,
-            enabled = enabled && itemIndex > 0,
+            enabled = enabled,
             modifier = Modifier.padding(top = 12.dp),
         ) {
             Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")

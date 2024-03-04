@@ -45,7 +45,7 @@ fun AddressCardExpanded(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = "Total Balance: ${totalAmount.toFormattedString(appendSymbol = true)}",
+                text = "Total balance: ${totalAmount.toFormattedString(appendSymbol = true)}",
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
