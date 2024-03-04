@@ -49,20 +49,9 @@ class AddWalletViewModel(
     private fun getSelectedRemoteNodeIds() =
         selectedRemoteNodes.filterValues { checked -> checked }.keys.filterNotNull()
 
-    init {
-        val previousNodes = mutableSetOf<RemoteNode>()
-
-        currentRemoteNodes.onEach { remoteNodes ->
-            val unseenNodes = remoteNodes.filter { it !in previousNodes }
-            unseenNodes.forEach { node ->
-                selectedRemoteNodes[node.id] = true
-                previousNodes.add(node)
-            }
-        }.launchIn(viewModelScope)
-    }
-
     fun toggleSelectedNetwork(network: MoneroNetwork) {
         viewModelState.update { it.copy(network = network) }
+        selectedRemoteNodes.clear()
     }
 
     fun updateWalletName(name: String) {

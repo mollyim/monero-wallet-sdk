@@ -149,7 +149,10 @@ class RemoteNodeClient private constructor(
 
             delay(retryBackoff.waitTime(retryCount))
 
+            logger.d("HTTP: $method $uri")
+
             val response = try {
+
                 val request = requestBuilder.url(uri.toString()).build()
 
                 httpClient.newCall(request).await()
