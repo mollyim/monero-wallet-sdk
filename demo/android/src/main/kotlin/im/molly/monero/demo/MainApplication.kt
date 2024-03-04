@@ -12,7 +12,6 @@ import im.molly.monero.isIsolatedProcess
 val Context.preferencesDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class MainApplication : Application() {
-
     override fun onCreate() {
         super.onCreate()
         StrictMode.setVmPolicy(
@@ -23,7 +22,12 @@ class MainApplication : Application() {
         if (isIsolatedProcess()) {
             return
         }
-        AppModule.provide(this)
+        AppModule.provide(
+            application = this,
+            populateInitialData = { db ->
+                addDefaultRemoteNodes(db)
+            },
+        )
         SyncService.start(this)
     }
 }

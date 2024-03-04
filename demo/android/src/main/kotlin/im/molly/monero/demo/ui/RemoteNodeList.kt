@@ -75,6 +75,7 @@ private fun RemoteNodeItem(
         headlineContent = {
             Text(
                 text = remoteNode.uri.toString(),
+                style = MaterialTheme.typography.labelLarge,
                 modifier = (if (enabled) Modifier else Modifier.alpha(0.3f)),
             )
         },
