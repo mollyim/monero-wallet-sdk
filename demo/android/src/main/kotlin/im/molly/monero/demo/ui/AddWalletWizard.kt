@@ -1,5 +1,6 @@
 package im.molly.monero.demo.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -8,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -84,6 +86,8 @@ fun AddWalletSecondStepRoute(
     onNavigateToHome: () -> Unit,
     viewModel: AddWalletViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+
     val remoteNodes by viewModel.currentRemoteNodes.collectAsStateWithLifecycle()
 
     SecondStepScreen(
@@ -109,6 +113,12 @@ fun AddWalletSecondStepRoute(
         onWalletNameChanged = { name -> viewModel.updateWalletName(name) },
         onNetworkChanged = { network -> viewModel.toggleSelectedNetwork(network) },
         onSecretSpendKeyHexChanged = { value -> viewModel.updateSecretSpendKeyHex(value) },
+        onRecoverFromMnemonic = { words ->
+            val success = viewModel.recoverFromMnemonic(words)
+            if (!success) {
+                Toast.makeText(context, "Invalid seed", Toast.LENGTH_LONG).show()
+            }
+        },
         onCreationDateChanged = { value -> viewModel.updateCreationDate(value) },
         onRestoreHeightChanged = { value -> viewModel.updateRestoreHeight(value) },
         remoteNodes = remoteNodes,
@@ -134,12 +144,14 @@ private fun SecondStepScreen(
     onWalletNameChanged: (String) -> Unit = {},
     onNetworkChanged: (MoneroNetwork) -> Unit = {},
     onSecretSpendKeyHexChanged: (String) -> Unit = {},
+    onRecoverFromMnemonic: (String) -> Unit = {},
     onCreationDateChanged: (String) -> Unit = {},
     onRestoreHeightChanged: (String) -> Unit = {},
     remoteNodes: List<RemoteNode>,
     selectedRemoteNodeIds: MutableMap<Long?, Boolean> = mutableMapOf(),
 ) {
     var showOffLineConfirmationDialog by remember { mutableStateOf(false) }
+    var showMnemonicDialog by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
         Toolbar(
@@ -205,6 +217,13 @@ private fun SecondStepScreen(
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp),
                 )
+                TextButton(
+                    onClick = { showMnemonicDialog = true },
+                    modifier = Modifier
+                        .padding(start = 16.dp),
+                ) {
+                    Text("Recover from 25-word mnemonic")
+                }
                 Text(
                     text = "Synchronization",
                     style = MaterialTheme.typography.titleMedium,
@@ -255,6 +274,37 @@ private fun SecondStepScreen(
                     Text("Finish")
                 }
             }
+        }
+
+        if (showMnemonicDialog) {
+            var words by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showMnemonicDialog = false },
+                title = { Text("Enter your recovery phrase") },
+                text = {
+                    OutlinedTextField(
+                        value = words,
+                        onValueChange = { words = it },
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onRecoverFromMnemonic(words)
+                            showMnemonicDialog = false
+                        },
+                        enabled = words.isNotEmpty(),
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showMnemonicDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         if (showOffLineConfirmationDialog) {

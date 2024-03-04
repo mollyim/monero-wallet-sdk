@@ -12,7 +12,9 @@ import im.molly.monero.demo.data.RemoteNodeRepository
 import im.molly.monero.demo.data.WalletRepository
 import im.molly.monero.demo.data.model.DefaultMoneroNetwork
 import im.molly.monero.demo.data.model.RemoteNode
+import im.molly.monero.mnemonics.MoneroMnemonic
 import im.molly.monero.util.parseHex
+import im.molly.monero.util.toHex
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
@@ -80,6 +82,16 @@ class AddWalletViewModel(
 
     fun updateSecretSpendKeyHex(value: String) {
         this.secretSpendKeyHex = value
+    }
+
+    fun recoverFromMnemonic(words: String): Boolean {
+        MoneroMnemonic.recoverEntropy(words)?.use { mnemonicCode ->
+            val secretKey = SecretKey(mnemonicCode.entropy)
+            secretSpendKeyHex = secretKey.bytes.toHex()
+            secretKey.destroy()
+            return true
+        }
+        return false
     }
 
     fun updateCreationDate(value: String) {
