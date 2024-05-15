@@ -2,12 +2,16 @@ package im.molly.monero
 
 import android.os.ParcelFileDescriptor
 import androidx.annotation.GuardedBy
+import im.molly.monero.internal.HttpRequest
+import im.molly.monero.internal.HttpResponse
+import im.molly.monero.internal.IHttpRequestCallback
+import im.molly.monero.internal.IHttpRpcClient
 import im.molly.monero.internal.TxInfo
 import kotlinx.coroutines.*
 import java.io.Closeable
 import java.time.Instant
-import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.coroutines.CoroutineContext
@@ -15,7 +19,7 @@ import kotlin.coroutines.CoroutineContext
 internal class WalletNative private constructor(
     private val network: MoneroNetwork,
     private val storageAdapter: IStorageAdapter,
-    private val remoteNodeClient: IRemoteNodeClient?,
+    private val rpcClient: IHttpRpcClient?,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher,
 ) : IWallet.Stub(), Closeable {
@@ -25,7 +29,7 @@ internal class WalletNative private constructor(
         suspend fun fullNode(
             networkId: Int,
             storageAdapter: IStorageAdapter,
-            remoteNodeClient: IRemoteNodeClient? = null,
+            rpcClient: IHttpRpcClient? = null,
             secretSpendKey: SecretKey? = null,
             restorePoint: Long? = null,
             coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
@@ -33,7 +37,7 @@ internal class WalletNative private constructor(
         ) = WalletNative(
             network = MoneroNetwork.fromId(networkId),
             storageAdapter = storageAdapter,
-            remoteNodeClient = remoteNodeClient,
+            rpcClient = rpcClient,
             scope = CoroutineScope(coroutineContext),
             ioDispatcher = ioDispatcher,
         ).apply {
@@ -381,8 +385,8 @@ internal class WalletNative private constructor(
      */
     @CalledByNative
     private fun callRemoteNode(
-        method: String?,
-        path: String?,
+        method: String,
+        path: String,
         header: String?,
         body: ByteArray?,
     ): HttpResponse? = runBlocking {
@@ -390,8 +394,9 @@ internal class WalletNative private constructor(
             if (!requestsAllowed) {
                 return@runBlocking null
             }
+            val httpRequest = HttpRequest(method, path, header, body)
             pendingRequest = async {
-                remoteNodeClient?.request(HttpRequest(method, path, header, body))
+                rpcClient?.newCall(httpRequest)
             }
         }
         try {
@@ -408,6 +413,33 @@ internal class WalletNative private constructor(
             pendingRequest = null
         }
     }
+
+    private val callCounter = AtomicInteger()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun IHttpRpcClient.newCall(request: HttpRequest): HttpResponse? =
+        suspendCancellableCoroutine { continuation ->
+            val callback = object : IHttpRequestCallback.Stub() {
+                override fun onResponse(response: HttpResponse) {
+                    continuation.resume(response) {
+                        response.close()
+                    }
+                }
+
+                override fun onError() {
+                    continuation.resume(null) {}
+                }
+
+                override fun onRequestCanceled() {
+                    continuation.resume(null) {}
+                }
+            }
+            val callId = callCounter.incrementAndGet()
+            callAsync(request, callback, callId)
+            continuation.invokeOnCancellation {
+                cancelAsync(callId)
+            }
+        }
 
     override fun close() {
         scope.cancel()

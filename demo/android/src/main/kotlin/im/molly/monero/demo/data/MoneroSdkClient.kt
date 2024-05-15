@@ -52,7 +52,7 @@ class MoneroSdkClient(private val context: Context) {
         httpClient: OkHttpClient,
     ): MoneroWallet {
         val dataStore = WalletDataStoreFile(filename)
-        val client = RemoteNodeClient.forNetwork(
+        val client = MoneroNodeClient.forNetwork(
             network = network,
             remoteNodes = remoteNodes,
             loadBalancerRule = RoundRobinRule(),

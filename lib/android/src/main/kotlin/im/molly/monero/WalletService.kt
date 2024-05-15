@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.IBinder
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import im.molly.monero.internal.IHttpRpcClient
 import kotlinx.coroutines.*
 
 class WalletService : LifecycleService() {
@@ -43,13 +44,13 @@ internal class WalletServiceImpl(
     override fun createWallet(
         config: WalletConfig,
         storage: IStorageAdapter,
-        client: IRemoteNodeClient?,
+        rpcClient: IHttpRpcClient?,
         callback: IWalletServiceCallbacks?,
     ) {
         serviceScope.launch {
             val secretSpendKey = randomSecretKey()
             val wallet = secretSpendKey.use { secret ->
-                createOrRestoreWallet(config, storage, client, secret)
+                createOrRestoreWallet(config, storage, rpcClient, secret)
             }
             callback?.onWalletResult(wallet)
         }
@@ -58,14 +59,14 @@ internal class WalletServiceImpl(
     override fun restoreWallet(
         config: WalletConfig,
         storage: IStorageAdapter,
-        client: IRemoteNodeClient?,
+        rpcClient: IHttpRpcClient?,
         callback: IWalletServiceCallbacks?,
         secretSpendKey: SecretKey,
         restorePoint: Long,
     ) {
         serviceScope.launch {
             val wallet = secretSpendKey.use { secret ->
-                createOrRestoreWallet(config, storage, client, secret, restorePoint)
+                createOrRestoreWallet(config, storage, rpcClient, secret, restorePoint)
             }
             callback?.onWalletResult(wallet)
         }
@@ -74,14 +75,14 @@ internal class WalletServiceImpl(
     override fun openWallet(
         config: WalletConfig,
         storage: IStorageAdapter,
-        client: IRemoteNodeClient?,
+        rpcClient: IHttpRpcClient?,
         callback: IWalletServiceCallbacks?,
     ) {
         serviceScope.launch {
             val wallet = WalletNative.fullNode(
                 networkId = config.networkId,
                 storageAdapter = storage,
-                remoteNodeClient = client,
+                rpcClient = rpcClient,
                 coroutineContext = serviceScope.coroutineContext,
             )
             callback?.onWalletResult(wallet)
@@ -91,14 +92,14 @@ internal class WalletServiceImpl(
     private suspend fun createOrRestoreWallet(
         config: WalletConfig,
         storage: IStorageAdapter,
-        client: IRemoteNodeClient?,
+        rpcClient: IHttpRpcClient?,
         secretSpendKey: SecretKey,
         restorePoint: Long? = null,
     ): IWallet {
         return WalletNative.fullNode(
             networkId = config.networkId,
             storageAdapter = storage,
-            remoteNodeClient = client,
+            rpcClient = rpcClient,
             secretSpendKey = secretSpendKey,
             restorePoint = restorePoint,
             coroutineContext = serviceScope.coroutineContext,

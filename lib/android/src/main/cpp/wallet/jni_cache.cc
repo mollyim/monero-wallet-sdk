@@ -24,7 +24,7 @@ jmethodID ParcelFd_detachFd;
 ScopedJavaGlobalRef<jclass> StringClass;
 
 void InitializeJniCache(JNIEnv* env) {
-  jclass httpResponse = GetClass(env, "im/molly/monero/HttpResponse");
+  jclass httpResponse = GetClass(env, "im/molly/monero/internal/HttpResponse");
   jclass iTransferCallback = GetClass(env, "im/molly/monero/ITransferCallback");
   jclass logger = GetClass(env, "im/molly/monero/Logger");
   jclass txInfo = GetClass(env, "im/molly/monero/internal/TxInfo");
@@ -63,7 +63,7 @@ void InitializeJniCache(JNIEnv* env) {
   WalletNative_callRemoteNode = GetMethodId(
       env, walletNative,
       "callRemoteNode",
-      "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)Lim/molly/monero/HttpResponse;");
+      "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)Lim/molly/monero/internal/HttpResponse;");
   WalletNative_onRefresh = GetMethodId(
       env, walletNative,
       "onRefresh", "(IJZ)V");

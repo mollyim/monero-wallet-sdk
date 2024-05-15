@@ -51,13 +51,13 @@ class WalletProvider private constructor(
     suspend fun createNewWallet(
         network: MoneroNetwork,
         dataStore: WalletDataStore? = null,
-        client: RemoteNodeClient? = null,
+        client: MoneroNodeClient? = null,
     ): MoneroWallet {
         require(client == null || client.network == network)
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.createWallet(
-                buildConfig(network), storageAdapter, client,
+                buildConfig(network), storageAdapter, client?.httpRpcClient,
                 WalletResultCallback(continuation),
             )
         }
@@ -67,7 +67,7 @@ class WalletProvider private constructor(
     suspend fun restoreWallet(
         network: MoneroNetwork,
         dataStore: WalletDataStore? = null,
-        client: RemoteNodeClient? = null,
+        client: MoneroNodeClient? = null,
         secretSpendKey: SecretKey,
         restorePoint: RestorePoint,
     ): MoneroWallet {
@@ -78,7 +78,7 @@ class WalletProvider private constructor(
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.restoreWallet(
-                buildConfig(network), storageAdapter, client,
+                buildConfig(network), storageAdapter, client?.httpRpcClient,
                 WalletResultCallback(continuation),
                 secretSpendKey,
                 restorePoint.toLong(),
@@ -90,13 +90,13 @@ class WalletProvider private constructor(
     suspend fun openWallet(
         network: MoneroNetwork,
         dataStore: WalletDataStore,
-        client: RemoteNodeClient? = null,
+        client: MoneroNodeClient? = null,
     ): MoneroWallet {
         require(client == null || client.network == network)
         val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.openWallet(
-                buildConfig(network), storageAdapter, client,
+                buildConfig(network), storageAdapter, client?.httpRpcClient,
                 WalletResultCallback(continuation),
             )
         }

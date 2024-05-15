@@ -19,7 +19,7 @@ import kotlin.time.Duration.Companion.seconds
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
     private val storageAdapter: StorageAdapter,
-    val remoteNodeClient: RemoteNodeClient?,
+    val moneroNodeClient: MoneroNodeClient?,
 ) : AutoCloseable {
 
     private val logger = loggerFor<MoneroWallet>()

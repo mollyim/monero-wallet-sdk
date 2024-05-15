@@ -51,8 +51,8 @@ class WalletRepository(
 
     fun getWalletIdList() = walletDataSource.readWalletIdList()
 
-    fun getRemoteClients(): Flow<List<RemoteNodeClient>> =
-        getWalletIdList().map { it.mapNotNull { walletId -> getWallet(walletId).remoteNodeClient } }
+    fun getMoneroNodeClients(): Flow<List<MoneroNodeClient>> =
+        getWalletIdList().map { it.mapNotNull { walletId -> getWallet(walletId).moneroNodeClient } }
 
     fun getWalletConfig(walletId: Long) = walletDataSource.readWalletConfig(walletId)
 
