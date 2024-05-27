@@ -101,7 +101,6 @@ class Wallet : i_wallet2_callback {
   std::unique_ptr<PendingTransfer> createPayment(
       const std::vector<std::string>& addresses,
       const std::vector<uint64_t>& amounts,
-      uint64_t time_lock,
       int priority,
       uint32_t account_index,
       const std::set<uint32_t>& subaddr_indexes);
@@ -175,7 +174,7 @@ class Wallet : i_wallet2_callback {
     handleNewBlock(height, block.timestamp);
   }
 
-  void on_reorg(uint64_t height) override {
+  void on_reorg(uint64_t height, uint64_t blocks_detached, size_t transfers_detached) override {
     handleReorgEvent(height);
   }
 

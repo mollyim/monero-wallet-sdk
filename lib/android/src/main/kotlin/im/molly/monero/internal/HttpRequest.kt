@@ -12,7 +12,7 @@ data class HttpRequest(
 ) : Parcelable {
 
     override fun toString(): String =
-        "HttpRequest(method=$method, path$path, headers=${header?.length}, body=${bodyBytes?.size})"
+        "HttpRequest(method=$method, path=$path, headers=${header?.length}, body=${bodyBytes?.size})"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -168,7 +168,6 @@ std::string Wallet::addSubaddressInternal(const cryptonote::subaddress_index& in
 std::unique_ptr<PendingTransfer> Wallet::createPayment(
     const std::vector<std::string>& addresses,
     const std::vector<uint64_t>& amounts,
-    uint64_t time_lock,
     int priority,
     uint32_t account_index,
     const std::set<uint32_t>& subaddr_indexes) {
@@ -196,7 +195,6 @@ std::unique_ptr<PendingTransfer> Wallet::createPayment(
   auto ptxs = m_wallet.create_transactions_2(
       dsts,
       m_wallet.get_min_ring_size() - 1,
-      time_lock,
       priority,
       {}, /* extra */
       account_index,
@@ -847,7 +845,6 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
     jlong handle,
     jobjectArray j_addresses,
     jlongArray j_amounts,
-    jlong time_lock,
     jint priority,
     jint account_index,
     jintArray j_subaddr_indexes,
@@ -865,7 +862,7 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
     pending_transfer = wallet->createPayment(
         addresses,
         {amounts.begin(), amounts.end()},
-        time_lock, priority,
+        priority,
         account_index,
         {subaddr_indexes.begin(), subaddr_indexes.end()});
 //  } catch (error::daemon_busy& e) {
