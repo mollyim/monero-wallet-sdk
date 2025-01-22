@@ -104,10 +104,6 @@ set(WALLET2_OVERRIDES
     perf_timer_override.cc
 )
 
-set(WALLET2_PRECOMPILED_HEADERS
-    boringssl_compat.h
-)
-
 set(WALLET2_INCLUDES
     contrib/epee/include
     external
@@ -135,11 +131,7 @@ add_library(
     wallet2 STATIC ${WALLET2_SOURCES} ${WALLET2_OVERRIDES}
 )
 
-target_precompile_headers(
-    wallet2
-    PRIVATE
-      "${WALLET2_PRECOMPILED_HEADERS}"
-)
+target_compile_options(wallet2 PRIVATE -include "${CMAKE_CURRENT_LIST_DIR}/include/boringssl_compat.h")
 
 target_include_directories(
     wallet2
