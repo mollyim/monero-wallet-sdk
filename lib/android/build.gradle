@@ -25,7 +25,7 @@ protobuf {
 android {
     namespace = "im.molly.monero"
 
-    buildToolsVersion '33.0.1'
+    buildToolsVersion '35.0.1'
     compileSdk 33
 
     ndkVersion '23.1.7779620'
