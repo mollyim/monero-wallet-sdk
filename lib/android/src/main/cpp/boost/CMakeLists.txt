@@ -3,7 +3,7 @@ include(ExternalProject)
 # The source code of Boost
 # From https://www.boost.org/users/download/
 set(BOOST_SOURCE
-    "https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.bz2"
+    "https://archives.boost.io/release/1.78.0/source/boost_1_78_0.tar.bz2"
     CACHE STRING "Boost source file to use.")
 set(BOOST_SHA256
     "8681f175d4bdb26c52222665793eef08490d7758529330f98d3b29dd0735bccc"
