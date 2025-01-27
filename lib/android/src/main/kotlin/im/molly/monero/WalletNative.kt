@@ -25,8 +25,7 @@ internal class WalletNative private constructor(
 ) : IWallet.Stub(), Closeable {
 
     companion object {
-        // TODO: Find better name because this is a local synchronization wallet, not a full node wallet
-        suspend fun fullNode(
+        suspend fun localSyncWallet(
             networkId: Int,
             storageAdapter: IStorageAdapter,
             rpcClient: IHttpRpcClient? = null,

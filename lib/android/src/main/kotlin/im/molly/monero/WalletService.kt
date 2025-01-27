@@ -79,7 +79,7 @@ internal class WalletServiceImpl(
         callback: IWalletServiceCallbacks?,
     ) {
         serviceScope.launch {
-            val wallet = WalletNative.fullNode(
+            val wallet = WalletNative.localSyncWallet(
                 networkId = config.networkId,
                 storageAdapter = storage,
                 rpcClient = rpcClient,
@@ -96,7 +96,7 @@ internal class WalletServiceImpl(
         secretSpendKey: SecretKey,
         restorePoint: Long? = null,
     ): IWallet {
-        return WalletNative.fullNode(
+        return WalletNative.localSyncWallet(
             networkId = config.networkId,
             storageAdapter = storage,
             rpcClient = rpcClient,
