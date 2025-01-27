@@ -12,6 +12,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
+    versionCatalogs {
+        testLibs {
+            from(files('gradle/test-libs.versions.toml'))
+        }
+    }
 }
 
 includeProject(':lib', 'lib/android')

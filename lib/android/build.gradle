@@ -1,26 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'org.jetbrains.kotlin.android'
 apply plugin: 'org.jetbrains.kotlin.plugin.parcelize'
-apply plugin: 'com.google.protobuf'
 //apply from: 'deploy.gradle'   // FIXME
-
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.20.1'
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.builtins {
-                java {
-                    option "lite"
-                }
-                kotlin {
-                    option "lite"
-                }
-            }
-        }
-    }
-}
 
 android {
     namespace = "im.molly.monero"
@@ -97,46 +78,24 @@ android {
 }
 
 dependencies {
-    api 'com.squareup.okhttp3:okhttp:4.10.0'
+    api platform(libs.okhttp.bom)
+    api libs.okhttp
 
-    implementation 'androidx.core:core-ktx:1.9.0'
-//    implementation 'androidx.appcompat:appcompat:1.3.0'
-//    implementation 'com.google.android.material:material:1.4.0'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
-    implementation 'com.google.protobuf:protobuf-kotlin-lite:3.20.1'
-    implementation 'androidx.datastore:datastore-core:1.0.0'
-    implementation 'androidx.lifecycle:lifecycle-service:2.5.1'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+    implementation libs.core.ktx
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.lifecycle.service
 
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation "com.google.truth:truth:1.1.3"
-    testImplementation "io.mockk:mockk:1.12.5"
+    testImplementation testLibs.junit4
+    testImplementation testLibs.mockk
+    testImplementation testLibs.truth
 
-//    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
-    // To use the androidx.test.core APIs
-    androidTestImplementation "androidx.test:core:1.4.0"
-    // Kotlin extensions for androidx.test.core
-    androidTestImplementation "androidx.test:core-ktx:1.4.0"
-
-    // To use the androidx.test.espresso
-//    androidTestImplementation "androidx.test:espresso:espresso-core:3.4.0"
-
-    // To use the JUnit Extension APIs
-    androidTestImplementation "androidx.test.ext:junit:1.1.3"
-    // Kotlin extensions for androidx.test.ext.junit
-    androidTestImplementation "androidx.test.ext:junit-ktx:1.1.3"
-
-    // To use the Truth Extension APIs
-    androidTestImplementation "androidx.test.ext:truth:1.4.0"
-
-    // To use the androidx.test.runner APIs
-    androidTestImplementation "androidx.test:runner:1.4.0"
-
-    // To use android test orchestrator
-//    androidTestUtil "androidx.test:orchestrator:1.4.1"
-
-    androidTestImplementation "androidx.test:rules:1.4.0"
-
-    androidTestImplementation "io.mockk:mockk-android:1.12.5"
+    androidTestImplementation testLibs.androidx.test.core
+    androidTestImplementation testLibs.androidx.test.core.ktx
+    androidTestImplementation testLibs.androidx.test.ext.junit
+    androidTestImplementation testLibs.androidx.test.ext.junit.ktx
+    androidTestImplementation testLibs.androidx.test.ext.truth
+    androidTestImplementation testLibs.androidx.test.rules
+    androidTestImplementation testLibs.androidx.test.runner
+    androidTestImplementation testLibs.mockk
 }

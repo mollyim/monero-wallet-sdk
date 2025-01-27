@@ -5,9 +5,6 @@ apply plugin: 'com.google.devtools.ksp'
 ext {
     composeVersion = '1.6.2'
     composeCompilerVersion = '1.5.3'
-    lifecycleVersion = '2.7.0'
-    navigationVersion = '2.7.7'
-    roomVersion = '2.6.1'
 }
 
 android {
@@ -64,29 +61,27 @@ android {
 }
 
 dependencies {
-    implementation "androidx.core:core-ktx:1.9.0"
+    implementation libs.core.ktx
     implementation "androidx.compose.ui:ui:$composeVersion"
     implementation "androidx.compose.material3:material3:1.2.0"
     implementation "androidx.compose.ui:ui-tooling-preview:$composeVersion"
-    implementation "com.google.accompanist:accompanist-systemuicontroller:0.32.0"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion"
-    implementation "androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion"
-    implementation "androidx.lifecycle:lifecycle-service:$lifecycleVersion"
-    implementation "androidx.lifecycle:lifecycle-process:$lifecycleVersion"
-    implementation "androidx.activity:activity-compose:1.8.2"
-    implementation "androidx.datastore:datastore-preferences:1.0.0"
-    implementation "androidx.room:room-runtime:$roomVersion"
-    implementation "androidx.room:room-ktx:$roomVersion"
-    implementation "androidx.navigation:navigation-runtime-ktx:$navigationVersion"
-    implementation "androidx.navigation:navigation-compose:$navigationVersion"
-    ksp "androidx.room:room-compiler:$roomVersion"
+    implementation libs.accompanist.systemuicontroller
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.lifecycle.runtime.compose
+    implementation libs.androidx.lifecycle.service
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.datastore.preferences
+    implementation libs.androidx.room.runtime
+    implementation libs.androidx.room.ktx
+    implementation libs.androidx.navigation.compose
+    ksp libs.androidx.room.compiler
 
     implementation project(':lib')
 
-    testImplementation "junit:junit:4.13.2"
+    testImplementation testLibs.junit4
 
-    androidTestImplementation "androidx.test.ext:junit:1.1.5"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
+    androidTestImplementation testLibs.androidx.test.ext.junit
+    androidTestImplementation testLibs.androidx.test.espresso.core
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$composeVersion"
 
     debugImplementation "androidx.compose.ui:ui-tooling:$composeVersion"
