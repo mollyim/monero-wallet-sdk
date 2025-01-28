@@ -7,12 +7,12 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import im.molly.monero.demo.service.SyncService
 import im.molly.monero.demo.ui.DemoApp
 import im.molly.monero.demo.ui.theme.AppTheme
@@ -27,15 +27,19 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val systemUiController = rememberSystemUiController()
             val darkTheme = isSystemInDarkTheme()
 
-            DisposableEffect(systemUiController, darkTheme) {
-                systemUiController.setSystemBarsColor(
-                    color = Color.Transparent,
-                    darkIcons = !darkTheme,
+            DisposableEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        lightScrim,
+                        darkScrim,
+                    ) { darkTheme },
                 )
-
                 onDispose {}
             }
 
@@ -67,3 +71,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 }
+
+private val lightScrim = android.graphics.Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
+
+private val darkScrim = android.graphics.Color.argb(0x80, 0x1b, 0x1b, 0x1b)
