@@ -1,7 +1,7 @@
 package im.molly.monero
 
 import android.os.Parcel
-import com.google.common.truth.Truth
+import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import kotlin.random.Random
 
@@ -12,13 +12,13 @@ class SecretKeyParcelableTest {
         val secret = Random.nextBytes(32)
         val originalKey = SecretKey(secret)
 
-        val parcel = Parcel.obtain()
+        val parcel = Parcel.obtain().apply {
+            originalKey.writeToParcel(this, 0)
+            setDataPosition(0)
+        }
 
-        originalKey.writeToParcel(parcel, 0)
+        val recreatedKey = SecretKey.CREATOR.createFromParcel(parcel)
 
-        parcel.setDataPosition(0)
-
-        val key = SecretKey.create(parcel)
-        Truth.assertThat(key == originalKey).isTrue()
+        assertThat(recreatedKey).isEqualTo(originalKey)
     }
 }

@@ -72,6 +72,7 @@ void Wallet::restoreAccount(const std::vector<char>& secret_scalar, uint64_t res
   std::lock_guard<std::mutex> lock(m_wallet_mutex);
   auto& account = m_wallet.get_account();
   GenerateAccountKeys(account, secret_scalar);
+  m_subaddresses[{0, 0}] = m_wallet.get_subaddress_as_str({0, 0});
   if (restore_point < CRYPTONOTE_MAX_BLOCK_NUMBER) {
     m_restore_height = restore_point;
     m_last_block_timestamp = 0;

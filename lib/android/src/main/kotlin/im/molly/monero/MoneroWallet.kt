@@ -1,7 +1,7 @@
 package im.molly.monero
 
+import im.molly.monero.internal.LedgerFactory
 import im.molly.monero.internal.TxInfo
-import im.molly.monero.internal.consolidateTransactions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
@@ -86,7 +86,7 @@ class MoneroWallet internal constructor(
         suspendCancellableCoroutine { continuation ->
             wallet.getAddressesForAccount(accountIndex, object : BaseWalletCallbacks() {
                 override fun onSubAddressListReceived(subAddresses: Array<String>) {
-                    val accounts = parseAndAggregateAddresses(subAddresses)
+                    val accounts = parseAndAggregateAddresses(subAddresses.asIterable())
                     continuation.resume(accounts.single()) {}
                 }
             })
@@ -96,22 +96,11 @@ class MoneroWallet internal constructor(
         suspendCancellableCoroutine { continuation ->
             wallet.getAllAddresses(object : BaseWalletCallbacks() {
                 override fun onSubAddressListReceived(subAddresses: Array<String>) {
-                    val accounts = parseAndAggregateAddresses(subAddresses)
+                    val accounts = parseAndAggregateAddresses(subAddresses.asIterable())
                     continuation.resume(accounts) {}
                 }
             })
         }
-
-    private fun parseAndAggregateAddresses(subAddresses: Array<String>): List<WalletAccount> =
-        subAddresses.map { AccountAddress.parseWithIndexes(it) }
-            .groupBy { it.accountIndex }
-            .map { (index, addresses) ->
-                WalletAccount(
-                    addresses = addresses,
-                    accountIndex = index,
-                )
-            }
-            .sortedBy { it.accountIndex }
 
     /**
      * A [Flow] of ledger changes.
@@ -125,17 +114,11 @@ class MoneroWallet internal constructor(
                 subAddresses: Array<String>,
                 blockchainTime: BlockchainTime,
             ) {
-                val indexedAccounts = parseAndAggregateAddresses(subAddresses)
-                val (txById, enotes) = txHistory.consolidateTransactions(
-                    accounts = indexedAccounts,
-                    blockchainContext = blockchainTime,
-                )
-                val ledger = Ledger(
-                    publicAddress = publicAddress,
-                    indexedAccounts = indexedAccounts,
-                    transactionById = txById,
-                    enoteSet = enotes,
-                    checkedAt = blockchainTime,
+                val accounts = parseAndAggregateAddresses(subAddresses.asIterable())
+                val ledger = LedgerFactory.createFromTxHistory(
+                    txHistory = txHistory,
+                    accounts = accounts,
+                    blockchainTime = blockchainTime,
                 )
                 sendLedger(ledger)
             }
@@ -145,7 +128,7 @@ class MoneroWallet internal constructor(
             }
 
             override fun onSubAddressListUpdated(subAddresses: Array<String>) {
-                val accountsUpdated = parseAndAggregateAddresses(subAddresses)
+                val accountsUpdated = parseAndAggregateAddresses(subAddresses.asIterable())
                 if (lastKnownLedger.indexedAccounts != accountsUpdated) {
                     sendLedger(lastKnownLedger.copy(indexedAccounts = accountsUpdated))
                 }

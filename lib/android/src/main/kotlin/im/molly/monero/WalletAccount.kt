@@ -13,3 +13,11 @@ fun Iterable<WalletAccount>.findAddressByIndex(
         it.accountIndex == accountIndex && it.subAddressIndex == subAddressIndex
     }
 }
+
+fun parseAndAggregateAddresses(addresses: Iterable<String>): List<WalletAccount> {
+    return addresses
+        .map { AccountAddress.parseWithIndexes(it) }
+        .groupBy { it.accountIndex }
+        .toSortedMap()
+        .map { (index, addresses) -> WalletAccount(addresses, index) }
+}

@@ -10,6 +10,9 @@ data class Ledger(
     val transactions: Collection<Transaction>
         get() = transactionById.values
 
+    val isBalanceZero: Boolean
+        get() = getBalance().totalAmount.isZero
+
     fun getBalance(): Balance = enoteSet.calculateBalance()
 
     fun getBalanceForAccount(accountIndex: Int): Balance =

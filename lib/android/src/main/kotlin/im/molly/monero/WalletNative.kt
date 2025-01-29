@@ -6,6 +6,7 @@ import im.molly.monero.internal.HttpRequest
 import im.molly.monero.internal.HttpResponse
 import im.molly.monero.internal.IHttpRequestCallback
 import im.molly.monero.internal.IHttpRpcClient
+import im.molly.monero.internal.LedgerFactory
 import im.molly.monero.internal.TxInfo
 import kotlinx.coroutines.*
 import java.io.Closeable
@@ -27,7 +28,7 @@ internal class WalletNative private constructor(
     companion object {
         suspend fun localSyncWallet(
             networkId: Int,
-            storageAdapter: IStorageAdapter,
+            storageAdapter: IStorageAdapter = StorageAdapter(InMemoryWalletDataStore()),
             rpcClient: IHttpRpcClient? = null,
             secretSpendKey: SecretKey? = null,
             restorePoint: Long? = null,
@@ -105,7 +106,26 @@ internal class WalletNative private constructor(
         }
     }
 
-    override fun getPublicAddress() = nativeGetPublicAddress(handle)
+    override fun getPublicAddress(): String = nativeGetPublicAddress(handle)
+
+    fun getCurrentBlockchainTime(): BlockchainTime {
+        return network.blockchainTime(
+            nativeGetCurrentBlockchainHeight(handle),
+            nativeGetCurrentBlockchainTimestamp(handle),
+        )
+    }
+
+    fun getAllAccounts(): List<WalletAccount> {
+        return parseAndAggregateAddresses(getSubAddresses().asIterable())
+    }
+
+    fun getLedger(): Ledger {
+        return LedgerFactory.createFromTxHistory(
+            txHistory = getTxHistorySnapshot(),
+            accounts = getAllAccounts(),
+            blockchainTime = getCurrentBlockchainTime(),
+        )
+    }
 
     private fun MoneroNetwork.blockchainTime(height: Int, epochSecond: Long): BlockchainTime {
         // Block timestamp could be zero during a fast refresh.
@@ -115,15 +135,6 @@ internal class WalletNative private constructor(
         }
         return BlockchainTime(height = height, timestamp = timestamp, network = this)
     }
-
-    val currentBlockchainTime: BlockchainTime
-        get() = network.blockchainTime(
-            nativeGetCurrentBlockchainHeight(handle),
-            nativeGetCurrentBlockchainTimestamp(handle),
-        )
-
-    val currentBalance: Balance
-        get() = TODO() // txHistorySnapshot().consolidateTransactions().second.balance()
 
     private fun getSubAddresses(accountIndex: Int? = null): Array<String> {
         return nativeGetSubAddresses(accountIndex ?: -1, handle)
@@ -155,7 +166,7 @@ internal class WalletNative private constructor(
                     nativeCancelRefresh(handle)
                 }
             }
-            callback?.onRefreshResult(currentBlockchainTime, status)
+            callback?.onRefreshResult(getCurrentBlockchainTime(), status)
         }
     }
 
@@ -268,7 +279,7 @@ internal class WalletNative private constructor(
 
         balanceListenersLock.withLock {
             balanceListeners.add(listener)
-            listener.onBalanceChanged(txHistory, subAddresses, currentBlockchainTime)
+            listener.onBalanceChanged(txHistory, subAddresses, getCurrentBlockchainTime())
         }
     }
 
