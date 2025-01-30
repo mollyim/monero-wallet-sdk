@@ -12,11 +12,14 @@ class MnemonicCode private constructor(
     val locale: Locale,
 ) : Destroyable, Closeable, Iterable<CharArray> {
 
-    constructor(entropy: ByteArray, words: CharBuffer, locale: Locale) : this(
+    constructor(entropy: ByteArray, words: CharBuffer, locale: Locale = Locale.ENGLISH) : this(
         entropy.clone(),
         words.array().copyOfRange(words.position(), words.remaining()),
         locale,
     )
+
+    internal val isNonZero
+        get() = !MessageDigest.isEqual(_entropy, ByteArray(_entropy.size))
 
     val entropy: ByteArray
         get() = checkNotDestroyed { _entropy.clone() }
@@ -66,9 +69,9 @@ class MnemonicCode private constructor(
     protected fun finalize() = destroy()
 
     override fun equals(other: Any?): Boolean =
-        this === other || (other is MnemonicCode && MessageDigest.isEqual(entropy, other.entropy))
+        this === other || (other is MnemonicCode && MessageDigest.isEqual(_entropy, other._entropy))
 
-    override fun hashCode(): Int = entropy.contentHashCode()
+    override fun hashCode(): Int = _entropy.contentHashCode()
 
     private inline fun <T> checkNotDestroyed(block: () -> T): T {
         check(!destroyed) { "MnemonicCode has already been destroyed" }

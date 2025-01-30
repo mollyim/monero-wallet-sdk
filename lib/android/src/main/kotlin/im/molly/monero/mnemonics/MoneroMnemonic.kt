@@ -7,7 +7,6 @@ import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
-
 object MoneroMnemonic {
     init {
         NativeLoader.loadMnemonicsLibrary()

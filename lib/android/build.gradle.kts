@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.kotlinx.coroutines.android)
 
+    testImplementation(libs.kotlin.junit)
     testImplementation(testLibs.junit)
     testImplementation(testLibs.mockk)
     testImplementation(testLibs.truth)

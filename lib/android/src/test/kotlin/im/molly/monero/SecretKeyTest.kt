@@ -1,9 +1,9 @@
 package im.molly.monero
 
 import com.google.common.truth.Truth.assertThat
-import org.junit.Assert.assertThrows
 import org.junit.Test
 import kotlin.random.Random
+import kotlin.test.assertFailsWith
 
 class SecretKeyTest {
 
@@ -14,20 +14,29 @@ class SecretKeyTest {
             if (size == 32) {
                 assertThat(SecretKey(secret).bytes).hasLength(size)
             } else {
-                assertThrows(RuntimeException::class.java) { SecretKey(secret) }
+                assertFailsWith<IllegalArgumentException> { SecretKey(secret) }
             }
         }
     }
 
     @Test
+    fun `secret key copies buffer`() {
+        val secretBytes = Random.nextBytes(32)
+        val key = SecretKey(secretBytes)
+
+        assertThat(key.bytes).isEqualTo(secretBytes)
+        secretBytes.fill(0)
+        assertThat(key.bytes).isNotEqualTo(secretBytes)
+    }
+
+    @Test
     fun `secret keys cannot be zero`() {
-        assertThrows(RuntimeException::class.java) { SecretKey(ByteArray(32)).bytes }
+        assertFailsWith<IllegalStateException> { SecretKey(ByteArray(32)).bytes }
     }
 
     @Test
     fun `when key is destroyed secret is zeroed`() {
         val secretBytes = Random.nextBytes(32)
-
         val key = SecretKey(secretBytes)
 
         assertThat(key.destroyed).isFalse()
@@ -37,20 +46,20 @@ class SecretKeyTest {
 
         assertThat(key.destroyed).isTrue()
         assertThat(key.isNonZero).isFalse()
-        assertThrows(RuntimeException::class.java) { key.bytes }
+        assertFailsWith<IllegalStateException> { key.bytes }
     }
 
     @Test
-    fun `two keys with same secret are the same`() {
+    fun `two keys with same secret are equal`() {
         val secret = Random.nextBytes(32)
 
         val key = SecretKey(secret)
         val sameKey = SecretKey(secret)
-        val anotherKey = randomSecretKey()
+        val differentKey = randomSecretKey()
 
         assertThat(key).isEqualTo(sameKey)
-        assertThat(sameKey).isNotEqualTo(anotherKey)
-        assertThat(anotherKey).isNotEqualTo(key)
+        assertThat(sameKey).isNotEqualTo(differentKey)
+        assertThat(differentKey).isNotEqualTo(key)
     }
 
     @Test
@@ -64,7 +73,6 @@ class SecretKeyTest {
     @Test
     fun `keys are not equal to their destroyed versions`() {
         val secret = Random.nextBytes(32)
-
         val key = SecretKey(secret)
         val destroyed = SecretKey(secret).also { it.destroy() }
 
@@ -73,9 +81,9 @@ class SecretKeyTest {
 
     @Test
     fun `destroyed keys are equal`() {
-        val destroyed = randomSecretKey().also { it.destroy() }
-        val anotherDestroyed = randomSecretKey().also { it.destroy() }
+        val destroyed1 = randomSecretKey().also { it.destroy() }
+        val destroyed2 = randomSecretKey().also { it.destroy() }
 
-        assertThat(destroyed).isEqualTo(anotherDestroyed)
+        assertThat(destroyed1).isEqualTo(destroyed2)
     }
 }
