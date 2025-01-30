@@ -9,7 +9,7 @@ plugins {
 }
 
 allprojects {
-    group = "im.molly"
+    group = "im.molly.monero.sdk"
 }
 
 tasks {

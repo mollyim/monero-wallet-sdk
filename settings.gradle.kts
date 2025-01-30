@@ -1,22 +1,37 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         gradlePluginPortal()
         google()
-        mavenCentral()
     }
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android(\\..*)?")
+                includeGroupByRegex("com\\.google(\\..*)?")
+                includeGroupByRegex("androidx?(\\..*)?")
+            }
+        }
         mavenCentral()
     }
     versionCatalogs {
+        // "libs" is predefined by Gradle
         create("testLibs") {
             from(files("gradle/test-libs.versions.toml"))
         }
     }
+}
+
+check(JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
+    """
+    This project requires JDK 21+ but it is currently using JDK ${JavaVersion.current()}.
+    Java Home: [${System.getProperty("java.home")}]
+    https://developer.android.com/build/jdks#jdk-config-in-studio
+    """.trimIndent()
 }
 
 includeProject("lib", "lib/android")
