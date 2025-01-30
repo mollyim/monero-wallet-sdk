@@ -37,20 +37,20 @@ internal data class TxInfo @CalledByNative constructor(
     val recipient: String?,
     val amount: Long,
     val height: Int,
-    val state: Int,
     val unlockTime: Long,
     val timestamp: Long,
     val fee: Long,
     val change: Long,
+    val state: Byte,
     val coinbase: Boolean,
     val incoming: Boolean,
 ) : Parcelable {
 
     companion object State {
-        const val OFF_CHAIN: Int = 0
-        const val PENDING: Int = 1
-        const val FAILED: Int = 2
-        const val ON_CHAIN: Int = 3
+        const val OFF_CHAIN: Byte = 1
+        const val PENDING: Byte = 2
+        const val FAILED: Byte = 3
+        const val ON_CHAIN: Byte = 4
     }
 
     init {

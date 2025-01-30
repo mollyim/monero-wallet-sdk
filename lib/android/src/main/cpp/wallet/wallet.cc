@@ -811,11 +811,11 @@ ScopedJavaLocalRef<jobject> NativeToJavaTxInfo(JNIEnv* env,
                                 : nullptr,
       tx.m_amount,
       static_cast<jint>(tx.m_height),
-      tx.m_state,
       tx.m_unlock_time,
       tx.m_timestamp,
       tx.m_fee,
       tx.m_change,
+      static_cast<jbyte>(tx.m_state),
       tx.m_coinbase,
       tx.m_type == TxInfo::INCOMING)
   };

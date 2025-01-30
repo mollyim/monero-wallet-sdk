@@ -41,10 +41,10 @@ struct TxInfo {
   } m_type;
 
   enum TxState {
-    OFF_CHAIN = 0,
-    PENDING = 1,
-    FAILED = 2,
-    ON_CHAIN = 3,
+    OFF_CHAIN = 1,
+    PENDING = 2,
+    FAILED = 3,
+    ON_CHAIN = 4,
   } m_state;
 
   TxInfo(crypto::hash tx_hash, TxType type) :

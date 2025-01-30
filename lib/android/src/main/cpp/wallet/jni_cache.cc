@@ -55,7 +55,7 @@ void InitializeJniCache(JNIEnv* env) {
   TxInfo_ctor = GetMethodId(
       env, txInfo,
       "<init>",
-      "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;JIIJJJJZZ)V");
+      "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;JIJJJJBZZ)V");
   WalletNative_createPendingTransfer = GetMethodId(
       env, walletNative,
       "createPendingTransfer",
