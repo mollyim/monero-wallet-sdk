@@ -12,14 +12,12 @@ import im.molly.monero.demo.data.WalletRepository
 import im.molly.monero.demo.data.model.DefaultMoneroNetwork
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.mnemonics.MoneroMnemonic
-import im.molly.monero.util.parseHex
-import im.molly.monero.util.toHex
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalStdlibApi::class)
 class AddWalletViewModel(
     private val remoteNodeRepository: RemoteNodeRepository = AppModule.remoteNodeRepository,
     private val walletRepository: WalletRepository = AppModule.walletRepository,
@@ -66,7 +64,7 @@ class AddWalletViewModel(
         MoneroMnemonic.recoverEntropy(words)?.use { mnemonicCode ->
             val secretKey = SecretKey(mnemonicCode.entropy)
             viewModelState.update {
-                it.copy(secretSpendKeyHex = secretKey.bytes.toHex())
+                it.copy(secretSpendKeyHex = secretKey.bytes.toHexString())
             }
             secretKey.destroy()
             return true
@@ -85,7 +83,7 @@ class AddWalletViewModel(
     fun validateSecretSpendKeyHex(): Boolean =
         with(viewModelState.value) {
             return secretSpendKeyHex.length == 64 && runCatching {
-                secretSpendKeyHex.parseHex()
+                secretSpendKeyHex.hexToByteArray()
             }.isSuccess
         }
 
@@ -125,7 +123,7 @@ class AddWalletViewModel(
 
                 else -> RestorePoint.Genesis
             }
-            SecretKey(state.secretSpendKeyHex.parseHex()).use { secretSpendKey ->
+            SecretKey(state.secretSpendKeyHex.hexToByteArray()).use { secretSpendKey ->
                 walletRepository.restoreWallet(
                     state.network,
                     state.walletName,

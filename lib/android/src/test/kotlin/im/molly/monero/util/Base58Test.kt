@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Assert
 import org.junit.Test
 
+@OptIn(ExperimentalStdlibApi::class)
 class Base58Test {
 
     // Test cases from monero unit_tests/base58.cpp
@@ -134,7 +135,7 @@ class Base58Test {
     @Test
     fun `decode valid base58 strings`() {
         base58ToHex.forEach { (input, expected) ->
-            assertThat(input.decodeBase58()).isEqualTo(expected.parseHex())
+            assertThat(input.decodeBase58()).isEqualTo(expected.hexToByteArray())
         }
     }
 
