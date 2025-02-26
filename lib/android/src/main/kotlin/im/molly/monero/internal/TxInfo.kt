@@ -18,6 +18,7 @@ import im.molly.monero.UnlockTime
 import im.molly.monero.findAddressByIndex
 import im.molly.monero.isBlockHeightInRange
 import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.WriteWith
 import java.time.Instant
 
 /**
@@ -29,9 +30,9 @@ import java.time.Instant
  */
 @Parcelize
 internal data class TxInfo @CalledByNative constructor(
-    val txHash: String,
-    val publicKey: String?,
-    val keyImage: String?,
+    val txHash: @WriteWith<HexStringParceler> String,
+    val publicKey: @WriteWith<HexStringParceler> String?,
+    val keyImage: @WriteWith<HexStringParceler> String?,
     val subAddressMajor: Int,
     val subAddressMinor: Int,
     val recipient: String?,
