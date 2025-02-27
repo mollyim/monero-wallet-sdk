@@ -8,6 +8,8 @@ import im.molly.monero.internal.IHttpRequestCallback
 import im.molly.monero.internal.IHttpRpcClient
 import im.molly.monero.internal.LedgerFactory
 import im.molly.monero.internal.TxInfo
+import im.molly.monero.internal.getMaxIpcSize
+import im.molly.monero.internal.isRemote
 import kotlinx.coroutines.*
 import java.io.Closeable
 import java.time.Instant
@@ -121,7 +123,7 @@ internal class WalletNative private constructor(
 
     fun getLedger(): Ledger {
         return LedgerFactory.createFromTxHistory(
-            txHistory = getTxHistorySnapshot(),
+            txList = getTxHistorySnapshot(),
             accounts = getAllAccounts(),
             blockchainTime = getCurrentBlockchainTime(),
         )
@@ -276,10 +278,11 @@ internal class WalletNative private constructor(
     override fun addBalanceListener(listener: IBalanceListener) {
         val txHistory = getTxHistorySnapshot()
         val subAddresses = getSubAddresses()
+        val blockchainTime = getCurrentBlockchainTime()
 
         balanceListenersLock.withLock {
             balanceListeners.add(listener)
-            listener.onBalanceChanged(txHistory, subAddresses, getCurrentBlockchainTime())
+            notifyBalanceInBatchesUnlock(listener, txHistory, subAddresses, blockchainTime)
         }
     }
 
@@ -314,6 +317,30 @@ internal class WalletNative private constructor(
                 notifyAddressCreation(subAddress, callback)
             } else {
                 TODO()
+            }
+        }
+    }
+
+    private fun notifyBalanceInBatchesUnlock(
+        listener: IBalanceListener,
+        txList: List<TxInfo>,
+        subAddresses: Array<String>,
+        blockchainTime: BlockchainTime,
+    ) {
+        if (txList.isEmpty()) {
+            listener.onBalanceUpdateFinalized(emptyList(), subAddresses, blockchainTime)
+            return
+        }
+
+        val batchSize = getMaxIpcSize() /  TxInfo.MAX_PARCEL_SIZE_BYTES
+        val chunkedSeq = txList.asSequence().chunked(batchSize).iterator()
+
+        while (chunkedSeq.hasNext()) {
+            val chunk = chunkedSeq.next()
+            if (chunkedSeq.hasNext()) {
+                listener.onBalanceUpdateChunk(chunk)
+            } else {
+                listener.onBalanceUpdateFinalized(chunk, subAddresses, blockchainTime)
             }
         }
     }
@@ -353,14 +380,14 @@ internal class WalletNative private constructor(
             if (balanceListeners.isNotEmpty()) {
                 val blockchainTime = network.blockchainTime(height, timestamp)
                 val call = if (balanceChanged) {
-                    val txHistory = getTxHistorySnapshot()
+                    val txList = getTxHistorySnapshot()
                     val subAddresses = getSubAddresses()
                     fun(listener: IBalanceListener) {
-                        listener.onBalanceChanged(txHistory, subAddresses, blockchainTime)
+                        notifyBalanceInBatchesUnlock(listener, txList, subAddresses, blockchainTime)
                     }
                 } else {
                     fun(listener: IBalanceListener) {
-                        listener.onRefresh(blockchainTime)
+                        listener.onWalletRefreshed(blockchainTime)
                     }
                 }
                 balanceListeners.forEach { call(it) }

@@ -107,30 +107,40 @@ class MoneroWallet internal constructor(
      */
     fun ledger(): Flow<Ledger> = callbackFlow {
         val listener = object : IBalanceListener.Stub() {
-            lateinit var lastKnownLedger: Ledger
+            private lateinit var lastKnownLedger: Ledger
 
-            override fun onBalanceChanged(
-                txHistory: MutableList<TxInfo>,
-                subAddresses: Array<String>,
+            private val txListBuffer = mutableListOf<TxInfo>()
+
+            override fun onBalanceUpdateFinalized(
+                txBatch: List<TxInfo>,
+                allSubAddresses: Array<String>,
                 blockchainTime: BlockchainTime,
             ) {
-                val accounts = parseAndAggregateAddresses(subAddresses.asIterable())
+                val txList = if (txListBuffer.isEmpty()) txBatch else txListBuffer.apply { addAll(txBatch) }
+
+                val accounts = parseAndAggregateAddresses(allSubAddresses.asIterable())
                 val ledger = LedgerFactory.createFromTxHistory(
-                    txHistory = txHistory,
+                    txList = txList,
                     accounts = accounts,
                     blockchainTime = blockchainTime,
                 )
+
+                txListBuffer.clear()
                 sendLedger(ledger)
             }
 
-            override fun onRefresh(blockchainTime: BlockchainTime) {
+            override fun onBalanceUpdateChunk(txBatch: List<TxInfo>) {
+                txListBuffer.addAll(txBatch)
+            }
+
+            override fun onWalletRefreshed(blockchainTime: BlockchainTime) {
                 sendLedger(lastKnownLedger.copy(checkedAt = blockchainTime))
             }
 
-            override fun onSubAddressListUpdated(subAddresses: Array<String>) {
-                val accountsUpdated = parseAndAggregateAddresses(subAddresses.asIterable())
-                if (lastKnownLedger.indexedAccounts != accountsUpdated) {
-                    sendLedger(lastKnownLedger.copy(indexedAccounts = accountsUpdated))
+            override fun onSubAddressListUpdated(allSubAddresses: Array<String>) {
+                val accounts = parseAndAggregateAddresses(allSubAddresses.asIterable())
+                if (accounts != lastKnownLedger.indexedAccounts) {
+                    sendLedger(lastKnownLedger.copy(indexedAccounts = accounts))
                 }
             }
 
@@ -142,7 +152,6 @@ class MoneroWallet internal constructor(
         }
 
         wallet.addBalanceListener(listener)
-
         awaitClose { wallet.removeBalanceListener(listener) }
     }.conflate()
 

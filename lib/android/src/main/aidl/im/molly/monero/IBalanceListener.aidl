@@ -4,7 +4,8 @@ import im.molly.monero.BlockchainTime;
 import im.molly.monero.internal.TxInfo;
 
 oneway interface IBalanceListener {
-    void onBalanceChanged(in List<TxInfo> txHistory, in String[] subAddresses, in BlockchainTime blockchainTime);
-    void onRefresh(in BlockchainTime blockchainTime);
-    void onSubAddressListUpdated(in String[] subAddresses);
+    void onBalanceUpdateFinalized(in List<TxInfo> txBatch, in String[] allSubAddresses, in BlockchainTime blockchainTime);
+    void onBalanceUpdateChunk(in List<TxInfo> txBatch);
+    void onWalletRefreshed(in BlockchainTime blockchainTime);
+    void onSubAddressListUpdated(in String[] allSubAddresses);
 }

@@ -7,11 +7,11 @@ import im.molly.monero.findAddressByIndex
 
 internal object LedgerFactory {
     fun createFromTxHistory(
-        txHistory: List<TxInfo>,
+        txList: List<TxInfo>,
         accounts: List<WalletAccount>,
         blockchainTime: BlockchainTime,
     ): Ledger {
-        val (txById, enotes) = txHistory.consolidateTransactions(
+        val (txById, enotes) = txList.consolidateTransactions(
             accounts = accounts,
             blockchainContext = blockchainTime,
         )

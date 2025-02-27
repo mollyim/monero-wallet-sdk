@@ -47,15 +47,17 @@ internal data class TxInfo @CalledByNative constructor(
     val incoming: Boolean,
 ) : Parcelable {
 
-    companion object State {
-        const val OFF_CHAIN: Byte = 1
-        const val PENDING: Byte = 2
-        const val FAILED: Byte = 3
-        const val ON_CHAIN: Byte = 4
+    companion object {
+        const val STATE_OFF_CHAIN: Byte = 1
+        const val STATE_PENDING: Byte = 2
+        const val STATE_FAILED: Byte = 3
+        const val STATE_ON_CHAIN: Byte = 4
+
+        const val MAX_PARCEL_SIZE_BYTES = 224
     }
 
     init {
-        require(state in OFF_CHAIN..ON_CHAIN)
+        require(state in STATE_OFF_CHAIN..STATE_ON_CHAIN)
         require(amount >= 0 && fee >= 0 && change >= 0) {
             "TX amounts cannot be negative"
         }
@@ -145,10 +147,10 @@ private fun List<TxInfo>.determineTxState(): TxState {
     val timestamp = maxOf { it.timestamp }
 
     return when (val state = first().state) {
-        TxInfo.OFF_CHAIN -> TxState.OffChain
-        TxInfo.PENDING -> TxState.InMemoryPool
-        TxInfo.FAILED -> TxState.Failed
-        TxInfo.ON_CHAIN -> TxState.OnChain(BlockHeader(height, timestamp))
+        TxInfo.STATE_OFF_CHAIN -> TxState.OffChain
+        TxInfo.STATE_PENDING -> TxState.InMemoryPool
+        TxInfo.STATE_FAILED -> TxState.Failed
+        TxInfo.STATE_ON_CHAIN -> TxState.OnChain(BlockHeader(height, timestamp))
         else -> error("Invalid tx state value: $state")
     }
 }
