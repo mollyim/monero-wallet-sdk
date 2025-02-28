@@ -5,10 +5,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application android:usesCleartextTraffic="true">
+        <service android:name=".service.InProcessWalletService" />
+
         <service
-            android:name=".WalletService"
+            android:name=".service.SandboxedWalletService"
             android:isolatedProcess="true"
             android:process=":wallet_service" />
+
     </application>
 
 </manifest>

@@ -1,44 +1,40 @@
-package im.molly.monero
+package im.molly.monero.internal
 
-import android.content.Intent
-import android.os.IBinder
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.lifecycleScope
-import im.molly.monero.internal.IHttpRpcClient
-import kotlinx.coroutines.*
+import im.molly.monero.IStorageAdapter
+import im.molly.monero.IWallet
+import im.molly.monero.LogAdapter
+import im.molly.monero.NativeLoader
+import im.molly.monero.SecretKey
+import im.molly.monero.WalletConfig
+import im.molly.monero.WalletNative
+import im.molly.monero.loggerFor
+import im.molly.monero.randomSecretKey
+import im.molly.monero.setLoggingAdapter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-class WalletService : LifecycleService() {
-    private lateinit var service: IWalletService
-
-    override fun onCreate() {
-        super.onCreate()
-        service = WalletServiceImpl(application.isIsolatedProcess(), lifecycleScope)
-    }
-
-    override fun onBind(intent: Intent): IBinder {
-        super.onBind(intent)
-        return service.asBinder()
-    }
-}
-
-internal class WalletServiceImpl(
-    isIsolated: Boolean,
+internal class NativeWalletService(
     private val serviceScope: CoroutineScope,
 ) : IWalletService.Stub(), LogAdapter {
 
-    private val logger = loggerFor<WalletService>()
+    private val logger = loggerFor<NativeWalletService>()
 
     init {
-        if (isIsolated) {
-            setLoggingAdapter(this)
-        }
         NativeLoader.loadWalletLibrary(logger = logger)
+    }
+
+    fun configureLoggingAdapter() {
+        setLoggingAdapter(this)
     }
 
     private var listener: IWalletServiceListener? = null
 
     override fun setListener(l: IWalletServiceListener) {
         listener = l
+    }
+
+    override fun print(priority: Int, tag: String, msg: String?, tr: Throwable?) {
+        listener?.onLogMessage(priority, tag, msg, tr?.toString())
     }
 
     override fun createWallet(
@@ -104,9 +100,5 @@ internal class WalletServiceImpl(
             restorePoint = restorePoint,
             coroutineContext = serviceScope.coroutineContext,
         )
-    }
-
-    override fun print(priority: Int, tag: String, msg: String?, tr: Throwable?) {
-        listener?.onLogMessage(priority, tag, msg, tr?.toString())
     }
 }

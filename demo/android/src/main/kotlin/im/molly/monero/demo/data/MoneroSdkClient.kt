@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.AtomicFile
 import im.molly.monero.*
 import im.molly.monero.loadbalancer.RoundRobinRule
+import im.molly.monero.service.SandboxedWalletService
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import okhttp3.OkHttpClient
@@ -15,7 +16,7 @@ import java.io.OutputStream
 class MoneroSdkClient(private val context: Context) {
 
     private val providerDeferred = CoroutineScope(Dispatchers.IO).async {
-        WalletProvider.connect(context)
+        SandboxedWalletService.connect(context)
     }
 
     suspend fun createWallet(network: MoneroNetwork, filename: String): MoneroWallet {
