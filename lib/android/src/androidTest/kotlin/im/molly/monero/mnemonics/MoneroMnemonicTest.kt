@@ -1,14 +1,14 @@
 package im.molly.monero.mnemonics
 
 import com.google.common.truth.Truth.assertThat
-import im.molly.monero.parseHex
 import org.junit.Test
 import java.util.Locale
 
 class MoneroMnemonicTest {
 
+    @OptIn(ExperimentalStdlibApi::class)
     data class TestCase(val key: String, val words: String, val language: String) {
-        val entropy = key.parseHex()
+        val entropy = key.hexToByteArray()
     }
 
     private val testCases = listOf(
