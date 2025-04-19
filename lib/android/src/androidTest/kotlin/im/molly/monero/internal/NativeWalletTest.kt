@@ -1,32 +1,35 @@
-package im.molly.monero
+package im.molly.monero.internal
 
 import androidx.test.filters.LargeTest
 import com.google.common.truth.Truth.assertThat
+import im.molly.monero.MoneroNetwork
+import im.molly.monero.SecretKey
+import im.molly.monero.randomSecretKey
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 @OptIn(ExperimentalStdlibApi::class)
-class WalletNativeTest {
+class NativeWalletTest {
 
     @LargeTest
     @Test
     fun keyGenerationIsDeterministic() = runTest {
         assertThat(
-            WalletNative.localSyncWallet(
+            NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Mainnet.id,
                 secretSpendKey = SecretKey("d2ca26e22489bd9871c910c58dee3ab08e66b9d566825a064c8c0af061cd8706".hexToByteArray()),
             ).publicAddress
         ).isEqualTo("4AYjQM9HoAFNUeC3cvSfgeAN89oMMpMqiByvunzSzhn97cj726rJj3x8hCbH58UnMqQJShczCxbpWRiCJQ3HCUDHLiKuo4T")
 
         assertThat(
-            WalletNative.localSyncWallet(
+            NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Testnet.id,
                 secretSpendKey = SecretKey("48a35268bc33227eea43ac1ecfd144d51efc023c115c26ca68a01cc6201e9900".hexToByteArray()),
             ).publicAddress
         ).isEqualTo("A1v6gVUcGgGE87c1uFRWB1KfPVik2qLLDJiZT3rhZ8qjF3BGA6oHzeDboD23dH8rFaFFcysyqwF6DBj8WUTBWwEhESB7nZz")
 
         assertThat(
-            WalletNative.localSyncWallet(
+            NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Stagenet.id,
                 secretSpendKey = SecretKey("561a8d4e121ffca7321a7dc6af79679ceb4cdc8c0dcb0ef588b574586c5fac04".hexToByteArray()),
             ).publicAddress
@@ -37,13 +40,13 @@ class WalletNativeTest {
     @Test
     fun publicAddressesAreDistinct() = runTest {
         val publicAddress =
-            WalletNative.localSyncWallet(
+            NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Mainnet.id,
                 secretSpendKey = randomSecretKey(),
             ).publicAddress
 
         val anotherPublicAddress =
-            WalletNative.localSyncWallet(
+            NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Mainnet.id,
                 secretSpendKey = randomSecretKey(),
             ).publicAddress
@@ -54,7 +57,7 @@ class WalletNativeTest {
     @Test
     fun atGenesisBalanceIsZero() = runTest {
         with(
-            WalletNative.localSyncWallet(
+            NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Mainnet.id,
                 secretSpendKey = randomSecretKey(),
             ).getLedger()

@@ -6,7 +6,6 @@ import im.molly.monero.LogAdapter
 import im.molly.monero.NativeLoader
 import im.molly.monero.SecretKey
 import im.molly.monero.WalletConfig
-import im.molly.monero.WalletNative
 import im.molly.monero.loggerFor
 import im.molly.monero.randomSecretKey
 import im.molly.monero.setLoggingAdapter
@@ -75,7 +74,7 @@ internal class NativeWalletService(
         callback: IWalletServiceCallbacks?,
     ) {
         serviceScope.launch {
-            val wallet = WalletNative.localSyncWallet(
+            val wallet = NativeWallet.localSyncWallet(
                 networkId = config.networkId,
                 storageAdapter = storage,
                 rpcClient = rpcClient,
@@ -92,7 +91,7 @@ internal class NativeWalletService(
         secretSpendKey: SecretKey,
         restorePoint: Long? = null,
     ): IWallet {
-        return WalletNative.localSyncWallet(
+        return NativeWallet.localSyncWallet(
             networkId = config.networkId,
             storageAdapter = storage,
             rpcClient = rpcClient,

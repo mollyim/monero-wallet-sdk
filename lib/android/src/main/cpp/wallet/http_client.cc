@@ -65,7 +65,7 @@ bool RemoteNodeClient::invoke(const boost::string_ref uri,
     ScopedJavaLocalRef<jobject>
         j_response = {env, CallObjectMethod(env,
                                             m_wallet_native.obj(),
-                                            WalletNative_callRemoteNode,
+                                            NativeWallet_callRemoteNode,
                                             j_method.obj(),
                                             j_uri.obj(),
                                             j_hdr.obj(),

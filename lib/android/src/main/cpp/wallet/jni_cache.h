@@ -18,10 +18,10 @@ extern jmethodID ITransferCallback_onTransferCommitted;
 extern jmethodID ITransferCallback_onUnexpectedError;
 extern jmethodID Logger_logFromNative;
 extern jmethodID TxInfo_ctor;
-extern jmethodID WalletNative_callRemoteNode;
-extern jmethodID WalletNative_createPendingTransfer;
-extern jmethodID WalletNative_onRefresh;
-extern jmethodID WalletNative_onSuspendRefresh;
+extern jmethodID NativeWallet_callRemoteNode;
+extern jmethodID NativeWallet_createPendingTransfer;
+extern jmethodID NativeWallet_onRefresh;
+extern jmethodID NativeWallet_onSuspendRefresh;
 extern ScopedJavaGlobalRef<jclass> TxInfoClass;
 
 // android.os

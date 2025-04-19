@@ -1,6 +1,7 @@
 package im.molly.monero
 
 import im.molly.monero.internal.LedgerFactory
+import im.molly.monero.internal.NativeWallet
 import im.molly.monero.internal.TxInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -25,6 +26,9 @@ class MoneroWallet internal constructor(
     private val logger = loggerFor<MoneroWallet>()
 
     val publicAddress: PublicAddress = PublicAddress.parse(wallet.publicAddress)
+
+    val network: MoneroNetwork
+        get() = publicAddress.network
 
     var dataStore by storageAdapter::dataStore
 
@@ -253,5 +257,5 @@ private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
 }
 
 class RefreshResult(val blockchainTime: BlockchainTime, private val status: Int) {
-    fun isError() = status != WalletNative.Status.OK
+    fun isError() = status != NativeWallet.Status.OK
 }

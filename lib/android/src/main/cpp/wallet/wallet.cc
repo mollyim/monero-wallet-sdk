@@ -513,7 +513,7 @@ void Wallet::notifyRefreshState(bool debounce) {
     last_time = std::chrono::steady_clock::now();
   }
   if (!debounce) {
-    CallVoidMethod(GetJniEnv(), m_callback.obj(), WalletNative_onRefresh,
+    CallVoidMethod(GetJniEnv(), m_callback.obj(), NativeWallet_onRefresh,
                    height, ts, m_balance_changed);
   }
 }
@@ -563,7 +563,7 @@ auto Wallet::suspendRefreshAndRunLocked(T block) -> decltype(block()) {
       if (!m_wallet.stopped()) {
         m_wallet.stop();
         CallVoidMethod(env, m_callback.obj(),
-                       WalletNative_onSuspendRefresh, true);
+                       NativeWallet_onSuspendRefresh, true);
       }
       if (wallet_lock.try_lock()) {
         break;
@@ -571,7 +571,7 @@ auto Wallet::suspendRefreshAndRunLocked(T block) -> decltype(block()) {
       std::this_thread::yield();
     }
     CallVoidMethod(env, m_callback.obj(),
-                   WalletNative_onSuspendRefresh, false);
+                   NativeWallet_onSuspendRefresh, false);
     m_refresh_cond.notify_one();
   }
   // Call the lambda and release the mutex upon completion.
@@ -596,7 +596,7 @@ void Wallet::setRefreshSince(long height_or_timestamp) {
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_im_molly_monero_WalletNative_nativeCreate(
+Java_im_molly_monero_internal_NativeWallet_nativeCreate(
     JNIEnv* env,
     jobject thiz,
     jint network_id) {
@@ -606,7 +606,7 @@ Java_im_molly_monero_WalletNative_nativeCreate(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeDispose(
+Java_im_molly_monero_internal_NativeWallet_nativeDispose(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -615,7 +615,7 @@ Java_im_molly_monero_WalletNative_nativeDispose(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeRestoreAccount(
+Java_im_molly_monero_internal_NativeWallet_nativeRestoreAccount(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -629,7 +629,7 @@ Java_im_molly_monero_WalletNative_nativeRestoreAccount(
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_im_molly_monero_WalletNative_nativeLoad(
+Java_im_molly_monero_internal_NativeWallet_nativeLoad(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -641,7 +641,7 @@ Java_im_molly_monero_WalletNative_nativeLoad(
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_im_molly_monero_WalletNative_nativeSave(
+Java_im_molly_monero_internal_NativeWallet_nativeSave(
     JNIEnv* env,
     jobject thiz,
     jlong handle, jint fd) {
@@ -652,7 +652,7 @@ Java_im_molly_monero_WalletNative_nativeSave(
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_im_molly_monero_WalletNative_nativeNonReentrantRefresh
+Java_im_molly_monero_internal_NativeWallet_nativeNonReentrantRefresh
     (JNIEnv* env,
      jobject thiz,
      jlong handle,
@@ -663,7 +663,7 @@ Java_im_molly_monero_WalletNative_nativeNonReentrantRefresh
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeCancelRefresh(
+Java_im_molly_monero_internal_NativeWallet_nativeCancelRefresh(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -673,7 +673,7 @@ Java_im_molly_monero_WalletNative_nativeCancelRefresh(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeSetRefreshSince(
+Java_im_molly_monero_internal_NativeWallet_nativeSetRefreshSince(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -706,7 +706,7 @@ Java_im_molly_monero_WalletNative_nativeSetRefreshSince(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeGetPublicAddress(
+Java_im_molly_monero_internal_NativeWallet_nativeGetPublicAddress(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -716,7 +716,7 @@ Java_im_molly_monero_WalletNative_nativeGetPublicAddress(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeAddDetachedSubAddress(
+Java_im_molly_monero_internal_NativeWallet_nativeAddDetachedSubAddress(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -729,7 +729,7 @@ Java_im_molly_monero_WalletNative_nativeAddDetachedSubAddress(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeCreateSubAddressAccount(
+Java_im_molly_monero_internal_NativeWallet_nativeCreateSubAddressAccount(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -739,7 +739,7 @@ Java_im_molly_monero_WalletNative_nativeCreateSubAddressAccount(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_im_molly_monero_WalletNative_nativeCreateSubAddress(
+Java_im_molly_monero_internal_NativeWallet_nativeCreateSubAddress(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -754,7 +754,7 @@ Java_im_molly_monero_WalletNative_nativeCreateSubAddress(
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL
-Java_im_molly_monero_WalletNative_nativeGetSubAddresses(
+Java_im_molly_monero_internal_NativeWallet_nativeGetSubAddresses(
     JNIEnv* env,
     jobject thiz,
     jint sub_address_major,
@@ -770,7 +770,7 @@ Java_im_molly_monero_WalletNative_nativeGetSubAddresses(
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
+Java_im_molly_monero_internal_NativeWallet_nativeGetCurrentBlockchainHeight(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -780,7 +780,7 @@ Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainHeight(
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_im_molly_monero_WalletNative_nativeGetCurrentBlockchainTimestamp(
+Java_im_molly_monero_internal_NativeWallet_nativeGetCurrentBlockchainTimestamp(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -823,7 +823,7 @@ ScopedJavaLocalRef<jobject> NativeToJavaTxInfo(JNIEnv* env,
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL
-Java_im_molly_monero_WalletNative_nativeGetTxHistory(
+Java_im_molly_monero_internal_NativeWallet_nativeGetTxHistory(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {
@@ -840,7 +840,7 @@ Java_im_molly_monero_WalletNative_nativeGetTxHistory(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeCreatePayment(
+Java_im_molly_monero_internal_NativeWallet_nativeCreatePayment(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -895,7 +895,7 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
 
   jobject j_pending_transfer = CallObjectMethod(
       env, thiz,
-      WalletNative_createPendingTransfer,
+      NativeWallet_createPendingTransfer,
       NativeToJavaPointer(ptr),
       ptr->amount(),
       ptr->fee(),
@@ -907,7 +907,7 @@ Java_im_molly_monero_WalletNative_nativeCreatePayment(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_WalletNative_nativeCommitPendingTransfer(
+Java_im_molly_monero_internal_NativeWallet_nativeCommitPendingTransfer(
     JNIEnv* env,
     jobject thiz,
     jlong handle,
@@ -931,7 +931,7 @@ Java_im_molly_monero_WalletNative_nativeCommitPendingTransfer(
 
 extern "C"
 JNIEXPORT jlongArray JNICALL
-Java_im_molly_monero_WalletNative_nativeFetchBaseFeeEstimate(
+Java_im_molly_monero_internal_NativeWallet_nativeFetchBaseFeeEstimate(
     JNIEnv* env,
     jobject thiz,
     jlong handle) {

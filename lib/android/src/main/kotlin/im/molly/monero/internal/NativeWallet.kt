@@ -1,15 +1,27 @@
-package im.molly.monero
+package im.molly.monero.internal
 
 import android.os.ParcelFileDescriptor
 import androidx.annotation.GuardedBy
-import im.molly.monero.internal.HttpRequest
-import im.molly.monero.internal.HttpResponse
-import im.molly.monero.internal.IHttpRequestCallback
-import im.molly.monero.internal.IHttpRpcClient
-import im.molly.monero.internal.LedgerFactory
-import im.molly.monero.internal.TxInfo
-import im.molly.monero.internal.getMaxIpcSize
-import im.molly.monero.internal.isRemote
+import im.molly.monero.BlockchainTime
+import im.molly.monero.CalledByNative
+import im.molly.monero.IBalanceListener
+import im.molly.monero.IPendingTransfer
+import im.molly.monero.IStorageAdapter
+import im.molly.monero.ITransferCallback
+import im.molly.monero.IWallet
+import im.molly.monero.IWalletCallbacks
+import im.molly.monero.InMemoryWalletDataStore
+import im.molly.monero.Ledger
+import im.molly.monero.MoneroNetwork
+import im.molly.monero.NativeLoader
+import im.molly.monero.PaymentRequest
+import im.molly.monero.SecretKey
+import im.molly.monero.StorageAdapter
+import im.molly.monero.SweepRequest
+import im.molly.monero.WalletAccount
+import im.molly.monero.estimateTimestamp
+import im.molly.monero.loggerFor
+import im.molly.monero.parseAndAggregateAddresses
 import kotlinx.coroutines.*
 import java.io.Closeable
 import java.time.Instant
@@ -19,7 +31,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.coroutines.CoroutineContext
 
-internal class WalletNative private constructor(
+internal class NativeWallet private constructor(
     private val network: MoneroNetwork,
     private val storageAdapter: IStorageAdapter,
     private val rpcClient: IHttpRpcClient?,
@@ -36,7 +48,7 @@ internal class WalletNative private constructor(
             restorePoint: Long? = null,
             coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-        ) = WalletNative(
+        ) = NativeWallet(
             network = MoneroNetwork.fromId(networkId),
             storageAdapter = storageAdapter,
             rpcClient = rpcClient,
@@ -59,7 +71,7 @@ internal class WalletNative private constructor(
         }
     }
 
-    private val logger = loggerFor<WalletNative>()
+    private val logger = loggerFor<NativeWallet>()
 
     init {
         NativeLoader.loadWalletLibrary(logger = logger)
@@ -84,7 +96,7 @@ internal class WalletNative private constructor(
                     }
                     result
                 } else {
-                    logger.i("Unable to save wallet data because WalletDataStore is unset")
+                    logger.w("Unable to save wallet data because dataStore is unset")
                     false
                 }
             }

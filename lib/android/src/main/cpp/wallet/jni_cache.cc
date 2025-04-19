@@ -11,10 +11,10 @@ jmethodID ITransferCallback_onTransferCommitted;
 jmethodID ITransferCallback_onUnexpectedError;
 jmethodID Logger_logFromNative;
 jmethodID TxInfo_ctor;
-jmethodID WalletNative_createPendingTransfer;
-jmethodID WalletNative_callRemoteNode;
-jmethodID WalletNative_onRefresh;
-jmethodID WalletNative_onSuspendRefresh;
+jmethodID NativeWallet_createPendingTransfer;
+jmethodID NativeWallet_callRemoteNode;
+jmethodID NativeWallet_onRefresh;
+jmethodID NativeWallet_onSuspendRefresh;
 ScopedJavaGlobalRef<jclass> TxInfoClass;
 
 // android.os
@@ -28,7 +28,7 @@ void InitializeJniCache(JNIEnv* env) {
   jclass iTransferCallback = GetClass(env, "im/molly/monero/ITransferCallback");
   jclass logger = GetClass(env, "im/molly/monero/Logger");
   jclass txInfo = GetClass(env, "im/molly/monero/internal/TxInfo");
-  jclass walletNative = GetClass(env, "im/molly/monero/WalletNative");
+  jclass nativeWallet = GetClass(env, "im/molly/monero/internal/NativeWallet");
   jclass parcelFd = GetClass(env, "android/os/ParcelFileDescriptor");
 
   HttpResponse_getBody = GetMethodId(
@@ -56,19 +56,19 @@ void InitializeJniCache(JNIEnv* env) {
       env, txInfo,
       "<init>",
       "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;JIJJJJBZZ)V");
-  WalletNative_createPendingTransfer = GetMethodId(
-      env, walletNative,
+  NativeWallet_createPendingTransfer = GetMethodId(
+      env, nativeWallet,
       "createPendingTransfer",
       "(JJJI)Lim/molly/monero/IPendingTransfer;");
-  WalletNative_callRemoteNode = GetMethodId(
-      env, walletNative,
+  NativeWallet_callRemoteNode = GetMethodId(
+      env, nativeWallet,
       "callRemoteNode",
       "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)Lim/molly/monero/internal/HttpResponse;");
-  WalletNative_onRefresh = GetMethodId(
-      env, walletNative,
+  NativeWallet_onRefresh = GetMethodId(
+      env, nativeWallet,
       "onRefresh", "(IJZ)V");
-  WalletNative_onSuspendRefresh = GetMethodId(
-      env, walletNative,
+  NativeWallet_onSuspendRefresh = GetMethodId(
+      env, nativeWallet,
       "onSuspendRefresh", "(Z)V");
 
   TxInfoClass = ScopedJavaLocalRef<jclass>(env, txInfo);
