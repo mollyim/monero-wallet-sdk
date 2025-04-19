@@ -23,6 +23,8 @@ interface WalletProvider : Closeable {
         client: MoneroNodeClient? = null,
     ): MoneroWallet
 
+    fun isServiceIsolated(): Boolean
+
     fun disconnect()
 
     override fun close() {

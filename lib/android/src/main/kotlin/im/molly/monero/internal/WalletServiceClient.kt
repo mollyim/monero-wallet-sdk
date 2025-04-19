@@ -13,7 +13,6 @@ import im.molly.monero.MoneroNodeClient
 import im.molly.monero.MoneroWallet
 import im.molly.monero.RestorePoint
 import im.molly.monero.SecretKey
-import im.molly.monero.WalletConfig
 import im.molly.monero.WalletDataStore
 import im.molly.monero.WalletProvider
 import im.molly.monero.loggerFor
@@ -145,6 +144,8 @@ internal class WalletServiceClient(
             }
         }
     }
+
+    override fun isServiceIsolated(): Boolean = service.isRemote()
 
     override fun disconnect() {
         context.unbindService(serviceConnection ?: return)

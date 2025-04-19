@@ -20,7 +20,7 @@ class MoneroMnemonicTest {
     )
 
     @Test
-    fun testKnownMnemonics() {
+    fun knownMnemonics() {
         testCases.forEach {
             validateMnemonicGeneration(it)
             validateEntropyRecovery(it)
@@ -28,22 +28,22 @@ class MoneroMnemonicTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun testEmptyEntropy() {
+    fun emptyEntropy() {
         MoneroMnemonic.generateMnemonic(ByteArray(0))
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun testInvalidEntropy() {
+    fun invalidEntropy() {
         MoneroMnemonic.generateMnemonic(ByteArray(2))
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun testEmptyWords() {
+    fun emptyWords() {
         MoneroMnemonic.recoverEntropy("")
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun testInvalidLanguage() {
+    fun invalidLanguage() {
         MoneroMnemonic.generateMnemonic(ByteArray(32), Locale("ZZ"))
     }
 

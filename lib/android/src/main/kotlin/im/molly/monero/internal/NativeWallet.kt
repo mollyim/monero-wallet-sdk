@@ -11,7 +11,6 @@ import im.molly.monero.IWallet
 import im.molly.monero.IWalletCallbacks
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroNetwork
-import im.molly.monero.NativeLoader
 import im.molly.monero.PaymentRequest
 import im.molly.monero.SecretKey
 import im.molly.monero.SweepRequest

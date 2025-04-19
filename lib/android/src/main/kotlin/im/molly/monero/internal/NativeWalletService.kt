@@ -3,9 +3,7 @@ package im.molly.monero.internal
 import android.os.ParcelFileDescriptor
 import im.molly.monero.IWallet
 import im.molly.monero.LogAdapter
-import im.molly.monero.NativeLoader
 import im.molly.monero.SecretKey
-import im.molly.monero.WalletConfig
 import im.molly.monero.loggerFor
 import im.molly.monero.randomSecretKey
 import im.molly.monero.setLoggingAdapter

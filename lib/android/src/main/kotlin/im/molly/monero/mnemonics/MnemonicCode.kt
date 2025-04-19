@@ -1,5 +1,6 @@
 package im.molly.monero.mnemonics
 
+import im.molly.monero.SecretKey
 import java.io.Closeable
 import java.nio.CharBuffer
 import java.security.MessageDigest
@@ -78,3 +79,5 @@ class MnemonicCode private constructor(
         return block()
     }
 }
+
+fun MnemonicCode.toSecretKey(): SecretKey = SecretKey(entropy)

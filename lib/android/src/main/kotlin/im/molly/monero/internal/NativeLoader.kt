@@ -1,5 +1,6 @@
-package im.molly.monero
+package im.molly.monero.internal
 
+import im.molly.monero.Logger
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal object NativeLoader {

@@ -55,7 +55,7 @@ class NativeWalletTest {
     }
 
     @Test
-    fun atGenesisBalanceIsZero() = runTest {
+    fun balanceIsZeroAtGenesis() = runTest {
         with(
             NativeWallet.localSyncWallet(
                 networkId = MoneroNetwork.Mainnet.id,

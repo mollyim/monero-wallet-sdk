@@ -1,4 +1,4 @@
-package im.molly.monero
+package im.molly.monero.internal
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize

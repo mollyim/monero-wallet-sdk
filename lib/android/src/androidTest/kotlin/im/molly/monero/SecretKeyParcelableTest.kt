@@ -8,7 +8,7 @@ import kotlin.random.Random
 class SecretKeyParcelableTest {
 
     @Test
-    fun testParcel() {
+    fun secretKeyIsParcelable() {
         val secret = Random.nextBytes(32)
         val originalKey = SecretKey(secret)
 
