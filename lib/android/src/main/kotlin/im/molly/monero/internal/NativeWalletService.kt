@@ -1,6 +1,6 @@
 package im.molly.monero.internal
 
-import im.molly.monero.IStorageAdapter
+import android.os.ParcelFileDescriptor
 import im.molly.monero.IWallet
 import im.molly.monero.LogAdapter
 import im.molly.monero.NativeLoader
@@ -10,7 +10,6 @@ import im.molly.monero.loggerFor
 import im.molly.monero.randomSecretKey
 import im.molly.monero.setLoggingAdapter
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 internal class NativeWalletService(
     private val serviceScope: CoroutineScope,
@@ -38,62 +37,54 @@ internal class NativeWalletService(
 
     override fun createWallet(
         config: WalletConfig,
-        storage: IStorageAdapter,
         rpcClient: IHttpRpcClient?,
         callback: IWalletServiceCallbacks?,
     ) {
-        serviceScope.launch {
-            val secretSpendKey = randomSecretKey()
-            val wallet = secretSpendKey.use { secret ->
-                createOrRestoreWallet(config, storage, rpcClient, secret)
-            }
-            callback?.onWalletResult(wallet)
+        val secretSpendKey = randomSecretKey()
+        val wallet = secretSpendKey.use { secret ->
+            createOrRestoreWallet(config, rpcClient, secret)
         }
+        callback?.onWalletResult(wallet)
     }
 
     override fun restoreWallet(
         config: WalletConfig,
-        storage: IStorageAdapter,
         rpcClient: IHttpRpcClient?,
         callback: IWalletServiceCallbacks?,
         secretSpendKey: SecretKey,
         restorePoint: Long,
     ) {
-        serviceScope.launch {
-            val wallet = secretSpendKey.use { secret ->
-                createOrRestoreWallet(config, storage, rpcClient, secret, restorePoint)
-            }
-            callback?.onWalletResult(wallet)
+        val wallet = secretSpendKey.use { secret ->
+            createOrRestoreWallet(config, rpcClient, secret, restorePoint)
         }
+        callback?.onWalletResult(wallet)
     }
 
     override fun openWallet(
         config: WalletConfig,
-        storage: IStorageAdapter,
         rpcClient: IHttpRpcClient?,
         callback: IWalletServiceCallbacks?,
+        inputFd: ParcelFileDescriptor,
     ) {
-        serviceScope.launch {
-            val wallet = NativeWallet.localSyncWallet(
+        val wallet = inputFd.use {
+            NativeWallet.localSyncWallet(
                 networkId = config.networkId,
-                storageAdapter = storage,
                 rpcClient = rpcClient,
+                walletDataFd = inputFd,
                 coroutineContext = serviceScope.coroutineContext,
             )
-            callback?.onWalletResult(wallet)
         }
+        callback?.onWalletResult(wallet)
     }
 
-    private suspend fun createOrRestoreWallet(
+    private fun createOrRestoreWallet(
         config: WalletConfig,
-        storage: IStorageAdapter,
         rpcClient: IHttpRpcClient?,
         secretSpendKey: SecretKey,
         restorePoint: Long? = null,
     ): IWallet {
         return NativeWallet.localSyncWallet(
             networkId = config.networkId,
-            storageAdapter = storage,
             rpcClient = rpcClient,
             secretSpendKey = secretSpendKey,
             restorePoint = restorePoint,

@@ -6,17 +6,14 @@ import im.molly.monero.BlockchainTime
 import im.molly.monero.CalledByNative
 import im.molly.monero.IBalanceListener
 import im.molly.monero.IPendingTransfer
-import im.molly.monero.IStorageAdapter
 import im.molly.monero.ITransferCallback
 import im.molly.monero.IWallet
 import im.molly.monero.IWalletCallbacks
-import im.molly.monero.InMemoryWalletDataStore
 import im.molly.monero.Ledger
 import im.molly.monero.MoneroNetwork
 import im.molly.monero.NativeLoader
 import im.molly.monero.PaymentRequest
 import im.molly.monero.SecretKey
-import im.molly.monero.StorageAdapter
 import im.molly.monero.SweepRequest
 import im.molly.monero.WalletAccount
 import im.molly.monero.estimateTimestamp
@@ -33,41 +30,44 @@ import kotlin.coroutines.CoroutineContext
 
 internal class NativeWallet private constructor(
     private val network: MoneroNetwork,
-    private val storageAdapter: IStorageAdapter,
     private val rpcClient: IHttpRpcClient?,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher,
 ) : IWallet.Stub(), Closeable {
 
     companion object {
-        suspend fun localSyncWallet(
+        fun localSyncWallet(
             networkId: Int,
-            storageAdapter: IStorageAdapter = StorageAdapter(InMemoryWalletDataStore()),
             rpcClient: IHttpRpcClient? = null,
+            walletDataFd: ParcelFileDescriptor? = null,
             secretSpendKey: SecretKey? = null,
             restorePoint: Long? = null,
             coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob(),
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         ) = NativeWallet(
             network = MoneroNetwork.fromId(networkId),
-            storageAdapter = storageAdapter,
             rpcClient = rpcClient,
             scope = CoroutineScope(coroutineContext),
             ioDispatcher = ioDispatcher,
         ).apply {
-            when {
-                secretSpendKey != null -> {
-                    require(restorePoint == null || restorePoint >= 0)
-                    val restorePointOrNow = restorePoint ?: (System.currentTimeMillis() / 1000)
-                    nativeRestoreAccount(handle, secretSpendKey.bytes, restorePointOrNow)
-                    tryWriteState()
-                }
-
-                else -> {
-                    require(restorePoint == null)
-                    readState()
-                }
+            if (secretSpendKey != null) {
+                require(restorePoint == null || restorePoint >= 0)
+                val restorePointOrNow = restorePoint ?: (System.currentTimeMillis() / 1000)
+                restoreFromKey(secretSpendKey, restorePointOrNow)
+            } else {
+                require(restorePoint == null)
+                requireNotNull(walletDataFd)
+                restoreFromStorage(walletDataFd)
             }
+        }
+
+        private fun NativeWallet.restoreFromKey(secretSpendKey: SecretKey, restorePoint: Long) {
+            nativeRestoreAccount(handle, secretSpendKey.bytes, restorePoint)
+        }
+
+        private fun NativeWallet.restoreFromStorage(walletDataFd: ParcelFileDescriptor) {
+            val loaded = nativeLoad(handle, walletDataFd.fd)
+            check(loaded)
         }
     }
 
@@ -78,47 +78,6 @@ internal class NativeWallet private constructor(
     }
 
     private val handle: Long = nativeCreate(network.id)
-
-    private suspend fun tryWriteState(): Boolean {
-        return withContext(ioDispatcher) {
-            val pipe = ParcelFileDescriptor.createPipe()
-            val readFd = pipe[0]
-            val writeFd = pipe[1]
-            val storageIsReady = storageAdapter.writeAsync(readFd)
-            if (storageAdapter.isRemote()) {
-                readFd.close()
-            }
-            writeFd.use {
-                if (storageIsReady) {
-                    val result = nativeSave(handle, it.fd)
-                    if (!result) {
-                        logger.e("Wallet data serialization failed")
-                    }
-                    result
-                } else {
-                    logger.w("Unable to save wallet data because dataStore is unset")
-                    false
-                }
-            }
-        }
-    }
-
-    private suspend fun readState() {
-        withContext(ioDispatcher) {
-            val pipe = ParcelFileDescriptor.createPipe()
-            val readFd = pipe[0]
-            val writeFd = pipe[1]
-            storageAdapter.readAsync(writeFd)
-            if (storageAdapter.isRemote()) {
-                writeFd.close()
-            }
-            readFd.use {
-                if (!nativeLoad(handle, it.fd)) {
-                    error("Wallet data deserialization failed")
-                }
-            }
-        }
-    }
 
     override fun getPublicAddress(): String = nativeGetPublicAddress(handle)
 
@@ -196,10 +155,12 @@ internal class NativeWallet private constructor(
         }
     }
 
-    override fun commit(callback: IWalletCallbacks?) {
+    override fun commit(outputFd: ParcelFileDescriptor, callback: IWalletCallbacks?) {
         scope.launch(ioDispatcher) {
-            val result = tryWriteState()
-            callback?.onCommitResult(result)
+            val saved = nativeSave(handle, outputFd.fd)
+            callback?.onCommitResult(saved)
+        }.invokeOnCompletion {
+            outputFd.close()
         }
     }
 
@@ -344,7 +305,7 @@ internal class NativeWallet private constructor(
             return
         }
 
-        val batchSize = getMaxIpcSize() /  TxInfo.MAX_PARCEL_SIZE_BYTES
+        val batchSize = getMaxIpcSize() / TxInfo.MAX_PARCEL_SIZE_BYTES
         val chunkedSeq = txList.asSequence().chunked(batchSize).iterator()
 
         while (chunkedSeq.hasNext()) {

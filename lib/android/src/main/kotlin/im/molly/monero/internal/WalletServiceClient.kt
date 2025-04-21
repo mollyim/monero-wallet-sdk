@@ -13,7 +13,6 @@ import im.molly.monero.MoneroNodeClient
 import im.molly.monero.MoneroWallet
 import im.molly.monero.RestorePoint
 import im.molly.monero.SecretKey
-import im.molly.monero.StorageAdapter
 import im.molly.monero.WalletConfig
 import im.molly.monero.WalletDataStore
 import im.molly.monero.WalletProvider
@@ -33,7 +32,7 @@ internal class WalletServiceClient(
     companion object {
         suspend fun bindService(
             context: Context,
-            serviceClass: Class<out BaseWalletService>
+            serviceClass: Class<out BaseWalletService>,
         ): WalletServiceClient {
             val (serviceConnection, service) = bindServiceAwait(context, serviceClass)
             return WalletServiceClient(context, service, serviceConnection)
@@ -79,15 +78,14 @@ internal class WalletServiceClient(
         client: MoneroNodeClient?,
     ): MoneroWallet {
         validateClientNetwork(client, network)
-
-        val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.createWallet(
-                buildConfig(network), storageAdapter, client?.httpRpcClient,
+                buildConfig(network), client?.httpRpcClient,
                 WalletResultCallback(continuation),
             )
         }
-        return MoneroWallet(wallet, storageAdapter, client)
+        val storeAdapter = dataStore?.let { DataStoreAdapter(it) }
+        return MoneroWallet(wallet, storeAdapter, client)
     }
 
     override suspend fun restoreWallet(
@@ -99,17 +97,16 @@ internal class WalletServiceClient(
     ): MoneroWallet {
         validateClientNetwork(client, network)
         validateRestorePoint(restorePoint, network)
-
-        val storageAdapter = StorageAdapter(dataStore)
         val wallet = suspendCancellableCoroutine { continuation ->
             service.restoreWallet(
-                buildConfig(network), storageAdapter, client?.httpRpcClient,
+                buildConfig(network), client?.httpRpcClient,
                 WalletResultCallback(continuation),
                 secretSpendKey,
                 restorePoint.toLong(),
             )
         }
-        return MoneroWallet(wallet, storageAdapter, client)
+        val storeAdapter = dataStore?.let { DataStoreAdapter(it) }
+        return MoneroWallet(wallet, storeAdapter, client)
     }
 
     override suspend fun openWallet(
@@ -118,15 +115,17 @@ internal class WalletServiceClient(
         client: MoneroNodeClient?,
     ): MoneroWallet {
         validateClientNetwork(client, network)
-
-        val storageAdapter = StorageAdapter(dataStore)
-        val wallet = suspendCancellableCoroutine { continuation ->
-            service.openWallet(
-                buildConfig(network), storageAdapter, client?.httpRpcClient,
-                WalletResultCallback(continuation),
-            )
+        val storeAdapter = DataStoreAdapter(dataStore)
+        return storeAdapter.loadWithFd { fd ->
+            val wallet = suspendCancellableCoroutine { continuation ->
+                service.openWallet(
+                    buildConfig(network), client?.httpRpcClient,
+                    WalletResultCallback(continuation),
+                    fd,
+                )
+            }
+            MoneroWallet(wallet, storeAdapter, client)
         }
-        return MoneroWallet(wallet, storageAdapter, client)
     }
 
     private fun buildConfig(network: MoneroNetwork): WalletConfig {

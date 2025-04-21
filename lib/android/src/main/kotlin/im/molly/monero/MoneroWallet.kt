@@ -1,7 +1,10 @@
 package im.molly.monero
 
+import im.molly.monero.exceptions.InternalRuntimeException
+import im.molly.monero.exceptions.NoSuchAccountException
 import im.molly.monero.internal.LedgerFactory
 import im.molly.monero.internal.NativeWallet
+import im.molly.monero.internal.DataStoreAdapter
 import im.molly.monero.internal.TxInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -13,24 +16,24 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MoneroWallet internal constructor(
     private val wallet: IWallet,
-    private val storageAdapter: StorageAdapter,
+    private val defaultStore: DataStoreAdapter?,
     val moneroNodeClient: MoneroNodeClient?,
 ) : AutoCloseable {
-
-    private val logger = loggerFor<MoneroWallet>()
 
     val publicAddress: PublicAddress = PublicAddress.parse(wallet.publicAddress)
 
     val network: MoneroNetwork
         get() = publicAddress.network
 
-    var dataStore by storageAdapter::dataStore
+    private val logger = loggerFor<MoneroWallet>()
 
 //    suspend fun addDetachedSubAddress(accountIndex: Int, subAddressIndex: Int): AccountAddress =
 //        suspendCancellableCoroutine { continuation ->
@@ -172,12 +175,37 @@ class MoneroWallet internal constructor(
         continuation.invokeOnCancellation { wallet.cancelRefresh() }
     }
 
-    suspend fun commit(): Boolean = suspendCancellableCoroutine { continuation ->
-        wallet.commit(object : BaseWalletCallbacks() {
-            override fun onCommitResult(success: Boolean) {
-                continuation.resume(success) {}
+    suspend fun save() =
+        saveToDataStore(
+            adapter = defaultStore ?: error("No dataStore associated with this wallet"),
+            overwrite = true,
+        )
+
+    suspend fun save(targetStore: WalletDataStore, overwrite: Boolean = false) =
+        saveToDataStore(
+            adapter = DataStoreAdapter(targetStore),
+            overwrite = overwrite,
+        )
+
+    private suspend fun saveToDataStore(adapter: DataStoreAdapter, overwrite: Boolean) {
+        adapter.saveWithFd(overwrite) { fd ->
+            suspendCoroutine { continuation ->
+                val callback = object : BaseWalletCallbacks() {
+                    override fun onCommitResult(success: Boolean) {
+                        if (success) {
+                            continuation.resume(Unit)
+                        } else {
+                            continuation.resumeWithException(
+                                InternalRuntimeException(
+                                    "Serialization error: Wallet data could not be saved"
+                                )
+                            )
+                        }
+                    }
+                }
+                wallet.commit(fd, callback)
             }
-        })
+        }
     }
 
     suspend fun createTransfer(transferRequest: TransferRequest): PendingTransfer =
@@ -237,11 +265,6 @@ class MoneroWallet internal constructor(
         }
 
     override fun close() = wallet.close()
-}
-
-class NoSuchAccountException(private val accountIndex: Int) : NoSuchElementException() {
-    override val message: String
-        get() = "No account was found with the specified index: $accountIndex"
 }
 
 private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {

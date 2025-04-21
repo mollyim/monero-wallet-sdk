@@ -25,7 +25,7 @@ class MoneroSdkClient(private val context: Context) {
             network = network,
             dataStore = WalletDataStoreFile(filename, newFile = true),
         ).also { wallet ->
-            wallet.commit()
+            wallet.save()
         }
     }
 
@@ -42,7 +42,7 @@ class MoneroSdkClient(private val context: Context) {
             secretSpendKey = secretSpendKey,
             restorePoint = restorePoint,
         ).also { wallet ->
-            wallet.commit()
+            wallet.save()
         }
     }
 
@@ -87,7 +87,7 @@ class MoneroSdkClient(private val context: Context) {
             throw IOException("Cannot create wallet data directory: ${walletDataDir.path}")
         }
 
-        override suspend fun write(writer: (OutputStream) -> Unit) {
+        override suspend fun save(writer: (OutputStream) -> Unit, overwrite: Boolean) {
             val output = file.startWrite()
             try {
                 writer(output)
@@ -98,7 +98,7 @@ class MoneroSdkClient(private val context: Context) {
             }
         }
 
-        override suspend fun read(): InputStream {
+        override suspend fun load(): InputStream {
             return file.openRead()
         }
     }

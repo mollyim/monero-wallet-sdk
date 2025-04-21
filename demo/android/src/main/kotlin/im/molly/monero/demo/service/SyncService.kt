@@ -38,7 +38,7 @@ class SyncService(
                     syncedWalletIds.map {
                         walletRepository.getWallet(it)
                     }.forEach { wallet ->
-                        wallet.commit()
+                        wallet.save()
                     }
                 }
                 delay(60.seconds)
@@ -56,7 +56,7 @@ class SyncService(
                         if (result.isError()) {
                             // TODO: Handle non-recoverable errors
                         }
-                        wallet.commit()
+                        wallet.save()
                         delay(10.seconds)
                     }
                 }
