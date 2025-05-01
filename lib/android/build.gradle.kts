@@ -40,6 +40,7 @@ android {
 
     buildTypes {
         getByName("debug") {
+            isMinifyEnabled = false
             enableUnitTestCoverage = true
             enableAndroidTestCoverage = true
         }
@@ -83,17 +84,17 @@ android {
         }
     }
 
-    testOptions {
-        managedDevices {
-            localDevices {
-                create("pixel2api30") {
-                    device = "Pixel 2"
-                    apiLevel = 30
-                    systemImageSource = "aosp-atd"
-                }
-            }
-        }
-    }
+//    testOptions {
+//        managedDevices {
+//            localDevices {
+//                create("pixel2api30") {
+//                    device = "Pixel 2"
+//                    apiLevel = 30
+//                    systemImageSource = "aosp-atd"
+//                }
+//            }
+//        }
+//    }
 }
 
 dependencies {
