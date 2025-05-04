@@ -2,7 +2,6 @@ package im.molly.monero.internal
 
 import android.os.ParcelFileDescriptor
 import im.molly.monero.WalletDataStore
-import im.molly.monero.loggerFor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

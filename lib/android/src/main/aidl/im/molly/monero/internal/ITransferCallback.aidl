@@ -1,6 +1,6 @@
-package im.molly.monero;
+package im.molly.monero.internal;
 
-import im.molly.monero.IPendingTransfer;
+import im.molly.monero.internal.IPendingTransfer;
 
 oneway interface ITransferCallback {
     void onTransferCreated(in IPendingTransfer pendingTransfer);

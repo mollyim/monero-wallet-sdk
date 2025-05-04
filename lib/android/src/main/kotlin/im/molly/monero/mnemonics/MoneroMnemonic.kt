@@ -1,6 +1,6 @@
 package im.molly.monero.mnemonics
 
-import im.molly.monero.CalledByNative
+import im.molly.monero.internal.CalledByNative
 import im.molly.monero.internal.NativeLoader
 import java.nio.ByteBuffer
 import java.nio.CharBuffer

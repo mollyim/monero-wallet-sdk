@@ -3,7 +3,6 @@ package im.molly.monero.internal
 import android.os.Parcelable
 import im.molly.monero.BlockHeader
 import im.molly.monero.BlockchainTime
-import im.molly.monero.CalledByNative
 import im.molly.monero.Enote
 import im.molly.monero.HashDigest
 import im.molly.monero.WalletAccount

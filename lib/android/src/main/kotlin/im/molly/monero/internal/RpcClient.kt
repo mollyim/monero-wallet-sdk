@@ -5,7 +5,6 @@ import android.os.ParcelFileDescriptor
 import im.molly.monero.BackoffPolicy
 import im.molly.monero.loadbalancer.LoadBalancer
 import im.molly.monero.loadbalancer.Rule
-import im.molly.monero.loggerFor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

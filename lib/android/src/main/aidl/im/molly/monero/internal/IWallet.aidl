@@ -1,10 +1,10 @@
-package im.molly.monero;
+package im.molly.monero.internal;
 
-import im.molly.monero.IBalanceListener;
-import im.molly.monero.ITransferCallback;
-import im.molly.monero.IWalletCallbacks;
 import im.molly.monero.PaymentRequest;
 import im.molly.monero.SweepRequest;
+import im.molly.monero.internal.IBalanceListener;
+import im.molly.monero.internal.ITransferCallback;
+import im.molly.monero.internal.IWalletCallbacks;
 
 interface IWallet {
     String getPublicAddress();

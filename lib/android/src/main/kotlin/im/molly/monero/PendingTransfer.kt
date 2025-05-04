@@ -1,5 +1,7 @@
 package im.molly.monero
 
+import im.molly.monero.internal.IPendingTransfer
+import im.molly.monero.internal.ITransferCallback
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resumeWithException

@@ -7,7 +7,6 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.annotation.VisibleForTesting
 import im.molly.monero.BlockchainTime
-import im.molly.monero.IWallet
 import im.molly.monero.MoneroNetwork
 import im.molly.monero.MoneroNodeClient
 import im.molly.monero.MoneroWallet
@@ -15,7 +14,6 @@ import im.molly.monero.RestorePoint
 import im.molly.monero.SecretKey
 import im.molly.monero.WalletDataStore
 import im.molly.monero.WalletProvider
-import im.molly.monero.loggerFor
 import im.molly.monero.service.BaseWalletService
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CompletableDeferred

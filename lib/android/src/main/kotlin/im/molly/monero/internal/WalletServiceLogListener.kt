@@ -1,7 +1,5 @@
 package im.molly.monero.internal
 
-import im.molly.monero.Logger
-
 internal object WalletServiceLogListener : IWalletServiceListener.Stub() {
     override fun onLogMessage(priority: Int, tag: String, msg: String, cause: String?) {
         if (Logger.adapter.isLoggable(priority, tag)) {

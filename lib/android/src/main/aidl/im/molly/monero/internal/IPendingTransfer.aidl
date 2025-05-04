@@ -1,6 +1,6 @@
-package im.molly.monero;
+package im.molly.monero.internal;
 
-import im.molly.monero.ITransferCallback;
+import im.molly.monero.internal.ITransferCallback;
 
 interface IPendingTransfer {
     long getAmount();

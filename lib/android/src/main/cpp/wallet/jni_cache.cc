@@ -25,8 +25,8 @@ ScopedJavaGlobalRef<jclass> StringClass;
 
 void InitializeJniCache(JNIEnv* env) {
   jclass httpResponse = GetClass(env, "im/molly/monero/internal/HttpResponse");
-  jclass iTransferCallback = GetClass(env, "im/molly/monero/ITransferCallback");
-  jclass logger = GetClass(env, "im/molly/monero/Logger");
+  jclass iTransferCallback = GetClass(env, "im/molly/monero/internal/ITransferCallback");
+  jclass logger = GetClass(env, "im/molly/monero/internal/Logger");
   jclass txInfo = GetClass(env, "im/molly/monero/internal/TxInfo");
   jclass nativeWallet = GetClass(env, "im/molly/monero/internal/NativeWallet");
   jclass parcelFd = GetClass(env, "android/os/ParcelFileDescriptor");
@@ -42,7 +42,7 @@ void InitializeJniCache(JNIEnv* env) {
       "getContentType", "()Ljava/lang/String;");
   ITransferCallback_onTransferCreated = GetMethodId(
       env, iTransferCallback,
-      "onTransferCreated", "(Lim/molly/monero/IPendingTransfer;)V");
+      "onTransferCreated", "(Lim/molly/monero/internal/IPendingTransfer;)V");
   ITransferCallback_onTransferCommitted = GetMethodId(
       env, iTransferCallback,
       "onTransferCommitted", "()V");
@@ -59,7 +59,7 @@ void InitializeJniCache(JNIEnv* env) {
   NativeWallet_createPendingTransfer = GetMethodId(
       env, nativeWallet,
       "createPendingTransfer",
-      "(JJJI)Lim/molly/monero/IPendingTransfer;");
+      "(JJJI)Lim/molly/monero/internal/IPendingTransfer;");
   NativeWallet_callRemoteNode = GetMethodId(
       env, nativeWallet,
       "callRemoteNode",

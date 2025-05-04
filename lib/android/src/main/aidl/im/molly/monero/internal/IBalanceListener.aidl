@@ -1,4 +1,4 @@
-package im.molly.monero;
+package im.molly.monero.internal;
 
 import im.molly.monero.BlockchainTime;
 import im.molly.monero.internal.TxInfo;

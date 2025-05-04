@@ -1,4 +1,4 @@
-package im.molly.monero
+package im.molly.monero.internal
 
 /**
  * Annotation that shows the method is called by JNI native code.
