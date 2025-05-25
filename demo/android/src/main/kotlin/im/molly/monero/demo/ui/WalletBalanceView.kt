@@ -120,7 +120,7 @@ fun WalletBalanceDetailsPreview() {
         WalletBalanceView(
             balance = Balance(
                 pendingAmount = 5.xmr,
-                timeLockedAmounts = listOf(
+                lockableAmounts = listOf(
                     TimeLocked(10.xmr, null),
                     TimeLocked(BigDecimal("0.000000000001").xmr, null),
                     TimeLocked(30.xmr, null)

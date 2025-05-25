@@ -1,32 +1,34 @@
 package im.molly.monero
 
 data class Balance(
-    val pendingAmount: MoneroAmount,
-    val timeLockedAmounts: List<TimeLocked<MoneroAmount>>,
+    val lockableAmounts: List<TimeLocked<MoneroAmount>>,
+    val pendingAmount: MoneroAmount = MoneroAmount.ZERO,
 ) {
-    val confirmedAmount: MoneroAmount = timeLockedAmounts.sumOf { it.value }
+    val confirmedAmount: MoneroAmount = lockableAmounts.sumOf { it.value }
     val totalAmount: MoneroAmount = confirmedAmount + pendingAmount
 
+    companion object {
+        val EMPTY = Balance(emptyList())
+    }
+
     fun unlockedAmountAt(targetTime: BlockchainTime): MoneroAmount {
-        return timeLockedAmounts
+        return lockableAmounts
             .filter { it.isUnlocked(targetTime) }
             .sumOf { it.value }
     }
 
     fun lockedAmountsAt(targetTime: BlockchainTime): Map<BlockchainTimeSpan, MoneroAmount> {
-        return timeLockedAmounts
+        return lockableAmounts
             .filter { it.isLocked(targetTime) }
             .groupBy({ it.timeUntilUnlock(targetTime) }, { it.value })
-            .mapValues { (_, amounts) ->
-                amounts.sum()
-            }
+            .mapValues { it.value.sum() }
     }
 }
 
 fun Iterable<TimeLocked<Enote>>.calculateBalance(
     accountFilter: (owner: AccountAddress) -> Boolean = { true },
 ): Balance {
-    val lockedAmounts = mutableListOf<TimeLocked<MoneroAmount>>()
+    val lockableAmounts = mutableListOf<TimeLocked<MoneroAmount>>()
 
     var pendingAmount = MoneroAmount.ZERO
 
@@ -34,9 +36,9 @@ fun Iterable<TimeLocked<Enote>>.calculateBalance(
         if (timeLocked.value.age == 0) {
             pendingAmount += timeLocked.value.amount
         } else {
-            lockedAmounts.add(TimeLocked(timeLocked.value.amount, timeLocked.unlockTime))
+            lockableAmounts.add(TimeLocked(timeLocked.value.amount, timeLocked.unlockTime))
         }
     }
 
-    return Balance(pendingAmount, lockedAmounts)
+    return Balance(lockableAmounts, pendingAmount)
 }
