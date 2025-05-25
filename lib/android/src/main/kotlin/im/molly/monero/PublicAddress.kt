@@ -54,9 +54,9 @@ data class StandardAddress(
 
     companion object {
         val prefixes = mapOf(
-            18L to MoneroNetwork.Mainnet,
-            53L to MoneroNetwork.Testnet,
-            24L to MoneroNetwork.Stagenet,
+            18L to Mainnet,
+            53L to Testnet,
+            24L to Stagenet,
         )
     }
 
@@ -73,9 +73,9 @@ data class SubAddress(
 
     companion object {
         val prefixes = mapOf(
-            42L to MoneroNetwork.Mainnet,
-            63L to MoneroNetwork.Testnet,
-            36L to MoneroNetwork.Stagenet,
+            42L to Mainnet,
+            63L to Testnet,
+            36L to Stagenet,
         )
     }
 
@@ -93,9 +93,9 @@ data class IntegratedAddress(
 
     companion object {
         val prefixes = mapOf(
-            19L to MoneroNetwork.Mainnet,
-            54L to MoneroNetwork.Testnet,
-            25L to MoneroNetwork.Stagenet,
+            19L to Mainnet,
+            54L to Testnet,
+            25L to Stagenet,
         )
     }
 

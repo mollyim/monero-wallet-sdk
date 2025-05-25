@@ -4,8 +4,8 @@ import im.molly.monero.BlockHeader
 import im.molly.monero.BlockchainTime
 import im.molly.monero.HashDigest
 import im.molly.monero.Ledger
+import im.molly.monero.Mainnet
 import im.molly.monero.MoneroAmount
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.PaymentDetail
 import im.molly.monero.PublicAddress
 import im.molly.monero.Transaction
@@ -15,7 +15,7 @@ import im.molly.monero.xmr
 import java.time.Instant
 
 object PreviewParameterData {
-    val network = MoneroNetwork.Mainnet
+    val network = Mainnet
 
     val blockHeader = BlockHeader(height = 2999840, epochSecond = 1697792826)
 

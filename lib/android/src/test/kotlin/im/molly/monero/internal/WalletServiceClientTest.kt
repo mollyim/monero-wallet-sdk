@@ -2,9 +2,10 @@ package im.molly.monero.internal
 
 import android.content.Context
 import android.content.ServiceConnection
-import im.molly.monero.MoneroNetwork
+import im.molly.monero.Mainnet
 import im.molly.monero.MoneroNodeClient
 import im.molly.monero.RestorePoint
+import im.molly.monero.Testnet
 import im.molly.monero.WalletDataStore
 import im.molly.monero.genesisTime
 import im.molly.monero.randomSecretKey
@@ -35,9 +36,6 @@ class WalletServiceClientTest {
 
     private lateinit var client: WalletServiceClient
 
-    private val mainnet = MoneroNetwork.Mainnet
-    private val testnet = MoneroNetwork.Testnet
-
     @Before
     fun setUp() {
         client = WalletServiceClient(context, service, serviceConnection)
@@ -46,27 +44,27 @@ class WalletServiceClientTest {
     @Test
     fun `throws on mismatched client network`(): Unit = runBlocking {
         val mismatchedNodeClient = mockk<MoneroNodeClient> {
-            every { network } returns testnet
+            every { network } returns Testnet
         }
         val dataStore = mockk<WalletDataStore>()
 
         assertFailsWith<IllegalArgumentException> {
             client.createNewWallet(
-                network = mainnet,
+                network = Mainnet,
                 dataStore = null,
                 client = mismatchedNodeClient,
             )
         }
         assertFailsWith<IllegalArgumentException> {
             client.openWallet(
-                network = mainnet,
+                network = Mainnet,
                 dataStore = dataStore,
                 client = mismatchedNodeClient,
             )
         }
         assertFailsWith<IllegalArgumentException> {
             client.restoreWallet(
-                network = mainnet,
+                network = Mainnet,
                 dataStore = null,
                 client = mismatchedNodeClient,
                 secretSpendKey = randomSecretKey(),
@@ -78,16 +76,16 @@ class WalletServiceClientTest {
     @Test
     fun `throws on mismatched restore point network`(): Unit = runBlocking {
         val nodeClient = mockk<MoneroNodeClient> {
-            every { network } returns mainnet
+            every { network } returns Mainnet
         }
 
         assertFailsWith<IllegalArgumentException> {
             client.restoreWallet(
-                network = mainnet,
+                network = Mainnet,
                 dataStore = null,
                 client = nodeClient,
                 secretSpendKey = randomSecretKey(),
-                restorePoint = testnet.genesisTime,
+                restorePoint = Testnet.genesisTime,
             )
         }
     }

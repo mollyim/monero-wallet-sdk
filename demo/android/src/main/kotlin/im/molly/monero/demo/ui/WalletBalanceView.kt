@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import im.molly.monero.MoneroAmount
 import im.molly.monero.Balance
 import im.molly.monero.BlockchainTime
+import im.molly.monero.Mainnet
 import im.molly.monero.MoneroCurrency
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.TimeLocked
 import im.molly.monero.demo.ui.theme.AppTheme
 import im.molly.monero.genesisTime
@@ -126,7 +126,7 @@ fun WalletBalanceDetailsPreview() {
                     TimeLocked(30.xmr, null)
                 ),
             ),
-            blockchainTime = MoneroNetwork.Mainnet.genesisTime,
+            blockchainTime = Mainnet.genesisTime,
         )
     }
 }
