@@ -10,6 +10,9 @@ data class Ledger(
     val transactions: Collection<Transaction>
         get() = transactionById.values
 
+    val keyImages: Set<HashDigest>
+        get() = enoteSet.mapNotNull { it.value.keyImage }.toSet()
+
     val isBalanceZero: Boolean
         get() = getBalance().totalAmount.isZero
 
