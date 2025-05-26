@@ -4,6 +4,7 @@ import android.os.Parcelable
 import im.molly.monero.BlockHeader
 import im.molly.monero.BlockchainTime
 import im.molly.monero.Enote
+import im.molly.monero.EnoteOrigin
 import im.molly.monero.HashDigest
 import im.molly.monero.WalletAccount
 import im.molly.monero.MoneroAmount
@@ -68,10 +69,14 @@ internal fun List<TxInfo>.consolidateTransactions(
     blockchainContext: BlockchainTime,
 ): Pair<Map<String, Transaction>, Set<TimeLocked<Enote>>> {
     // Extract enotes from incoming transactions
-    val allEnotes =
-        filter { it.incoming }.map { it.toEnote(blockchainContext.height, accounts) }
+    val allEnotes = filter { it.incoming }
+        .mapIndexed { txOutIndex, txInfo ->
+            txInfo.toEnote(txOutIndex, blockchainContext.height, accounts)
+        }
 
-    val enoteByTxId = allEnotes.groupBy { enote -> enote.sourceTxId!! }
+    val enoteByTxId = allEnotes.groupBy {
+        enote -> enote.sourceTxId!!
+    }
 
     val enoteByKeyImage = allEnotes.mapNotNull { enote ->
         enote.keyImage?.let { keyImage -> keyImage.toString() to enote }
@@ -154,7 +159,11 @@ private fun List<TxInfo>.determineTxState(): TxState {
     }
 }
 
-private fun TxInfo.toEnote(blockchainHeight: Int, accounts: List<WalletAccount>): Enote {
+private fun TxInfo.toEnote(
+    txOutIndex: Int,
+    blockchainHeight: Int,
+    accounts: List<WalletAccount>,
+): Enote {
     val ownerAddress = accounts.findAddressByIndex(subAddressMajor, subAddressMinor)
         ?: error("Failed to find subaddress: $subAddressMajor/$subAddressMinor")
     val calculatedAge = if (height > 0) (blockchainHeight - height + 1) else 0
@@ -165,7 +174,7 @@ private fun TxInfo.toEnote(blockchainHeight: Int, accounts: List<WalletAccount>)
         key = publicKey?.let { PublicKey(it) },
         keyImage = keyImage?.let { HashDigest(it) },
         age = calculatedAge,
-        sourceTxId = txHash,
+        origin = EnoteOrigin.TxOut(txId = txHash, index = txOutIndex),
     )
 }
 
