@@ -9,7 +9,7 @@ namespace monero {
 // Initialize various classes and method pointers cached for use in JNI.
 void InitializeJniCache(JNIEnv* env);
 
-// im.molly.monero
+// im.molly.monero.sdk
 extern jmethodID HttpResponse_getBody;
 extern jmethodID HttpResponse_getCode;
 extern jmethodID HttpResponse_getContentType;

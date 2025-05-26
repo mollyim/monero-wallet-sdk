@@ -1,17 +1,6 @@
 package im.molly.monero.demo.ui.preview
 
-import im.molly.monero.BlockHeader
-import im.molly.monero.BlockchainTime
-import im.molly.monero.HashDigest
-import im.molly.monero.Ledger
-import im.molly.monero.Mainnet
-import im.molly.monero.MoneroAmount
-import im.molly.monero.PaymentDetail
-import im.molly.monero.PublicAddress
-import im.molly.monero.Transaction
-import im.molly.monero.TxState
-import im.molly.monero.UnlockTime
-import im.molly.monero.xmr
+import im.molly.monero.sdk.*
 import java.time.Instant
 
 object PreviewParameterData {

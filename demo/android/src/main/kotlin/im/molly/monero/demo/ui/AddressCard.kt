@@ -10,10 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import im.molly.monero.calculateBalance
 import im.molly.monero.demo.data.model.WalletAddress
 import im.molly.monero.demo.ui.component.CopyableText
-import im.molly.monero.toFormattedString
+import im.molly.monero.sdk.calculateBalance
+import im.molly.monero.sdk.toFormattedString
 
 @Composable
 fun AddressCardExpanded(

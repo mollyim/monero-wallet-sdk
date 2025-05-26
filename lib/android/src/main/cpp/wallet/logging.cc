@@ -85,7 +85,7 @@ void JvmLogSink::set_logger(JNIEnv* env, const JavaRef<jobject>& logger) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_im_molly_monero_internal_NativeLoaderKt_nativeSetLogger(
+Java_im_molly_monero_sdk_internal_NativeLoaderKt_nativeSetLogger(
     JNIEnv* env,
     jclass clazz,
     jobject j_logger) {

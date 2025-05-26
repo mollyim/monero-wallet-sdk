@@ -13,7 +13,7 @@ val vendorDir = File(rootDir, "vendor")
 val downloadCacheDir = layout.buildDirectory.dir("downloads").get().asFile
 
 android {
-    namespace = "im.molly.monero"
+    namespace = "im.molly.monero.sdk"
     compileSdk = 35
     ndkVersion = "23.1.7779620"
 

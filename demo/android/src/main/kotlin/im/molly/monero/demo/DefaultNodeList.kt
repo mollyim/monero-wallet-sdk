@@ -1,9 +1,9 @@
 package im.molly.monero.demo
 
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.data.AppDatabase
 import im.molly.monero.demo.data.entity.asEntity
 import im.molly.monero.demo.data.model.RemoteNode
+import im.molly.monero.sdk.MoneroNetwork
 import androidx.core.net.toUri
 
 val DefaultNodeList = listOf(

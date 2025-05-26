@@ -15,12 +15,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import im.molly.monero.MoneroCurrency
-import im.molly.monero.Transaction
 import im.molly.monero.demo.ui.preview.PreviewParameterData
 import im.molly.monero.demo.ui.theme.AppTheme
 import im.molly.monero.demo.ui.theme.Blue40
 import im.molly.monero.demo.ui.theme.Red40
+import im.molly.monero.sdk.MoneroCurrency
+import im.molly.monero.sdk.Transaction
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 

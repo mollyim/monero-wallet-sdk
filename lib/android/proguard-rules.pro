@@ -22,5 +22,5 @@
 
 # Keeps methods that are invoked by JNI.
 -keepclassmembers class * {
-  @im.molly.monero.UsedByNative *;
+  @im.molly.monero.sdk.internal.CalledByNative *;
 }

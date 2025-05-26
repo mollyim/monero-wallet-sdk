@@ -8,7 +8,7 @@ namespace monero {
 // Initialize various classes and method pointers cached for use in JNI.
 void InitializeJniCache(JNIEnv* env);
 
-// im.molly.monero.mnemonics
+// im.molly.monero.sdk.mnemonics
 extern jmethodID MoneroMnemonic_buildMnemonicFromJNI;
 extern ScopedJavaGlobalRef<jclass> MoneroMnemonicClass;
 

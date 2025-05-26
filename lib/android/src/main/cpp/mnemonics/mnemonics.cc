@@ -8,7 +8,7 @@ namespace monero {
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_im_molly_monero_mnemonics_MoneroMnemonicKt_nativeElectrumWordsGenerateMnemonic(
+Java_im_molly_monero_sdk_mnemonics_MoneroMnemonicKt_nativeElectrumWordsGenerateMnemonic(
     JNIEnv* env,
     jclass clazz,
     jbyteArray j_entropy,
@@ -38,7 +38,7 @@ Java_im_molly_monero_mnemonics_MoneroMnemonicKt_nativeElectrumWordsGenerateMnemo
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_im_molly_monero_mnemonics_MoneroMnemonicKt_nativeElectrumWordsRecoverEntropy(
+Java_im_molly_monero_sdk_mnemonics_MoneroMnemonicKt_nativeElectrumWordsRecoverEntropy(
     JNIEnv* env,
     jclass clazz,
     jbyteArray j_source

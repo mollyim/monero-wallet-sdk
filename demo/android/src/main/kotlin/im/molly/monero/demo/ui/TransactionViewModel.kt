@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import im.molly.monero.Transaction
 import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.common.Result
 import im.molly.monero.demo.common.asResult
 import im.molly.monero.demo.data.WalletRepository
+import im.molly.monero.sdk.Transaction
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map

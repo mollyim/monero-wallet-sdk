@@ -22,12 +22,12 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import im.molly.monero.MoneroCurrency
-import im.molly.monero.Transaction
 import im.molly.monero.demo.ui.component.Toolbar
 import im.molly.monero.demo.ui.preview.PreviewParameterData
 import im.molly.monero.demo.ui.theme.AppIcons
 import im.molly.monero.demo.ui.theme.AppTheme
+import im.molly.monero.sdk.MoneroCurrency
+import im.molly.monero.sdk.Transaction
 
 
 @Composable

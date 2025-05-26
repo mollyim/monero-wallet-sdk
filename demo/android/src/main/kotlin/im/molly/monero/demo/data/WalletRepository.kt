@@ -1,7 +1,7 @@
 package im.molly.monero.demo.data
 
-import im.molly.monero.*
 import im.molly.monero.demo.data.model.WalletConfig
+import im.molly.monero.sdk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import okhttp3.OkHttpClient

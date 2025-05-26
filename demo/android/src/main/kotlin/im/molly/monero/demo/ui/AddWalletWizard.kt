@@ -16,13 +16,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.data.model.DefaultMoneroNetwork
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.ui.component.SelectListBox
 import im.molly.monero.demo.ui.component.Toolbar
 import im.molly.monero.demo.ui.theme.AppIcons
 import im.molly.monero.demo.ui.theme.AppTheme
+import im.molly.monero.sdk.MoneroNetwork
 
 @Composable
 fun AddWalletFirstStepRoute(

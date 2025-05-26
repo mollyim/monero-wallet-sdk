@@ -2,9 +2,9 @@ package im.molly.monero.demo.data
 
 import android.content.Context
 import android.util.AtomicFile
-import im.molly.monero.*
-import im.molly.monero.loadbalancer.RoundRobinRule
-import im.molly.monero.service.SandboxedWalletService
+import im.molly.monero.sdk.*
+import im.molly.monero.sdk.loadbalancer.RoundRobinRule
+import im.molly.monero.sdk.service.SandboxedWalletService
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import okhttp3.OkHttpClient

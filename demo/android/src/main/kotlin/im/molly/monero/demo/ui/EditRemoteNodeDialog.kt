@@ -15,10 +15,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.data.model.RemoteNode
 import im.molly.monero.demo.ui.component.SelectListBox
 import im.molly.monero.demo.ui.theme.AppTheme
+import im.molly.monero.sdk.MoneroNetwork
 import kotlinx.coroutines.flow.first
 
 @Composable

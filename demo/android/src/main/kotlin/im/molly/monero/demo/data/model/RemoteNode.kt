@@ -1,7 +1,7 @@
 package im.molly.monero.demo.data.model
 
 import android.net.Uri
-import im.molly.monero.MoneroNetwork
+import im.molly.monero.sdk.MoneroNetwork
 
 data class RemoteNode(
     val id: Long? = null,

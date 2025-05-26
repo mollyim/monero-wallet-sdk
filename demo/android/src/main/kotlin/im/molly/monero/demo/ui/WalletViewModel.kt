@@ -4,9 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import im.molly.monero.Balance
-import im.molly.monero.BlockchainTime
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.AppModule
 import im.molly.monero.demo.common.Result
 import im.molly.monero.demo.common.asResult
@@ -14,6 +11,9 @@ import im.molly.monero.demo.data.WalletRepository
 import im.molly.monero.demo.data.model.WalletAddress
 import im.molly.monero.demo.data.model.WalletConfig
 import im.molly.monero.demo.data.model.WalletTransaction
+import im.molly.monero.sdk.Balance
+import im.molly.monero.sdk.BlockchainTime
+import im.molly.monero.sdk.MoneroNetwork
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.Instant

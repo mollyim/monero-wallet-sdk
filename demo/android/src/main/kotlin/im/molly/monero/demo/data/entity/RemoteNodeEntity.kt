@@ -5,8 +5,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.data.model.RemoteNode
+import im.molly.monero.sdk.MoneroNetwork
 
 @Entity(
     tableName = "remote_nodes",
