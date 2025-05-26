@@ -2,6 +2,7 @@ package im.molly.monero
 
 import im.molly.monero.internal.IHttpRpcClient
 import im.molly.monero.internal.RpcClient
+import im.molly.monero.loadbalancer.FirstRule
 import im.molly.monero.loadbalancer.LoadBalancer
 import im.molly.monero.loadbalancer.Rule
 import kotlinx.coroutines.CoroutineDispatcher
@@ -10,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
 
 class MoneroNodeClient private constructor(
@@ -22,16 +25,16 @@ class MoneroNodeClient private constructor(
         /**
          * Constructs a [MoneroNodeClient] to connect to the Monero [network].
          */
-        fun forNetwork(
+        fun create(
             network: MoneroNetwork,
             remoteNodes: Flow<List<RemoteNode>>,
             loadBalancerRule: Rule,
-            httpClient: OkHttpClient,
+            httpClient: OkHttpClient = OkHttpClient(),
             retryBackoff: BackoffPolicy = ExponentialBackoff.Default,
             ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         ): MoneroNodeClient {
             val scope = CoroutineScope(ioDispatcher + SupervisorJob())
-            val loadBalancer = LoadBalancer(remoteNodes, scope)
+            val loadBalancer = LoadBalancer(remoteNodes.enforceNetwork(network), scope)
             val rpcClient = RpcClient(
                 loadBalancer = loadBalancer,
                 loadBalancerRule = loadBalancerRule,
@@ -40,6 +43,16 @@ class MoneroNodeClient private constructor(
                 httpClient = httpClient,
             )
             return MoneroNodeClient(network, rpcClient, scope)
+        }
+
+        private fun Flow<List<RemoteNode>>.enforceNetwork(
+            expected: MoneroNetwork,
+        ): Flow<List<RemoteNode>> = map { nodes ->
+            val firstMismatch = nodes.firstOrNull { it.network != expected }
+            require(firstMismatch == null) {
+                "Received remote nodes for a different network: $firstMismatch (expected $expected)"
+            }
+            nodes
         }
     }
 
@@ -56,3 +69,20 @@ class MoneroNodeClient private constructor(
         scope.cancel("MoneroNodeClient is closing: Cancelling all ongoing requests")
     }
 }
+
+/**
+ * Creates a [MoneroNodeClient] that connects only to this [RemoteNode].
+ */
+fun RemoteNode.singleNodeClient(
+    httpClient: OkHttpClient = OkHttpClient(),
+    retryBackoff: BackoffPolicy = ExponentialBackoff.Default,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+): MoneroNodeClient =
+    MoneroNodeClient.create(
+        network = network,
+        remoteNodes = flowOf(listOf(this)),
+        loadBalancerRule = FirstRule,
+        httpClient = httpClient,
+        retryBackoff = retryBackoff,
+        ioDispatcher = ioDispatcher,
+    )

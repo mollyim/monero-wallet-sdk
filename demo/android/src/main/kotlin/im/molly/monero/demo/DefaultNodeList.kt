@@ -1,10 +1,10 @@
 package im.molly.monero.demo
 
-import android.net.Uri
 import im.molly.monero.MoneroNetwork
 import im.molly.monero.demo.data.AppDatabase
 import im.molly.monero.demo.data.entity.asEntity
 import im.molly.monero.demo.data.model.RemoteNode
+import androidx.core.net.toUri
 
 val DefaultNodeList = listOf(
     MoneroNetwork.Mainnet to listOf(
@@ -21,7 +21,7 @@ suspend fun addDefaultRemoteNodes(appDatabase: AppDatabase) {
     val dao = appDatabase.remoteNodeDao()
     val nodes = DefaultNodeList.flatMap { (network, urls) ->
         urls.map { url ->
-            RemoteNode(network = network, uri = Uri.parse(url)).asEntity()
+            RemoteNode(network = network, uri = url.toUri()).asEntity()
         }
     }.toTypedArray()
     dao.upsert(*nodes)

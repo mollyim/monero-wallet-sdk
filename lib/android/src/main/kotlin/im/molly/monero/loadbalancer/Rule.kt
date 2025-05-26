@@ -11,6 +11,12 @@ interface Rule {
     fun chooseNode(loadBalancer: LoadBalancer): RemoteNode?
 }
 
+object FirstRule : Rule {
+    override fun chooseNode(loadBalancer: LoadBalancer): RemoteNode? {
+        return loadBalancer.onlineNodes.firstOrNull()
+    }
+}
+
 class RoundRobinRule : Rule {
     private var currentIndex = AtomicInteger(0)
 

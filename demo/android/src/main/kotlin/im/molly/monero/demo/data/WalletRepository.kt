@@ -33,7 +33,8 @@ class WalletRepository(
                     remoteNodes = configFlow.map {
                         it.remoteNodes.map { node ->
                             RemoteNode(
-                                uri = node.uri,
+                                url = node.uri.toString(),
+                                network = node.network,
                                 username = node.username,
                                 password = node.password,
                             )
