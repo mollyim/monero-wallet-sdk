@@ -7,7 +7,7 @@ import im.molly.monero.internal.WalletServiceClient
 /**
  * Provides wallet services using an in-process bound service.
  */
-class InProcessWalletService : BaseWalletService(isolated = false) {
+class InProcessWalletService : BaseWalletService() {
     companion object {
         /**
          * Connects to the in-process wallet service and returns a connected [WalletProvider].

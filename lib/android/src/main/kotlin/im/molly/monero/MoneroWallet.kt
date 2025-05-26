@@ -77,6 +77,10 @@ class MoneroWallet internal constructor(
                 override fun onSubAddressReady(subAddress: String) {
                     continuation.resume(AccountAddress.parseWithIndexes(subAddress)) {}
                 }
+
+                override fun onAccountNotFound(accountIndex: Int) {
+                    continuation.resumeWithException(NoSuchAccountException(accountIndex))
+                }
             })
         }
 
@@ -101,6 +105,10 @@ class MoneroWallet internal constructor(
                 override fun onSubAddressListReceived(subAddresses: Array<String>) {
                     val accounts = parseAndAggregateAddresses(subAddresses.asIterable())
                     continuation.resume(accounts.single()) {}
+                }
+
+                override fun onAccountNotFound(accountIndex: Int) {
+                    continuation.resumeWithException(NoSuchAccountException(accountIndex))
                 }
             })
         }
@@ -281,6 +289,8 @@ private abstract class BaseWalletCallbacks : IWalletCallbacks.Stub() {
     override fun onSubAddressReady(subAddress: String) = Unit
 
     override fun onSubAddressListReceived(subAddresses: Array<String>) = Unit
+
+    override fun onAccountNotFound(accountIndex: Int) = Unit
 
     override fun onFeesReceived(fees: LongArray?) = Unit
 }

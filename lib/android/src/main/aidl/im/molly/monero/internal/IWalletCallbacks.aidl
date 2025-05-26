@@ -7,5 +7,6 @@ oneway interface IWalletCallbacks {
     void onCommitResult(boolean success);
     void onSubAddressReady(String subAddress);
     void onSubAddressListReceived(in String[] subAddresses);
+    void onAccountNotFound(int accountIndex);
     void onFeesReceived(in long[] fees);
 }

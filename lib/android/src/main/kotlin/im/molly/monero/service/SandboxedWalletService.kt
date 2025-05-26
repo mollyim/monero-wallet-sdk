@@ -7,7 +7,7 @@ import im.molly.monero.internal.WalletServiceClient
 /**
  * Provides wallet services using a sandboxed process.
  */
-class SandboxedWalletService : BaseWalletService(isolated = true) {
+class SandboxedWalletService : BaseWalletService() {
     companion object {
         /**
          * Connects to the sandboxed wallet service and returns a connected [WalletProvider].

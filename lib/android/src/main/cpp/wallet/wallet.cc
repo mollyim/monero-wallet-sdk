@@ -84,6 +84,8 @@ void Wallet::restoreAccount(const std::vector<char>& secret_scalar, uint64_t res
     m_last_block_timestamp = account.get_createtime();
   }
   m_last_block_height = (m_restore_height == 0) ? 1 : m_restore_height;
+  LOGD("Restoring account: restore_point=%" PRIu64 ", computed restore_height=%" PRIu64,
+       restore_point, m_restore_height);
   m_wallet.rescan_blockchain(true, false, false);
   m_account_ready = true;
 }

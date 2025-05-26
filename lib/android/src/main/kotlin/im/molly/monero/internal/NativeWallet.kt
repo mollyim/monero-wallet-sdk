@@ -260,7 +260,7 @@ internal class NativeWallet private constructor(
     override fun addDetachedSubAddress(
         accountIndex: Int,
         subAddressIndex: Int,
-        callback: IWalletCallbacks?,
+        callback: IWalletCallbacks,
     ) {
         scope.launch(ioDispatcher) {
             val subAddress = nativeAddDetachedSubAddress(handle, accountIndex, subAddressIndex)
@@ -268,20 +268,20 @@ internal class NativeWallet private constructor(
         }
     }
 
-    override fun createAccount(callback: IWalletCallbacks?) {
+    override fun createAccount(callback: IWalletCallbacks) {
         scope.launch(ioDispatcher) {
             val primaryAddress = nativeCreateSubAddressAccount(handle)
             notifyAddressCreation(primaryAddress, callback)
         }
     }
 
-    override fun createSubAddressForAccount(accountIndex: Int, callback: IWalletCallbacks?) {
+    override fun createSubAddressForAccount(accountIndex: Int, callback: IWalletCallbacks) {
         scope.launch(ioDispatcher) {
             val subAddress = nativeCreateSubAddress(handle, accountIndex)
             if (subAddress != null) {
                 notifyAddressCreation(subAddress, callback)
             } else {
-                TODO()
+                callback.onAccountNotFound(accountIndex)
             }
         }
     }
@@ -310,7 +310,7 @@ internal class NativeWallet private constructor(
         }
     }
 
-    private fun notifyAddressCreation(subAddress: String, callback: IWalletCallbacks?) {
+    private fun notifyAddressCreation(subAddress: String, callback: IWalletCallbacks) {
         balanceListenersLock.withLock {
             if (balanceListeners.isNotEmpty()) {
                 val subAddresses = getSubAddresses()
@@ -319,7 +319,7 @@ internal class NativeWallet private constructor(
                 }
             }
         }
-        callback?.onSubAddressReady(subAddress)
+        callback.onSubAddressReady(subAddress)
     }
 
     override fun getAddressesForAccount(accountIndex: Int, callback: IWalletCallbacks) {
@@ -328,7 +328,7 @@ internal class NativeWallet private constructor(
             if (accountSubAddresses.isNotEmpty()) {
                 callback.onSubAddressListReceived(accountSubAddresses)
             } else {
-                TODO()
+                callback.onAccountNotFound(accountIndex)
             }
         }
     }

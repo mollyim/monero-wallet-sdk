@@ -6,7 +6,7 @@ import im.molly.monero.internal.Logger
 /**
  * Adapter to output logs to the host application.
  *
- * Priority values matches Android framework log priority levels.
+ * Priority values matches Android framework [Log] priority levels.
  */
 interface LogAdapter {
     fun isLoggable(priority: Int, tag: String): Boolean = true
@@ -18,7 +18,7 @@ interface LogAdapter {
  */
 class DebugLogAdapter : LogAdapter {
     override fun isLoggable(priority: Int, tag: String): Boolean {
-        return priority == Log.ASSERT || BuildConfig.DEBUG
+        return BuildConfig.DEBUG || (priority == Log.ASSERT)
     }
 
     override fun print(priority: Int, tag: String, msg: String?, tr: Throwable?) {

@@ -143,7 +143,8 @@ internal class WalletServiceClient(
         }
     }
 
-    override fun isServiceIsolated(): Boolean = service.isRemote()
+    override fun isServiceSandboxed(): Boolean =
+        service.isRemote() && service.isServiceIsolated
 
     override fun disconnect() {
         context.unbindService(serviceConnection ?: return)
@@ -151,7 +152,7 @@ internal class WalletServiceClient(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private class WalletResultCallback(
-        private val continuation: CancellableContinuation<IWallet>
+        private val continuation: CancellableContinuation<IWallet>,
     ) : IWalletServiceCallbacks.Stub() {
         override fun onWalletResult(wallet: IWallet?) {
             if (wallet != null) {

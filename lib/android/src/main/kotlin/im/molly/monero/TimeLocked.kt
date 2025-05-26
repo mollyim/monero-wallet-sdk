@@ -1,16 +1,36 @@
 package im.molly.monero
 
-class TimeLocked<T>(val value: T, val unlockTime: UnlockTime?) {
+data class TimeLocked<T>(val value: T, val unlockTime: UnlockTime? = null) {
     fun isLocked(currentTime: BlockchainTime): Boolean {
-        return unlockTime != null && unlockTime > currentTime
+        val unlock = unlockTime ?: return false
+        requireSameNetworkAs(currentTime)
+        return unlock > currentTime
     }
 
     fun isUnlocked(currentTime: BlockchainTime) = !isLocked(currentTime)
 
     fun timeUntilUnlock(currentTime: BlockchainTime): BlockchainTimeSpan {
-        if (unlockTime == null || isUnlocked(currentTime)) {
-            return BlockchainTimeSpan.ZERO
+        if (unlockTime == null) return BlockchainTimeSpan.ZERO
+
+        requireSameNetworkAs(currentTime)
+
+        return if (unlockTime > currentTime) {
+            unlockTime.blockchainTime - currentTime
+        } else {
+            BlockchainTimeSpan.ZERO
         }
-        return unlockTime.blockchainTime - currentTime
+    }
+
+    private fun requireSameNetworkAs(other: BlockchainTime) {
+        val expected = unlockTime?.blockchainTime?.network
+        require(expected == other.network) {
+            "BlockchainTime network mismatch: expected $expected, got ${other.network}"
+        }
     }
 }
+
+fun MoneroAmount.lockedUntil(unlockTime: UnlockTime): TimeLocked<MoneroAmount> =
+    TimeLocked(this, unlockTime)
+
+fun MoneroAmount.unlocked(): TimeLocked<MoneroAmount> =
+    TimeLocked(this)

@@ -39,7 +39,8 @@ internal fun Project.configureJacoco(
     androidComponentsExtension.onVariants { variant ->
         val myObjFactory = project.objects
         val buildDir = layout.buildDirectory.get().asFile
-        val allJars: ListProperty<RegularFile> = myObjFactory.listProperty(RegularFile::class.java)
+        val allJars: ListProperty<RegularFile> =
+            myObjFactory.listProperty(RegularFile::class.java)
         val allDirectories: ListProperty<Directory> =
             myObjFactory.listProperty(Directory::class.java)
         val reportTask =
@@ -47,7 +48,6 @@ internal fun Project.configureJacoco(
                 "create${variant.name.capitalize()}CombinedCoverageReport",
                 JacocoReport::class,
             ) {
-
                 classDirectories.setFrom(
                     allJars,
                     allDirectories.map { dirs ->

@@ -53,7 +53,7 @@ data class BlockchainTime(
 
     fun effectiveUnlockTime(targetHeight: Int, txTimeLock: UnlockTime?): UnlockTime {
         val spendableHeight = targetHeight + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE - 1
-        val spendableTime =  BlockchainTime(
+        val spendableTime = BlockchainTime(
             height = spendableHeight,
             timestamp = estimateTimestamp(spendableHeight),
             network = network,
@@ -114,6 +114,15 @@ sealed interface UnlockTime : Comparable<BlockchainTime>, Parcelable {
 
     @Parcelize
     data class Block(override val blockchainTime: BlockchainTime) : UnlockTime {
+
+        constructor(height: Int, network: MoneroNetwork) : this(
+            BlockchainTime(
+                height = height,
+                timestamp = network.estimateTimestamp(height),
+                network = network,
+            )
+        )
+
         override operator fun compareTo(other: BlockchainTime): Int {
             return blockchainTime.height.compareTo(other.height)
         }
@@ -121,8 +130,21 @@ sealed interface UnlockTime : Comparable<BlockchainTime>, Parcelable {
 
     @Parcelize
     data class Timestamp(override val blockchainTime: BlockchainTime) : UnlockTime {
+
+        constructor(timestamp: Instant, network: MoneroNetwork) : this(
+            BlockchainTime(
+                height = network.estimateHeight(timestamp),
+                timestamp = timestamp,
+                network = network,
+            )
+        )
+
         override operator fun compareTo(other: BlockchainTime): Int {
             return blockchainTime.timestamp.compareTo(other.timestamp)
         }
     }
 }
+
+fun MoneroNetwork.unlockAtBlock(height: Int) = UnlockTime.Block(height, this)
+
+fun MoneroNetwork.unlockAtTime(timestamp: Instant) = UnlockTime.Timestamp(timestamp, this)

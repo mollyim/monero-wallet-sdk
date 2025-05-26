@@ -7,13 +7,9 @@ import androidx.lifecycle.lifecycleScope
 import im.molly.monero.internal.IWalletService
 import im.molly.monero.internal.NativeWalletService
 
-abstract class BaseWalletService(private val isolated: Boolean) : LifecycleService() {
+abstract class BaseWalletService : LifecycleService() {
     private val service: IWalletService by lazy {
-        NativeWalletService(lifecycleScope).apply {
-            if (isolated) {
-                configureLoggingAdapter()
-            }
-        }
+        NativeWalletService(this, lifecycleScope)
     }
 
     override fun onBind(intent: Intent): IBinder {

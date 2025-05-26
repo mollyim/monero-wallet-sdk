@@ -35,4 +35,3 @@ sealed interface TxState {
 
     data object OffChain : TxState
 }
-

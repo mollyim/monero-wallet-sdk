@@ -11,4 +11,5 @@ interface IWalletService {
     oneway void restoreWallet(in WalletConfig config, in IHttpRpcClient rpcClient, in IWalletServiceCallbacks callback, in SecretKey spendSecretKey, long restorePoint);
     oneway void openWallet(in WalletConfig config, in IHttpRpcClient rpcClient, in IWalletServiceCallbacks callback, in ParcelFileDescriptor inputFd);
     void setListener(in IWalletServiceListener listener);
+    boolean isServiceIsolated();
 }

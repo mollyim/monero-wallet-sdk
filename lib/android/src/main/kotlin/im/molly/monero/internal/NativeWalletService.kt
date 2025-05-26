@@ -1,13 +1,16 @@
 package im.molly.monero.internal
 
+import android.app.Service
 import android.os.ParcelFileDescriptor
 import im.molly.monero.LogAdapter
 import im.molly.monero.SecretKey
+import im.molly.monero.isIsolatedProcess
 import im.molly.monero.randomSecretKey
 import im.molly.monero.setLoggingAdapter
 import kotlinx.coroutines.CoroutineScope
 
 internal class NativeWalletService(
+    private val service: Service,
     private val serviceScope: CoroutineScope,
 ) : IWalletService.Stub(), LogAdapter {
 
@@ -15,10 +18,9 @@ internal class NativeWalletService(
 
     init {
         NativeLoader.loadWalletLibrary(logger = logger)
-    }
-
-    fun configureLoggingAdapter() {
-        setLoggingAdapter(this)
+        if (isServiceIsolated) {
+            setLoggingAdapter(this)
+        }
     }
 
     private var listener: IWalletServiceListener? = null
@@ -27,9 +29,7 @@ internal class NativeWalletService(
         listener = l
     }
 
-    override fun print(priority: Int, tag: String, msg: String?, tr: Throwable?) {
-        listener?.onLogMessage(priority, tag, msg, tr?.toString())
-    }
+    override fun isServiceIsolated(): Boolean = service.application.isIsolatedProcess()
 
     override fun createWallet(
         config: WalletConfig,
@@ -86,5 +86,9 @@ internal class NativeWalletService(
             restorePoint = restorePoint,
             coroutineContext = serviceScope.coroutineContext,
         )
+    }
+
+    override fun print(priority: Int, tag: String, msg: String?, tr: Throwable?) {
+        listener?.onLogMessage(priority, tag, msg, tr?.toString())
     }
 }
