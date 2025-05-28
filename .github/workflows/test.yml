@@ -14,16 +14,6 @@ permissions:
   contents: read
 
 jobs:
-  wrapper_validation:
-    name: Validate Gradle wrapper
-    runs-on: ubuntu-24.04
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run wrapper validation
-        uses: gradle/actions/wrapper-validation@v3
-
   test:
     name: Run tests
     runs-on: ubuntu-24.04
@@ -33,12 +23,18 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up JDK 21
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-scan-publish: true
+          build-scan-terms-of-use-url: 'https://gradle.com/terms-of-service'
+          build-scan-terms-of-use-agree: 'yes'
 
       - name: Run tests
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --scan
