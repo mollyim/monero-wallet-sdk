@@ -6,10 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.parcelize) apply false
     alias(libs.plugins.ksp) apply false
-}
-
-allprojects {
-    group = "im.molly.monero.sdk"
+    alias(libs.plugins.publish) apply false
 }
 
 tasks {

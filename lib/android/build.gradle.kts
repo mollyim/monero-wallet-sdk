@@ -2,15 +2,16 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.parcelize)
-    alias(libs.plugins.sdk.android.library.jacoco)
+    alias(libs.plugins.monero.sdk.module)
+    alias(libs.plugins.publish)
+    signing
 }
+
+version = "1.0.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
 }
-
-val vendorDir = File(rootDir, "vendor")
-val downloadCacheDir = layout.buildDirectory.dir("downloads").get().asFile
 
 android {
     namespace = "im.molly.monero.sdk"
@@ -118,4 +119,50 @@ dependencies {
     androidTestImplementation(testLibs.androidx.test.rules)
     androidTestImplementation(testLibs.androidx.test.runner)
     androidTestImplementation(testLibs.mockk.android)
+}
+
+mavenPublishing {
+    coordinates("im.molly", "monero-wallet-sdk", version.toString())
+
+    pom {
+        name = "Monero Wallet SDK for Android"
+        description =
+            "Kotlin-based Android library for interacting with the Monero blockchain and managing Monero wallets."
+        url = "https://github.com/mollyim/monero-wallet-sdk"
+
+        licenses {
+            license {
+                name = "GNU General Public License v3.0"
+                url = "https://www.gnu.org/licenses/gpl-3.0.txt"
+                distribution = "repo"
+            }
+        }
+
+        issueManagement {
+            system = "GitHub Issues"
+            url = "https://github.com/mollyim/monero-wallet-sdk/issues"
+        }
+
+        scm {
+            connection = "scm:git:git://github.com/mollyim/monero-wallet-sdk.git"
+            developerConnection = "scm:git:ssh://git@github.com/mollyim/monero-wallet-sdk.git"
+            url = "https://github.com/mollyim/monero-wallet-sdk"
+        }
+
+        developers {
+            developer {
+                name = "Oscar Mira"
+                url = "https://github.com/valldrac/"
+                organization = "MollyIM"
+                organizationUrl = "https://molly.im"
+            }
+        }
+    }
+
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+}
+
+signing {
+    useGpgCmd()
+    sign(publishing.publications)
 }

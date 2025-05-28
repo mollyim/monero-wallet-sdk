@@ -11,6 +11,7 @@ kotlinx-coroutines = '1.9.0'
 ksp = "2.1.0-1.0.29"
 okhttp = "4.10.0"
 room = "2.6.1"
+publish = "0.32.0"
 
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
@@ -43,6 +44,7 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+publish = { id = "com.vanniktech.maven.publish", version.ref = "publish" }
 
 # Plugins defined by this project
-sdk-android-library-jacoco = { id ="sdk.android.library.jacoco" }
+monero-sdk-module = { id ="im.molly.monero.sdk.module" }

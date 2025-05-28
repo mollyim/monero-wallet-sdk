@@ -20,9 +20,9 @@ tasks {
 
 gradlePlugin {
     plugins {
-        register("androidLibraryJacoco") {
-            id = libs.plugins.sdk.android.library.jacoco.get().pluginId
-            implementationClass = "AndroidLibraryJacocoPlugin"
+        register("MoneroSdkModulePlugin") {
+            id = libs.plugins.monero.sdk.module.get().pluginId
+            implementationClass = "MoneroSdkModulePlugin"
         }
     }
 }
