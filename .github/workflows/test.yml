@@ -36,5 +36,14 @@ jobs:
           build-scan-terms-of-use-url: 'https://gradle.com/terms-of-service'
           build-scan-terms-of-use-agree: 'yes'
 
-      - name: Run tests
-        run: ./gradlew build --scan
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+
+      - name: Compile modules
+        run: ./gradlew assemble --scan
+
+      - name: Run unit tests
+        run: ./gradlew check
+
+      - name: Run instrumented tests on emulator
+        run: ./gradlew ciGroupDebugAndroidTest

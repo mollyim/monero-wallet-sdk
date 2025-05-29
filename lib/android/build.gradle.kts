@@ -85,17 +85,23 @@ android {
         }
     }
 
-//    testOptions {
-//        managedDevices {
-//            localDevices {
-//                create("pixel2api30") {
-//                    device = "Pixel 2"
-//                    apiLevel = 30
-//                    systemImageSource = "aosp-atd"
-//                }
-//            }
-//        }
-//    }
+    testOptions {
+        managedDevices {
+            localDevices {
+                create("atdApi35") {
+                    device = "Small Phone"
+                    sdkVersion = 35
+                    systemImageSource = "aosp-atd"
+                    require64Bit = true
+                }
+            }
+            groups {
+                create("ciGroup") {
+                    targetDevices.add(allDevices["atdApi35"])
+                }
+            }
+        }
+    }
 }
 
 dependencies {
