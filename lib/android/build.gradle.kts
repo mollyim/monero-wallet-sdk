@@ -101,6 +101,8 @@ android {
                 }
             }
         }
+
+        animationsDisabled = true
     }
 }
 
