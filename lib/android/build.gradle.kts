@@ -164,5 +164,7 @@ mavenPublishing {
 
 signing {
     useGpgCmd()
-    sign(publishing.publications)
+    if (!isSnapshot) {
+        sign(publishing.publications)
+    }
 }

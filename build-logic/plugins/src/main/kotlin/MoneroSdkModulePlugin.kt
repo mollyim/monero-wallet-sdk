@@ -17,3 +17,6 @@ val Project.vendorDir: File
 
 val Project.downloadCacheDir: File
     get() = layout.buildDirectory.dir("downloads").get().asFile
+
+val Project.isSnapshot: Boolean
+    get() = version.toString().endsWith("SNAPSHOT")
