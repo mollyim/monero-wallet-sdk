@@ -35,12 +35,11 @@ jobs:
       - name: Extract library version info
         id: version
         run: |
-          ver_info=$(./gradlew -q :lib:version)
-          echo "version=v$(echo "$ver_info" | jq -r .version)" >> $GITHUB_OUTPUT
-          echo "isSnapshot=$(echo "$ver_info" | jq -r .isSnapshot)" >> $GITHUB_OUTPUT
+          version=$(awk -F'"' '/^version\s*=/{print $2}' lib/android/build.gradle.kts)
+          echo "version=v$version" >> $GITHUB_OUTPUT
 
       - name: Publish Snapshot
-        if: "steps.version.outputs.isSnapshot == 'true'"
+        if: "endsWith(steps.version.outputs.version, 'SNAPSHOT')"
         run: ./gradlew publishToMavenCentral
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
