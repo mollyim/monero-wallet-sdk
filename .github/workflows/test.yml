@@ -23,6 +23,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Free up disk space in runner
+        uses: ./.github/actions/disk-cleanup
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:

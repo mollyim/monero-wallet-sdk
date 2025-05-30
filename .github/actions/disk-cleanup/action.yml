@@ -1,0 +1,37 @@
+name: Disk cleanup
+description: "Free up disk space by removing unused pre-installed software."
+runs:
+  using: composite
+  steps:
+    - name: Free up disk space
+      shell: bash
+      run: |
+        echo "Disk space before cleanup:"
+        df -h /
+
+        echo "Removing unused software..."
+        sudo rm -rf \
+          /opt/az \
+          /opt/google/chrome \
+          /opt/hostedtoolcache/CodeQL \
+          /opt/microsoft \
+          /opt/pipx \
+          /usr/lib/dotnet \
+          /usr/lib/firefox \
+          /usr/lib/google-cloud-sdk \
+          /usr/lib/mono \
+          /usr/local/.ghcup \
+          /usr/local/aws-cli \
+          /usr/local/julia* \
+          /usr/local/share/chromium \
+          /usr/local/share/powershell \
+          /usr/local/share/vcpkg \
+          /usr/local/aws-sam-cli \
+          /usr/share/az_* \
+          /usr/share/dotnet \
+          /usr/share/man \
+          /usr/share/miniconda \
+          /usr/share/swift \
+
+        echo "Disk space after cleanup:"
+        df -h /
