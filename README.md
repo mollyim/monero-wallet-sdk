@@ -1,6 +1,6 @@
 # Monero Wallet SDK for Android
 
-[![Test](https://github.com/mollyim/monero-wallet-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/mollyim/monero-wallet-sdk/actions/workflows/test.yml)
+[![Build](https://github.com/mollyim/monero-wallet-sdk/actions/workflows/build.yml/badge.svg)](https://github.com/mollyim/monero-wallet-sdk/actions/workflows/build.yml)
 ![Maven Central](https://img.shields.io/maven-central/v/im.molly/monero-wallet-sdk)
 ![Snapshot](https://img.shields.io/maven-metadata/v?color=orange&label=snapshot&metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Fim%2Fmolly%2Fmonero-wallet-sdk%2Fmaven-metadata.xml)
 

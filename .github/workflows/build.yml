@@ -1,4 +1,4 @@
-name: Test
+name: Build
 
 on:
   pull_request:
@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Run tests
+  build:
+    name: Build & Run tests
     runs-on: ubuntu-24.04
 
     steps:
@@ -41,14 +41,17 @@ jobs:
 
       - name: Enable KVM
         run: |
-          sudo tee /etc/udev/rules.d/99-kvm.rules >/dev/null <<EOF
-            KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"
+          sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null <<EOF
+          KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"
           EOF
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+      - name: Extract library version info
+        id: meta
+        run: |
+          version=$(awk -F'"' '/^version\s*=/{print $2}' lib/android/build.gradle.kts)
+          echo "version=v$version" >> $GITHUB_OUTPUT
 
       - name: Compile modules
         run: ./gradlew assemble --scan
@@ -58,3 +61,10 @@ jobs:
 
       - name: Run instrumented tests on emulator
         run: ./gradlew ciGroupDebugAndroidTest
+
+      - name: Publish Snapshot
+        if: "github.ref_name == 'main' && endsWith(steps.meta.outputs.version, 'SNAPSHOT')"
+        run: ./gradlew publishToMavenCentral
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PASSWORD }}
