@@ -5,10 +5,21 @@ import kotlinx.parcelize.Parcelize
 
 @JvmInline
 @Parcelize
-value class HashDigest(private val hashDigest: String) : Parcelable {
+@OptIn(ExperimentalStdlibApi::class)
+value class HashDigest(private val hexString: String) : Parcelable {
     init {
-        require(hashDigest.length == 64) { "Hash length must be 64 hex chars" }
+        require(hexString.length == 64) {
+            "Hash length must be 32 bytes (64 hex chars)"
+        }
+        require(hexString.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+            "Hash must be a valid hex string"
+        }
     }
 
-    override fun toString(): String = hashDigest
+    constructor(hashDigestBytes: ByteArray) : this(hashDigestBytes.toHexString())
+
+    val bytes: ByteArray
+        get() = hexString.hexToByteArray()
+
+    override fun toString(): String = hexString
 }
