@@ -1,6 +1,7 @@
 package im.molly.monero.sdk.internal;
 
 import im.molly.monero.sdk.PaymentRequest;
+import im.molly.monero.sdk.SecretKey;
 import im.molly.monero.sdk.SweepRequest;
 import im.molly.monero.sdk.internal.IBalanceListener;
 import im.molly.monero.sdk.internal.ITransferCallback;
@@ -8,6 +9,8 @@ import im.molly.monero.sdk.internal.IWalletCallbacks;
 
 interface IWallet {
     String getPublicAddress();
+    SecretKey getSpendSecretKey();
+    SecretKey getViewSecretKey();
     void addBalanceListener(in IBalanceListener listener);
     void removeBalanceListener(in IBalanceListener listener);
     oneway void addDetachedSubAddress(int accountIndex, int subAddressIndex, in IWalletCallbacks callback);

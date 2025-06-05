@@ -6,9 +6,8 @@ import im.molly.monero.sdk.InMemoryWalletDataStore
 import im.molly.monero.sdk.Mainnet
 import im.molly.monero.sdk.MoneroWalletSubject
 import im.molly.monero.sdk.RestorePoint
+import im.molly.monero.sdk.SecretKey
 import im.molly.monero.sdk.exceptions.NoSuchAccountException
-import im.molly.monero.sdk.mnemonics.MoneroMnemonic
-import im.molly.monero.sdk.mnemonics.toSecretKey
 import im.molly.monero.sdk.service.BaseWalletService
 import im.molly.monero.sdk.service.InProcessWalletService
 import im.molly.monero.sdk.service.SandboxedWalletService
@@ -21,19 +20,32 @@ abstract class WalletPersistenceTest(
 ) : WalletTestBase(serviceClass) {
 
     @Test
-    fun restoredWalletHasExpectedAddress() = runTest {
-        val key =
-            MoneroMnemonic.recoverEntropy(
-                "velvet lymph giddy number token physics poetry unquoted nibs useful sabotage limits benches lifestyle eden nitrogen anvil fewest avoid batch vials washing fences goat unquoted"
-            )?.toSecretKey()
+    fun restoredWalletHasExpectedAccountKeys() = runTest {
+        val sk = "148d78d2aba7dbca5cd8f6abcfb0b3c009ffbdbea1ff373d50ed94d78286640e".toSecretKey()
+        val vk = "49774391fa5e8d249fc2c5b45dadef13534bf2483dede880dac88f061e809100".toSecretKey()
+
         val wallet = walletProvider.restoreWallet(
             network = Mainnet,
-            secretSpendKey = key ?: error("recoverEntropy failed"),
+            secretSpendKey = sk,
             restorePoint = RestorePoint.creationTime(Instant.now()),
         )
-        assertThat(wallet.publicAddress.address)
-            .isEqualTo("42ey1afDFnn4886T7196doS9GPMzexD9gXpsZJDwVjeRVdFCSoHnv7KPbBeGpzJBzHRCAs9UxqeoyFQMYbqSWYTfJJQAWDm")
+
+        wallet.withViewKey { assertThat(it).isEqualTo(vk) }
+        wallet.withSpendKey { assertThat(it).isEqualTo(sk) }
+        wallet.withViewAndSpendKeys { viewKey, spendKey ->
+            assertThat(viewKey).isEqualTo(vk)
+            assertThat(spendKey).isEqualTo(sk)
+        }
+
+        with(wallet.publicAddress) {
+            assertThat(address).isEqualTo("42ey1afDFnn4886T7196doS9GPMzexD9gXpsZJDwVjeRVdFCSoHnv7KPbBeGpzJBzHRCAs9UxqeoyFQMYbqSWYTfJJQAWDm")
+            assertThat(spendPublicKey.toString()).isEqualTo("1b3bd040020d3712ab84992b773d0a965134eb2df0392fb84af95de8a17be2ab")
+            assertThat(viewPublicKey.toString()).isEqualTo("231c9bf8341c6a870d92e3fb98063a90a355fb8dbf74a8561b9d7f9273247e99")
+        }
     }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun String.toSecretKey() = SecretKey(this.hexToByteArray())
 
     @Test
     fun saveToMultipleStores() = runTest {

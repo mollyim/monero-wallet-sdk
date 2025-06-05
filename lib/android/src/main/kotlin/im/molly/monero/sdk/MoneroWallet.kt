@@ -123,6 +123,26 @@ class MoneroWallet internal constructor(
             })
         }
 
+    suspend fun <R> withViewKey(block: suspend (SecretKey) -> R): R {
+        return wallet.getViewSecretKey().use { viewKey ->
+            block(viewKey)
+        }
+    }
+
+    suspend fun <R> withSpendKey(block: suspend (SecretKey) -> R): R {
+        return wallet.getSpendSecretKey().use { spendKey ->
+            block(spendKey)
+        }
+    }
+
+    suspend fun <R> withViewAndSpendKeys(block: suspend (viewKey: SecretKey, spendKey: SecretKey) -> R): R {
+        return wallet.getViewSecretKey().use { viewKey ->
+            wallet.getSpendSecretKey().use { spendKey ->
+                block(viewKey, spendKey)
+            }
+        }
+    }
+
     /**
      * A [Flow] of ledger changes.
      */

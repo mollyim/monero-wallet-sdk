@@ -73,6 +73,10 @@ internal class NativeWallet private constructor(
 
     override fun getPublicAddress(): String = nativeGetPublicAddress(handle)
 
+    override fun getSpendSecretKey(): SecretKey = SecretKey(nativeGetSpendSecretKey(handle))
+
+    override fun getViewSecretKey(): SecretKey = SecretKey(nativeGetViewSecretKey(handle))
+
     fun getCurrentBlockchainTime(): BlockchainTime {
         return network.blockchainTime(
             nativeGetCurrentBlockchainHeight(handle),
@@ -486,6 +490,8 @@ internal class NativeWallet private constructor(
     private external fun nativeCreateSubAddress(handle: Long, subAddressMajor: Int): String?
     private external fun nativeDispose(handle: Long)
     private external fun nativeGetPublicAddress(handle: Long): String
+    private external fun nativeGetSpendSecretKey(handle: Long): ByteArray
+    private external fun nativeGetViewSecretKey(handle: Long): ByteArray
     private external fun nativeGetCurrentBlockchainHeight(handle: Long): Int
     private external fun nativeGetCurrentBlockchainTimestamp(handle: Long): Long
     private external fun nativeGetSubAddresses(

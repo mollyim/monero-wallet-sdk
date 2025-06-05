@@ -115,6 +115,9 @@ class Wallet : i_wallet2_callback {
   std::string public_address() const;
   std::vector<std::string> formatted_subaddresses(uint32_t index_major = -1);
 
+  crypto::secret_key spend_secret_key() const;
+  crypto::secret_key view_secret_key() const;
+
   uint32_t current_blockchain_height() const { return static_cast<uint32_t>(m_last_block_height); }
   uint64_t current_blockchain_timestamp() const { return m_last_block_timestamp; }
 
@@ -128,6 +131,7 @@ class Wallet : i_wallet2_callback {
 
  private:
   cryptonote::account_base& require_account();
+  const cryptonote::account_base& require_account() const;
 
   wallet2 m_wallet;
 

@@ -231,8 +231,7 @@ std::vector<uint64_t> Wallet::fetchBaseFeeEstimate() {
 }
 
 std::string Wallet::public_address() const {
-  auto account = const_cast<Wallet*>(this)->require_account();
-  return account.get_public_address_str(m_wallet.nettype());
+  return require_account().get_public_address_str(m_wallet.nettype());
 }
 
 std::vector<std::string> Wallet::formatted_subaddresses(uint32_t index_major) {
@@ -253,6 +252,18 @@ std::vector<std::string> Wallet::formatted_subaddresses(uint32_t index_major) {
 cryptonote::account_base& Wallet::require_account() {
   LOG_FATAL_IF(!m_account_ready, "Account is not initialized");
   return m_wallet.get_account();
+}
+
+const cryptonote::account_base& Wallet::require_account() const {
+  return const_cast<Wallet*>(this)->require_account();
+}
+
+crypto::secret_key Wallet::spend_secret_key() const {
+  return require_account().get_keys().m_spend_secret_key;
+}
+
+crypto::secret_key Wallet::view_secret_key() const {
+  return require_account().get_keys().m_view_secret_key;
 }
 
 const wallet2::payment_details* Find_payment_by_txid(
@@ -684,27 +695,27 @@ Java_im_molly_monero_sdk_internal_NativeWallet_nativeSetRefreshSince(
   wallet->setRefreshSince(height_or_timestamp);
 }
 
-//extern "C"
-//JNIEXPORT jbyteArray JNICALL
-//Java_im_molly_monero_sdk_Wallet_nativeGetViewPublicKey(
-//    JNIEnv* env,
-//    jobject thiz,
-//    jlong handle) {
-//  auto* wallet = reinterpret_cast<Wallet*>(handle);
-//  auto* key = &wallet->keys().m_account_address.m_view_public_key;
-//  return nativeToJvmByteArray(env, key->data, sizeof(key->data)).Release();
-//}
-//
-//extern "C"
-//JNIEXPORT jbyteArray JNICALL
-//Java_im_molly_monero_sdk_Wallet_nativeGetSpendPublicKey(
-//    JNIEnv* env,
-//    jobject thiz,
-//    jlong handle) {
-//  auto* wallet = reinterpret_cast<Wallet*>(handle);
-//  auto* key = &wallet->keys().m_account_address.m_spend_public_key;
-//  return nativeToJvmByteArray(env, key->data, sizeof(key->data)).Release();
-//}
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_im_molly_monero_sdk_internal_NativeWallet_nativeGetSpendSecretKey(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  auto key = wallet->spend_secret_key();
+  return NativeToJavaByteArray(env, key.data, sizeof(key.data));
+}
+
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_im_molly_monero_sdk_internal_NativeWallet_nativeGetViewSecretKey(
+    JNIEnv* env,
+    jobject thiz,
+    jlong handle) {
+  auto* wallet = reinterpret_cast<Wallet*>(handle);
+  auto key = wallet->view_secret_key();
+  return NativeToJavaByteArray(env, key.data, sizeof(key.data));
+}
 
 extern "C"
 JNIEXPORT jstring JNICALL

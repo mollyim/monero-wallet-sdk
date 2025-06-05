@@ -147,14 +147,19 @@ private fun List<TxInfo>.createTransaction(
 }
 
 private fun List<TxInfo>.determineTxState(): TxState {
-    val height = maxOf { it.height }
-    val timestamp = maxOf { it.timestamp }
-
     return when (val state = first().state) {
         TxInfo.STATE_OFF_CHAIN -> TxState.OffChain
         TxInfo.STATE_PENDING -> TxState.InMemoryPool
         TxInfo.STATE_FAILED -> TxState.Failed
-        TxInfo.STATE_ON_CHAIN -> TxState.OnChain(BlockHeader(height, timestamp))
+        TxInfo.STATE_ON_CHAIN -> {
+            TxState.OnChain(
+                BlockHeader(
+                    height = maxOf { it.height },
+                    epochSecond = maxOf { it.timestamp },
+                )
+            )
+        }
+
         else -> error("Invalid tx state value: $state")
     }
 }

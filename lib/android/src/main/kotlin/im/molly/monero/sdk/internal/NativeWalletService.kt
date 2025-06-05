@@ -50,8 +50,12 @@ internal class NativeWalletService(
         secretSpendKey: SecretKey,
         restorePoint: Long,
     ) {
-        val wallet = secretSpendKey.use { secret ->
-            createOrRestoreWallet(config, rpcClient, secret, restorePoint)
+        val wallet = try {
+            createOrRestoreWallet(config, rpcClient, secretSpendKey, restorePoint)
+        } finally {
+            if (isServiceIsolated) {
+                secretSpendKey.destroy()
+            }
         }
         callback?.onWalletResult(wallet)
     }
