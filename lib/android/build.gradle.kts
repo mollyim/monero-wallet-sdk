@@ -153,7 +153,7 @@ mavenPublishing {
 
         scm {
             connection = "scm:git:git://github.com/mollyim/monero-wallet-sdk.git"
-            developerConnection = "scm:git:ssh://git@github.com/mollyim/monero-wallet-sdk.git"
+            developerConnection = "scm:git:ssh://git@github.com:mollyim/monero-wallet-sdk.git"
             url = "https://github.com/mollyim/monero-wallet-sdk"
         }
 
