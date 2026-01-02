@@ -121,7 +121,7 @@ class AddWalletViewModel(
                 state.restoreHeight.isNotEmpty() ->
                     RestorePoint.blockHeight(state.restoreHeight.toInt())
 
-                else -> RestorePoint.Genesis
+                else -> RestorePoint.GenesisBlock
             }
             SecretKey(state.secretSpendKeyHex.hexToByteArray()).use { secretSpendKey ->
                 walletRepository.restoreWallet(

@@ -25,7 +25,7 @@ data class BlockHeader(
     }
 }
 
-fun isBlockHeightInRange(height: Long) = !(height < 0 || height > BlockHeader.MAX_HEIGHT)
+fun isBlockHeightInRange(height: Long) = height in 0..BlockHeader.MAX_HEIGHT
 
 fun isBlockHeightInRange(height: Int) = isBlockHeightInRange(height.toLong())
 

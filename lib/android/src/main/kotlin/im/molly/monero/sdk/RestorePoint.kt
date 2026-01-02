@@ -8,7 +8,7 @@ interface RestorePoint {
     fun toLong(): Long
 
     companion object {
-        val Genesis: RestorePoint = RestorePointValue(heightOrTimestamp = 0)
+        val GenesisBlock: RestorePoint = RestorePointValue(heightOrTimestamp = 0)
 
         fun blockHeight(height: Int): RestorePoint {
             require(isBlockHeightInRange(height))
@@ -25,7 +25,7 @@ interface RestorePoint {
 
         fun creationTime(epochSecond: Long): RestorePoint {
             require(epochSecond >= 1402185600) {
-                "Monero accounts cannot be restored before June 8, 2014"
+                "Monero accounts cannot be restored before 2014-06-08"
             }
             return RestorePointValue(heightOrTimestamp = epochSecond)
         }
