@@ -41,18 +41,6 @@ class MoneroWallet internal constructor(
 
     private val logger = loggerFor<MoneroWallet>()
 
-//    suspend fun addDetachedSubAddress(accountIndex: Int, subAddressIndex: Int): AccountAddress =
-//        suspendCancellableCoroutine { continuation ->
-//            wallet.addDetachedSubAddress(
-//                accountIndex,
-//                subAddressIndex,
-//                object : BaseWalletCallbacks() {
-//                    override fun onSubAddressReady(subAddress: String) {
-//                        continuation.resume(AccountAddress.parseWithIndexes(subAddress)) {}
-//                    }
-//                })
-//        }
-
     suspend fun createAccount(): WalletAccount =
         suspendCancellableCoroutine { continuation ->
             wallet.createAccount(object : BaseWalletCallbacks() {
